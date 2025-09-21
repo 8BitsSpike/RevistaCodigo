@@ -1,0 +1,38 @@
+# ASP.NET Core
+bin/
+obj/
+**/Properties/launchSettings.json
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs
+logs/
+*.log
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+project.assets.json
+
+# User-specific files
+*.rsuser
+*.userprefs
+
+# Configurações e arquivos gerados
+secrets.json
+Thumbs.db
+
+# IDEs e editores
+.idea/
+.vscode/
+
+# Docker
+**/Dockerfile
+**/.dockerignore
+**/docker-compose*

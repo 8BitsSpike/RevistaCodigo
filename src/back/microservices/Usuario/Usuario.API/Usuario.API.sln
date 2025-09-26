@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Usuario.Intf", "Usuario.Int
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Usuario.Server", "Usuario.Server\Usuario.Server.csproj", "{70D84079-7919-4517-AE56-90381AD4E3D9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Usuario.Testes", "Usuario.Testes\Usuario.Testes.csproj", "{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,12 +33,6 @@ Global
 		{70D84079-7919-4517-AE56-90381AD4E3D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70D84079-7919-4517-AE56-90381AD4E3D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70D84079-7919-4517-AE56-90381AD4E3D9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Debug|Any CPU.Build.0 = Debug|x64
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Debug|Any CPU.Deploy.0 = Debug|x64
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Release|Any CPU.ActiveCfg = Release|x64
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Release|Any CPU.Build.0 = Release|x64
-		{6AA05F31-EC0A-4915-98A6-8A6B74CCCFD0}.Release|Any CPU.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

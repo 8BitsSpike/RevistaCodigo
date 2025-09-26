@@ -9,7 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 
-namespace Usuario.Api.Controllers
+namespace Usuario.API.Controllers
 {
     [Authorize]
     [Route("api/[controller]")]
@@ -42,7 +42,7 @@ namespace Usuario.Api.Controllers
 
         [AllowAnonymous]
         [HttpPost("Register")]
-        public async Task<IActionResult> Create(UsuarioDto newUsuario)
+        public async Task<IActionResult> Create(UsuarDto newUsuario)
         {
             if (newUsuario is null)
             {
@@ -63,7 +63,7 @@ namespace Usuario.Api.Controllers
         }
 
         [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(ObjectId id, UsuarioDto updatedUsuario)
+        public async Task<IActionResult> Update(ObjectId id, UsuarDto updatedUsuario)
         {
             var existingUsuario = await _usuarioService.GetAsync(id);
 
@@ -99,7 +99,7 @@ namespace Usuario.Api.Controllers
 
         [AllowAnonymous]
         [HttpPost("Authenticate")]
-        public async Task<IActionResult> Authenticate(AuthenticateDto model)
+        public async Task<IActionResult> Authenticate(UserDto model)
         {
             var usuario = await _usuarioService.AuthAsync(model.Email);
 
@@ -153,7 +153,7 @@ namespace Usuario.Api.Controllers
 
                 return Ok("Password recovery email sent.");
             }
-            catch (System.Exception ex)
+            catch (System.Exception)
             {
                 return StatusCode(500, "An error occurred while sending the recovery email.");
             }

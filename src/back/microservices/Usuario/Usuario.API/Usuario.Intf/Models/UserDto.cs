@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Usuario.Intf.Models
 {
-    public class AuthenticateDto
+    public class UserDto
     {
 
         [Required]
-        public string Email { get; set; }
-        public string Password { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
 
 
 

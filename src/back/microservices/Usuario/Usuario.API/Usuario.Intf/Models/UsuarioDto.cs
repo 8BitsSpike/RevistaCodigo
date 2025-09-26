@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace Usuario.Intf.Models
 {
-    public class UsuarioDto
+    public class UsuarDto
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
@@ -16,6 +16,6 @@ namespace Usuario.Intf.Models
         public string? Email { get; set; }
 
         [BsonElement("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
     }
 }

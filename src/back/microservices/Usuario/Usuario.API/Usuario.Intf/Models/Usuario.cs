@@ -11,14 +11,14 @@ namespace Usuario.Intf.Models
         public ObjectId Id { get; set; }
 
         [BsonElement("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [BsonElement("email")]
-        public string Email { get; set; }
+        public string? Email { get; set; }
         [JsonIgnore]
 
         [BsonElement("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
 
 
     }

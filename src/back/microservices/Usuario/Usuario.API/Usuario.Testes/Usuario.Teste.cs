@@ -1,12 +1,13 @@
-using Usuario.Api.Controllers;
+using Usuario.API.Controllers;
 using Usuario.Intf.Models;
 using Usuario.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using Moq;
+using Usuario.DbContext.Persistence;
 
-namespace Authentication.Tests
+namespace Usuario.Tests
 {
     public class UserControllerTests
     {
@@ -16,7 +17,7 @@ namespace Authentication.Tests
 
         public UserControllerTests()
         {
-            var contextMock = new Mock<Usuario.DbContext.MongoDbContext>(Mock.Of<Microsoft.Extensions.Options.IOptions<Usuario.DbContext.Persistence.UsuarioDatabaseSettings>>());
+            var contextMock = new Mock<MongoDbContext>(Mock.Of<Microsoft.Extensions.Options.IOptions<Usuario.DbContext.Persistence.UsuarioDatabaseSettings>>());
             _configurationMock = new Mock<IConfiguration>();
             _userServiceMock = new Mock<UsuarioService>(contextMock.Object, _configurationMock.Object);
             _controller = new UsuarioController(_userServiceMock.Object, _configurationMock.Object);
@@ -25,7 +26,7 @@ namespace Authentication.Tests
         [Fact]
         public async Task Create_ReturnsCreatedAtActionResult_WhenUserIsValid()
         {
-            var usuarioDto = new UsuarioDto { Name = "Test User", Email = "test@test.com", Password = "password" };
+            var usuarioDto = new UsuarDto { Name = "Test User", Email = "test@test.com", Password = "password" };
             var createdUsuario = new Usuar { Id = ObjectId.GenerateNewId(), Name = usuarioDto.Name, Email = usuarioDto.Email };
 
             _userServiceMock.Setup(s => s.AuthAsync(usuarioDto.Email)).ReturnsAsync((Usuar)null);
@@ -43,7 +44,7 @@ namespace Authentication.Tests
         {
             var userId = ObjectId.GenerateNewId();
             var existingUser = new Usuar { Id = userId, Name = "Old Name", Email = "old@email.com" };
-            var updatedUserDto = new UsuarioDto { Name = "New Name", Email = "new@email.com", Password = "newPassword" };
+            var updatedUserDto = new UsuarDto { Name = "New Name", Email = "new@email.com", Password = "newPassword" };
 
             _userServiceMock.Setup(s => s.GetAsync(userId)).ReturnsAsync(existingUser);
             _userServiceMock.Setup(s => s.UpdateAsync(userId, It.IsAny<Usuar>())).Returns(Task.CompletedTask);
@@ -73,7 +74,7 @@ namespace Authentication.Tests
         [Fact]
         public async Task Authenticate_ReturnsOkWithJwt_WhenCredentialsAreValid()
         {
-            var model = new AuthenticateDto { Email = "test@email.com", Password = "password123" };
+            var model = new UserDto { Email = "test@email.com", Password = "password123" };
             var user = new Usuar { Id = ObjectId.GenerateNewId(), Email = model.Email, Password = BCrypt.Net.BCrypt.HashPassword(model.Password) };
             var fakeJwt = "fake-jwt-token";
 

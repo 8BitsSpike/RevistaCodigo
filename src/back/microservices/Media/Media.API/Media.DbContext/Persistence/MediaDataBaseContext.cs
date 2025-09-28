@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Media.DbContext.Persistence
+﻿namespace Media.DbContext.Persistence
 {
-    internal class MediaDataBaseContext
+    public class MediaDatabaseSettings
     {
+        public string ConnectionString { get; set; } = null!;
+        public string DataBaseName { get; set; } = null!;
+        public string MediaCollectionName { get; set; } = null!;
     }
 }

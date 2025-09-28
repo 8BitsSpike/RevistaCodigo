@@ -1,12 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Media.DbContext.Persistence;
+using Media.Intf.Models;
+using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 
 namespace Media.DbContext
 {
-    internal class MongoDbContext
+    public class MongoDbContext
     {
+        private readonly IMongoDatabase _database;
+        private readonly MediaDatabaseSettings _settings;
+
+        public MongoDbContext(IOptions<MediaDatabaseSettings> settings)
+        {
+            _settings = settings.Value;
+            var client = new MongoClient(_settings.ConnectionString);
+            _database = client.GetDatabase(_settings.DataBaseName);
+        }
+
+        public IMongoCollection<Media> Medias =>
+            _database.GetCollection<Media>(_settings.MediaCollectionName);
+
     }
 }

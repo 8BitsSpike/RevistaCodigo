@@ -59,6 +59,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapGet("/", () => Results.Ok("API de Usuário está rodando"));
 }
 
 app.UseCors("AllowReactApp");

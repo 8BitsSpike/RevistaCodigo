@@ -1,4 +1,4 @@
-using Usuario.API.Controllers;
+﻿using Usuario.API.Controllers;
 using Usuario.Intf.Models;
 using Usuario.Server.Services;
 using Microsoft.AspNetCore.Mvc;

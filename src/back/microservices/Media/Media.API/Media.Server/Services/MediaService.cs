@@ -10,29 +10,51 @@ namespace Media.Server.Services
     public class MediaService(MongoDbContext context)
     {
         private readonly MongoDbContext _context = context;
+       public virtual async Task<List<Midia>> GetMediaAsync() =>
+            await _context.Midias.Find(_ => true).ToListAsync();
 
-        public virtual async Task<List<Media>> GetMediaAsync() =>
-            await _context.Medias.Find(_ => true).ToListAsync();
-
-        public virtual async Task<Media> GetMediaAsync(int id) =>
-            await _context.Medias.Find(x => x.Id == id).FirstOrDefaultAsync();
-
-        public virtual async Task<Media> CreateMediaAsync(Media newMedia)
+       public virtual async Task<Midia?> GetMediaAsync(string id)
         {
-            await _context.Medias.InsertOneAsync(newMedia);
-            return newMedia;
+            if (!ObjectId.TryParse(id, out ObjectId objectId))
+            {
+                return null;
+            }
+            return await _context.Midias.Find(x => x.Id == objectId).FirstOrDefaultAsync();
         }
 
-        public virtual async Task<bool> UpdateMediaAsync(int id, Url updatedUrl)
-        {
-            var filter = Builders<Media>.Filter.Eq(q => q.Id, id);
-            var update = Builders<Media>.Update.Set(q => q.Url, updatedUrl);
+       public virtual async Task<Midia> GetMediaAsync(ObjectId id) =>
+            await _context.Midias.Find(x => x.Id == id).FirstOrDefaultAsync();
 
-            var result = await _context.Medias.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+
+        public virtual async Task<Midia> CreateMediaAsync(Midia newMidia)
+        {
+            if (newMidia.Id == ObjectId.Empty)
+            {
+                newMidia.Id = ObjectId.GenerateNewId();
+            }
+            await _context.Midias.InsertOneAsync(newMidia);
+            return newMidia;
         }
 
-        public virtual async Task DeleteMediaAsync(int id) =>
-            await _context.Medias.DeleteOneAsync(x => x.Id == id);
+        public virtual async Task UpdateMediaAsync(string id, Midia updatedMidia)
+        {
+            if (!ObjectId.TryParse(id, out ObjectId objectId))
+            {
+                throw new ArgumentException("Id em formato invalido.", nameof(id));
+            }
+
+            updatedMidia.Id = objectId;
+
+            await _context.Midias.ReplaceOneAsync(x => x.Id == objectId, updatedMidia);
+        }
+
+        public virtual async Task DeleteMediaAsync(string id)
+        {
+            if (!ObjectId.TryParse(id, out ObjectId objectId))
+            {
+                return;
+            }
+            await _context.Midias.DeleteOneAsync(x => x.Id == objectId);
+        }
     }
 }

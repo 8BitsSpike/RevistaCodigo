@@ -3,90 +3,84 @@ using Media.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
-using System.Text;
-using Microsoft.Extensions.Configuration;
 
-namespace Media.Api.Controllers
+public class MediaController(MediaService MediaService, IConfiguration configuration) : ControllerBase
 {
-    [Authorize]
-    [Route("api/[controller]")]
-    [ApiController]
-    public class MediaController(MediaService MediaService, IConfiguration configuration) : ControllerBase
+    private readonly MediaService _MediaService = MediaService;
+    private readonly IConfiguration _configuration = configuration;
+
+    [HttpGet]
+    public async Task<List<Midia>> Get() =>
+        await _MediaService.GetMediaAsync();
+
+    [HttpGet("{id:length(24)}")]
+    public async Task<ActionResult<Midia>> Get(string id)
     {
-        private readonly MediaService _MediaService = MediaService;
-        private readonly IConfiguration _configuration = configuration;
+        var media = await _MediaService.GetMediaAsync(id);
 
-        [HttpGet]
-        public async Task<List<Media>> Get() =>
-            await _MediaService.GetAsync();
+        if (media is null)
+            return NotFound();
 
-        [HttpGet("{id:length(24)}")]
-        public async Task<ActionResult<Media>> Get(ObjectId id)
+        return media;
+    }
+
+    [AllowAnonymous]
+    [HttpPost("Register")]
+    public async Task<IActionResult> Create(Midia newMidia)
+    {
+       if (newMidia is null)
         {
-            var media = await _MediaService.GetAsync(id);
-
-            if (media is null)
-                return NotFound();
-
-            return media;
+            return BadRequest("Dados inválidos!");
         }
 
-        [AllowAnonymous]
-        [HttpPost("Register")]
-        public async Task<IActionResult> Create(Media newMedia)
+       if (newMidia.Id != ObjectId.Empty)
         {
-            if (newMedia is null)
-            {
-                return BadRequest("Dados inválidos!");
-            }
-
-            var existingMedia = await _MediaService.AuthAsync(newMedia.Id);
-
+            var existingMedia = await _MediaService.GetMediaAsync(newMidia.Id.ToString());
             if (existingMedia is not null)
                 return BadRequest("Media já existe");
-
-            var novo = await _MediaService.CreateAsync(newMedia);
-
-            if (novo is null)
-                return BadRequest("Dados inválidos!");
-
-            return CreatedAtAction(nameof(Get), new { id = novo.Id }, novo);
         }
 
-        [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(ObjectId id, Media updatedMedia)
-        {
-            var media = await _MediaService.GetAsync(id);
+        var novo = await _MediaService.CreateMediaAsync(newMidia);
 
-            if (media is null)
-                return NotFound();
+        if (novo is null)
+           return BadRequest("Falha ao criar mídia!");
 
-            if (!String.IsNullOrEmpty(updatedMedia.Origem))
-                media.Name = updatedMedia.Origem;
-
-            if (!String.IsNullOrEmpty(updatedMedia.Tipo))
-                media.Email = updatedMedia.Tipo;
-
-            if (!String.IsNullOrEmpty(updatedMedia.Url))
-                media.Url = updatedMedia(updatedMedia.Url);
-
-            await _MediaService.UpdateAsync(id, Media);
-
-            return NoContent();
-        }
-
-        [HttpDelete("{id:length(24)}")]
-        public async Task<IActionResult> Delete(ObjectId id)
-        {
-            var media = await _MediaService.GetAsync(id);
-
-            if (media is null)
-                return NotFound();
-
-            await _MediaService.DeleteAsync(id);
-
-            return NoContent();
-        }
-
+       return CreatedAtAction(nameof(Get), new { id = novo.Id.ToString() }, novo);
     }
+
+   [HttpPut("{id:length(24)}")]
+    public async Task<IActionResult> Update(string id, Midia updatedMidia)
+    {
+        var media = await _MediaService.GetMediaAsync(id);
+
+        if (media is null)
+            return NotFound();
+
+        if (!string.IsNullOrEmpty(updatedMidia.Origem.ToString()) && updatedMidia.Origem != ObjectId.Empty)
+            media.Origem = updatedMidia.Origem;
+
+        if (!string.IsNullOrEmpty(updatedMidia.Tipo))
+            media.Tipo = updatedMidia.Tipo;
+
+       if (!string.IsNullOrEmpty(updatedMidia.Url))
+            media.Url = updatedMidia.Url;
+
+       await _MediaService.UpdateMediaAsync(id, media);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id:length(24)}")]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var media = await _MediaService.GetMediaAsync(id);
+
+        if (media is null)
+            return NotFound();
+
+        await _MediaService.DeleteMediaAsync(id);
+
+        return NoContent();
+    }
+
 }

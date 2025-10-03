@@ -7,18 +7,16 @@ namespace Media.DbContext
 {
     public class MongoDbContext
     {
+        private readonly MongoClient _client;
         private readonly IMongoDatabase _database;
-        private readonly MediaDatabaseSettings _settings;
 
         public MongoDbContext(IOptions<MediaDatabaseSettings> settings)
         {
-            _settings = settings.Value;
-            var client = new MongoClient(_settings.ConnectionString);
-            _database = client.GetDatabase(_settings.DataBaseName);
+            _client = new MongoClient(settings.Value.ConnectionString);
+            _database = _client.GetDatabase(settings.Value.DataBaseName);
         }
 
-        public IMongoCollection<Media> Medias =>
-            _database.GetCollection<Media>(_settings.MediaCollectionName);
-
+        public IMongoCollection<Midia> Midias =>
+            _database.GetCollection<Midia>("Media");
     }
 }

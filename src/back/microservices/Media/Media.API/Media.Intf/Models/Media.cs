@@ -4,20 +4,19 @@ using System.Text.Json.Serialization;
 
 namespace Media.Intf.Models
 {
-    internal class Midia
+    public class Midia
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public ObjectId Id { get; set; }
+        public ObjectId Id { get; set; } = ObjectId.Empty;
 
         [BsonRepresentation(BsonType.ObjectId)]
         public required ObjectId Origem { get; set; }
 
-        [BsonElement("String")]
+        [BsonElement("Type")]
         public required string Tipo { get; set; }
-        [JsonIgnore]
 
-        [BsonElement("String")]
+        [BsonElement("UrlValue")]
         public required string Url { get; set; }
     }
 }

@@ -1,13 +1,15 @@
-using Media;
 using Media.DbContext;
 using Media.DbContext.Persistence;
 using Media.Server.Services;
 using Microsoft.AspNetCore.Builder;
-using Swashbuckle.AspNetCore.SwaggerUI;
-using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddLogging();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins",
@@ -18,17 +20,19 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader();
         });
 });
-
 builder.Services.Configure<MediaDatabaseSettings>(
     builder.Configuration.GetSection("MediaDatabase"));
 
-builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton(sp =>
+{
+    var settingsOptions = sp.GetRequiredService<IOptions<MediaDatabaseSettings>>();
+var logger = sp.GetRequiredService<ILogger<MongoDbContext>>();
+return new MongoDbContext(settingsOptions, logger);
+});
 builder.Services.AddScoped<MediaService>();
-
-builder.Services.AddControllers()
-    .AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
-
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
 
 var app = builder.Build();
 
@@ -36,14 +40,12 @@ app.UseCors("AllowAllOrigins");
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwaggerUI();
-
     app.UseSwaggerUI(options =>
     {
+
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Media.API v1");
     });
 }
-
 
 app.UseAuthorization();
 

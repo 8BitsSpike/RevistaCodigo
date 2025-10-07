@@ -9,14 +9,19 @@ using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+
 builder.Services.Configure<UsuarioDatabaseSettings>(builder.Configuration.GetSection("UsuarioDatabase"));
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddControllers();
+
+// Configuração do Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi(); 
+builder.Services.AddSwaggerGen();
 
 
+// Configuração do JWT
 var jwtKey = builder.Configuration["Key"];
 if (string.IsNullOrEmpty(jwtKey))
 {
@@ -30,19 +35,19 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-    .AddJwtBearer(options =>
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters()
     {
-        options.SaveToken = true;
-        options.RequireHttpsMetadata = false;
-        options.TokenValidationParameters = new TokenValidationParameters()
-        {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            IssuerSigningKey = new SymmetricSecurityKey(key)
-        };
-    });
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
+});
 
-
+// Configuração do CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -56,16 +61,18 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
+// Ambiente de desenvolvimento: habilita Swagger e endpoint raiz
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapGet("/", () => Results.Ok("API de Usuário está rodando"));
+    app.UseSwagger();
+    app.UseSwaggerUI(); // Interface gráfica do Swagger
+
+    app.MapGet("/", () => Results.Ok("API de Usuário está rodando"));
 }
 
 app.UseCors("AllowReactApp");
-
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();

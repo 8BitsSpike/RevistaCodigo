@@ -1,6 +1,0 @@
-@Artigo.API_HostAddress = http://localhost:5120
-
-GET {{Artigo.API_HostAddress}}/Artigo/
-Accept: application/json
-
-###

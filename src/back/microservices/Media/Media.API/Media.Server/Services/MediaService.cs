@@ -5,25 +5,31 @@ using Media.Intf.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using System.Linq; 
 
 namespace Media.Server.Services
 {
-    public class MediaService(MongoDbContext context)
+   
+
+public class MediaService(MongoDbContext context)
     {
         private readonly MongoDbContext _context = context;
-       public virtual async Task<List<Midia>> GetMediaAsync() =>
-            await _context.Midias.Find(_ => true).ToListAsync();
 
-       public virtual async Task<Midia?> GetMediaAsync(string id)
+        public virtual async Task<List<MidiaDTO>> GetMediaAsync() =>
+            (await _context.Midias.Find(_ => true).ToListAsync())
+            .Select(m => m.ToDto()) 
+            .ToList();
+        public virtual async Task<MidiaDTO?> GetMediaAsync(string id)
         {
             if (!ObjectId.TryParse(id, out ObjectId objectId))
             {
                 return null;
             }
-            return await _context.Midias.Find(x => x.Id == objectId).FirstOrDefaultAsync();
+            var result = await _context.Midias.Find(x => x.Id == objectId).FirstOrDefaultAsync();
+            return result.ToDto();
         }
 
-       public virtual async Task<Midia> GetMediaAsync(ObjectId id) =>
+        public virtual async Task<Midia> GetMediaAsync(ObjectId id) =>
             await _context.Midias.Find(x => x.Id == id).FirstOrDefaultAsync();
 
 
@@ -41,7 +47,7 @@ namespace Media.Server.Services
         {
             if (!ObjectId.TryParse(id, out ObjectId objectId))
             {
-                throw new ArgumentException("Id em formato invalido.", nameof(id));
+                throw new ArgumentException("Id em formato inválido.", nameof(id));
             }
 
             updatedMidia.Id = objectId;
@@ -51,6 +57,7 @@ namespace Media.Server.Services
 
         public virtual async Task DeleteMediaAsync(string id)
         {
+
             if (!ObjectId.TryParse(id, out ObjectId objectId))
             {
                 return;

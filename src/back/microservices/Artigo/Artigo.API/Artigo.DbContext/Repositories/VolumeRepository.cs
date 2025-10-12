@@ -1,0 +1,113 @@
+﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.PersistenceModels;
+using Artigo.Intf.Entities;
+using Artigo.Intf.Enums;
+using Artigo.Intf.Interfaces;
+using AutoMapper;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using SharpCompress.Common;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Artigo.DbContext.Repositories
+{
+    /// <sumario>
+    /// Implementacao do contrato de persistencia IVolumeRepository.
+    /// Responsavel por gerenciar os metadados de publicacao das edicoes da revista.
+    /// </sumario>
+    public class VolumeRepository : IVolumeRepository
+    {
+        private readonly IMongoCollection<VolumeModel> _volumes;
+        private readonly IMapper _mapper;
+
+        public VolumeRepository(IMongoDbContext dbContext, IMapper mapper)
+        {
+            _volumes = dbContext.Volumes;
+            _mapper = mapper;
+        }
+
+        // --- Implementação dos Métodos da Interface ---
+
+        public async Task<Volume?> GetByIdAsync(string id)
+        {
+            if (!ObjectId.TryParse(id, out var objectId)) return null;
+
+            var model = await _volumes
+                .Find(v => v.Id == objectId.ToString())
+                .FirstOrDefaultAsync();
+
+            return _mapper.Map<Volume>(model);
+        }
+
+        public async Task<IReadOnlyList<Volume>> GetByYearAsync(int year)
+        {
+            var models = await _volumes
+                .Find(v => v.Year == year)
+                .SortByDescending(v => v.M)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Volume>>(models);
+        }
+
+        // Implementa o contrato IVolumeRepository
+        public async Task<IReadOnlyList<Volume>> GetAllAsync()
+        {
+            var models = await _volumes
+                .Find(_ => true) // Busca todos
+                .SortByDescending(v => v.Year)
+                .ThenByDescending(v => v.M)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Volume>>(models);
+        }
+
+        public async Task AddAsync(Volume volume)
+        {
+            var model = _mapper.Map<VolumeModel>(volume);
+
+            if (string.IsNullOrEmpty(model.Id))
+            {
+                model.Id = ObjectId.GenerateNewId().ToString();
+            }
+            if (model.DataCriacao == DateTime.MinValue)
+            {
+                model.DataCriacao = DateTime.UtcNow;
+            }
+
+            await _volumes.InsertOneAsync(model);
+
+            // Atualiza a entidade de domínio com a ID final
+            _mapper.Map(model, volume);
+        }
+
+        public async Task<bool> UpdateAsync(Volume volume)
+        {
+            if (!ObjectId.TryParse(volume.Id, out var objectId))
+            {
+                return false;
+            }
+
+            var model = _mapper.Map<VolumeModel>(volume);
+
+            // Usa ReplaceOneAsync para atualizar o documento inteiro (metadados e ArtigoIds)
+            var result = await _volumes.ReplaceOneAsync(
+                v => v.Id == objectId.ToString(),
+                model
+            );
+
+            return result.IsAcknowledged && result.ModifiedCount == 1;
+        }
+
+        public async Task<bool> DeleteAsync(string id)
+        {
+            if (!ObjectId.TryParse(id, out var objectId)) return false;
+
+            var result = await _volumes.DeleteOneAsync(v => v.Id == objectId.ToString());
+
+            return result.IsAcknowledged && result.DeletedCount == 1;
+        }
+    }
+}

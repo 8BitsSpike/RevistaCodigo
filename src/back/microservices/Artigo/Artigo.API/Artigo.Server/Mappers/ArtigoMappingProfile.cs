@@ -16,19 +16,19 @@ namespace Artigo.Server.Mappers
         public ArtigoMappingProfile()
         {
             // --- Conversao de Saída: Entidade (Domain) para DTO (Publico) ---
-            CreateMap<Artigo, ArtigoDTO>()
+            CreateMap<Artigo.Intf.Entities.Artigo, ArtigoDTO>()
                 // Os Enums sao mapeados para string por padrão, mas explicitamos para clareza
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.Tipo, opt => opt.MapFrom(src => src.Tipo.ToString()));
 
             // --- Conversao para Updates: DTO (Saída) para Entidade (Domain) ---
             // Usado para atualizar entidades no servico a partir dos dados recebidos.
-            CreateMap<ArtigoDTO, Artigo>()
+            CreateMap<ArtigoDTO, Artigo.Intf.Entities.Artigo>()
                 // Ignoramos o ID no mapeamento para evitar que a entidade seja recriada acidentalmente.
                 .ForMember(dest => dest.Id, opt => opt.Ignore());
 
             // --- Conversao de Entrada: CreateRequest DTO para Entidade (Domain) ---
-            CreateMap<CreateArtigoRequest, Artigo>()
+            CreateMap<CreateArtigoRequest, Artigo.Intf.Entities.Artigo>()
                 // Ignora propriedades que serao definidas pela camada de servico/repositorio
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => ArtigoStatus.Draft)) // Status inicial

@@ -1,4 +1,3 @@
-using Artigo.API.GraphQL.DataLoaders;
 using Artigo.API.GraphQL.Mutations;
 using Artigo.API.GraphQL.Queries;
 using Artigo.API.GraphQL.Types;
@@ -9,42 +8,36 @@ using Artigo.DbContext.Repositories;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
-using Artigo.Server.DTOs;
 using Artigo.Server.Mappers;
 using Artigo.Server.Services;
 using AutoMapper;
 using HotChocolate.Data;
 using HotChocolate.Execution.Configuration;
+using HotChocolate.Types;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =========================================================================
 // 1. CONFIGURAÇÃO DO MONGODB (Database Settings)
+// (Unchanged from last version)
 // =========================================================================
 
-// Configuração de opções a partir do appsettings.json (Exemplo: "MongoDbSettings:ConnectionString")
-// builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
-
-// A. Singleton do IMongoClient e do Contexto (Conexão Centralizada)
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    // Usar uma string de conexão real do Configuration
     var connectionString = builder.Configuration.GetConnectionString("MongoDb")
-        ?? "mongodb://localhost:27017"; // Fallback local
+        ?? "mongodb://localhost:27017";
     return new MongoClient(connectionString);
 });
 
-// B. Implementação do contexto de dados
 builder.Services.AddSingleton<IMongoDbContext>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
-    // Usar o nome do banco de dados do Configuration
     var databaseName = builder.Configuration["MongoDb:DatabaseName"] ?? "MagazineArtigoDB";
     return new MongoDbContext(client, databaseName);
 });
 
-// C. Registra a classe de Contexto (não o contrato) para injeção
 builder.Services.AddSingleton<MongoDbContext>();
 
 
@@ -52,24 +45,27 @@ builder.Services.AddSingleton<MongoDbContext>();
 // 2. CONFIGURAÇÃO DO AUTOMAPPER
 // =========================================================================
 
-// Cria uma instância do IConfigurationProvider, incluindo todos os perfis.
+// FIX: Usamos a inicialização manual para evitar ambiguidades com o AddAutoMapper.
+// Isso garante que a configuração e o registro do IMapper sejam feitos explicitamente.
 var mapperConfig = new MapperConfiguration(cfg =>
 {
-    // Perfil da Camada Application -> DTO
+    // Usa o método AddProfile, passando o tipo, para carregar os perfis.
     cfg.AddProfile<ArtigoMappingProfile>();
-    // Perfil da Camada Persistence -> Domain
     cfg.AddProfile<PersistenceMappingProfile>();
 });
 
-// Registra o IMapper singleton
-builder.Services.AddSingleton(mapperConfig.CreateMapper());
+// Valida a configuração (opcional, mas recomendado)
+mapperConfig.AssertConfigurationIsValid();
+
+// Registra a instância IMapper como Singleton.
+builder.Services.AddSingleton<IMapper>(sp => mapperConfig.CreateMapper());
 
 
 // =========================================================================
 // 3. REGISTRO DE REPOSITORIES E SERVICES (DI)
+// (Unchanged from last version)
 // =========================================================================
 
-// Repositories (Infrastructure/DbContext Layer)
 builder.Services.AddScoped<IArtigoRepository, ArtigoRepository>();
 builder.Services.AddScoped<IAutorRepository, AutorRepository>();
 builder.Services.AddScoped<IEditorialRepository, EditorialRepository>();
@@ -79,7 +75,6 @@ builder.Services.AddScoped<IPendingRepository, PendingRepository>();
 builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IVolumeRepository, VolumeRepository>();
 
-// Services (Application Layer)
 builder.Services.AddScoped<IArtigoService, ArtigoService>();
 
 
@@ -88,10 +83,10 @@ builder.Services.AddScoped<IArtigoService, ArtigoService>();
 // =========================================================================
 
 var graphQLServer = builder.Services.AddGraphQLServer()
-    .AddAuthorization() // Adiciona suporte a [Authorize]
-    .AddFiltering()     // Adiciona suporte a [UseFiltering]
-    .AddSorting()       // Adiciona suporte a [UseSorting]
-    .AddProjections()   // Adiciona suporte a otimização de queries de projeção
+    .AddAuthorization()
+    .AddFiltering()
+    .AddSorting()
+    .AddProjections()
     .AddQueryType<ArtigoQueries>()
     .AddMutationType<ArtigoMutations>()
     // Mapeia todos os tipos definidos
@@ -102,20 +97,26 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddType<Artigo.API.GraphQL.Types.InteractionType>()
     .AddType<PendingType>()
     .AddType<StaffType>()
-    .AddType<ArtigoHistoryType>() // Necessário adicionar o ArtigoHistoryType
-    .AddType<EditorialTeamType>() // Necessário adicionar tipos embutidos
+
+    // FIX 1: Adiciona o tipo ArtigoHistory (criado no passo anterior)
+    .AddType<ArtigoHistoryType>()
+    .AddType<EditorialTeamType>()
     .AddType<ContribuicaoEditorialType>()
+
     // Mapeia Enums
     .BindRuntimeType<ArtigoStatus, EnumType<ArtigoStatus>>()
     .BindRuntimeType<ArtigoTipo, EnumType<ArtigoTipo>>()
     .BindRuntimeType<EditorialPosition, EnumType<EditorialPosition>>()
-    // ... (Outros Enums)
+    .BindRuntimeType<ContribuicaoRole, EnumType<ContribuicaoRole>>() // Adicionado para completude
+    .BindRuntimeType<Artigo.Intf.Enums.InteractionType, EnumType<Artigo.Intf.Enums.InteractionType>>()
+    .BindRuntimeType<PendingStatus, EnumType<PendingStatus>>()
+    .BindRuntimeType<TargetEntityType, EnumType<TargetEntityType>>()
+    .BindRuntimeType<JobRole, EnumType<JobRole>>()
+    .BindRuntimeType<VolumeMes, EnumType<VolumeMes>>()
 
-    // Configura DataLoaders (Injetando dependências de Repositório/Mapper)
+    // Configura DataLoaders
     .AddDataLoader<EditorialDataLoader>()
     .AddDataLoader<VolumeDataLoader>()
-    // O ArtigoGroupedDataLoader precisa ser reescrito para injetar IArtigoRepository e IMapper
-    // Criaremos uma implementação que lida com isso.
     .AddDataLoader(sp =>
         new ArtigoGroupedDataLoader(
             sp.GetRequiredService<IBatchScheduler>(),
@@ -123,7 +124,6 @@ var graphQLServer = builder.Services.AddGraphQLServer()
             sp.GetRequiredService<IMapper>()
         )
     )
-    // Demais DataLoaders...
     .AddDataLoader<AutorDataLoader>()
     .AddDataLoader<InteractionDataLoader>()
     .AddDataLoader<CurrentHistoryContentDataLoader>()
@@ -137,13 +137,12 @@ var graphQLServer = builder.Services.AddGraphQLServer()
 
 // =========================================================================
 // 5. CONFIGURAÇÃO DE AUTENTICAÇÃO E ROTEAMENTO
+// (Unchanged from last version)
 // =========================================================================
 
-// Configuração da Autenticação (JWT Bearer Token)
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
-        // Esta é uma simulação; use as configurações reais do UsuarioAPI
         options.Authority = builder.Configuration["UsuarioAPI:Authority"];
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
@@ -158,19 +157,16 @@ var app = builder.Build();
 
 // =========================================================================
 // 6. MIDDLEWARE PIPELINE
+// (Unchanged from last version)
 // =========================================================================
 
 app.UseRouting();
 app.UseAuthentication();
-app.UseAuthorization(); // Deve vir depois de UseRouting/UseAuthentication
+app.UseAuthorization();
 
-// Endpoint principal para o GraphQL
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapGraphQL();
-
-    // Opcional: Adiciona o Banana Cake Pop (GraphQL IDE) em /graphql-ui
-    // endpoints.MapBananaCakePop("/graphql-ui"); 
 });
 
 
@@ -178,9 +174,11 @@ app.Run();
 
 
 // =========================================================================
-// Implementação do ArtigoGroupedDataLoader com dependências injetadas
+// Placeholder Definitions and Injectable DataLoaders (Final)
 // =========================================================================
-public class ArtigoGroupedDataLoader : GroupedDataLoader<string, ArtigoDTO>
+
+// DataLoaders/Context defined previously and injected:
+public class ArtigoGroupedDataLoader : GroupedDataLoader<string, Artigo.Server.DTOs.ArtigoDTO>
 {
     private readonly IArtigoRepository _artigoRepository;
     private readonly IMapper _mapper;
@@ -195,21 +193,10 @@ public class ArtigoGroupedDataLoader : GroupedDataLoader<string, ArtigoDTO>
         _mapper = mapper;
     }
 
-    protected override async Task<ILookup<string, ArtigoDTO>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
+    protected override async Task<ILookup<string, Artigo.Server.DTOs.ArtigoDTO>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
     {
-        // 1. Busca as Entidades do Domínio em lote
         var artigos = await _artigoRepository.GetByIdsAsync(keys.ToList());
-
-        // 2. Mapeia as Entidades (Artigo) para DTOs (ArtigoDTO)
-        var dtos = _mapper.Map<IReadOnlyList<ArtigoDTO>>(artigos);
-
-        // 3. Retorna como ILookup, usando o ID do Artigo como chave de agrupamento
+        var dtos = _mapper.Map<IReadOnlyList<Artigo.Server.DTOs.ArtigoDTO>>(artigos);
         return dtos.ToLookup(a => a.Id, a => a);
     }
 }
-
-// Necessário para compilação, pois esses tipos foram definidos no ArtigoType.cs/EditorialType.cs
-// Idealmente estariam em arquivos separados.
-public class ArtigoHistoryType : ObjectType<ArtigoHistory> { protected override void Configure(IObjectTypeDescriptor<ArtigoHistory> descriptor) { descriptor.Field(f => f.Id); descriptor.Field(f => f.Content); descriptor.Field(f => f.Version); } }
-public class EditorialTeamType : ObjectType<EditorialTeam> { protected override void Configure(IObjectTypeDescriptor<EditorialTeam> descriptor) { descriptor.Field(f => f.EditorId); descriptor.Field(f => f.ReviewerIds); } }
-public class ContribuicaoEditorialType : ObjectType<ContribuicaoEditorial> { protected override void Configure(IObjectTypeDescriptor<ContribuicaoEditorial> descriptor) { descriptor.Field(f => f.ArtigoId); descriptor.Field(f => f.Role); } }

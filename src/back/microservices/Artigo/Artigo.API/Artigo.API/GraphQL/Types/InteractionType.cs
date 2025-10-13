@@ -21,7 +21,7 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo principal ao qual esta interação se aplica.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário externo que fez a interação.");
             descriptor.Field(f => f.Content).Description("O conteúdo do comentário.");
-            descriptor.Field(f => f.Type).Type<NonNullType<EnumType<InteractionType>>>().Description("Tipo de interação (Comentário Público ou Editorial).");
+            descriptor.Field(f => f.Type).Type<NonNullType<EnumType<Artigo.Intf.Enums.InteractionType>>>().Description("Tipo de interação (Comentário Público ou Editorial).");
             descriptor.Field(f => f.ParentCommentId).Description("ID do comentário pai, se esta interação for uma resposta.");
             descriptor.Field(f => f.DataCriacao).Description("Data e hora de criação.");
             descriptor.Field(f => f.DataUltimaEdicao).Description("Data da última edição.");
@@ -47,7 +47,7 @@ namespace Artigo.API.GraphQL.Types
             CancellationToken cancellationToken)
         {
             // Apenas Comentarios Publicos (ou raiz) podem ter respostas neste modelo.
-            if (parentComment.Type == InteractionType.ComentarioEditorial || parentComment.ParentCommentId != null)
+            if (parentComment.Type == Artigo.Intf.Enums.InteractionType.ComentarioEditorial || parentComment.ParentCommentId != null)
             {
                 return Task.FromResult<IReadOnlyList<Interaction>>(new List<Interaction>());
             }

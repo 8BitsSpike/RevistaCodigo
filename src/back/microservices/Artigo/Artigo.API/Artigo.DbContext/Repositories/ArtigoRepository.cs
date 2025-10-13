@@ -35,35 +35,35 @@ namespace Artigo.DbContext.Repositories
 
         // --- Implementação dos Métodos da Interface ---
 
-        public async Task<Artigo?> GetByIdAsync(string id)
+        public async Task<Artigo.Intf.Entities.Artigo?> GetByIdAsync(string id)
         {
             if (!ObjectId.TryParse(id, out var objectId)) return null;
 
             var model = await _artigos.Find(a => a.Id == objectId.ToString()).FirstOrDefaultAsync();
 
-            return _mapper.Map<Artigo>(model);
+            return _mapper.Map<Artigo.Intf.Entities.Artigo>(model);
         }
 
         // NOVO MÉTODO (Implementa o contrato IArtigoRepository)
-        public async Task<IReadOnlyList<Artigo>> GetByStatusAsync(ArtigoStatus status)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByStatusAsync(ArtigoStatus status)
         {
             var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, status);
             var models = await _artigos.Find(filter).ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Artigo>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
         }
 
         // NOVO MÉTODO (Implementa o contrato IArtigoRepository)
-        public async Task<IReadOnlyList<Artigo>> GetByIdsAsync(IReadOnlyList<string> ids)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByIdsAsync(IReadOnlyList<string> ids)
         {
             // O MongoDB Driver lida com a lista de strings (IDs) na clausula $in
             var filter = Builders<ArtigoModel>.Filter.In(a => a.Id, ids);
             var models = await _artigos.Find(filter).ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Artigo>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
         }
 
-        public async Task AddAsync(Artigo artigo)
+        public async Task AddAsync(Artigo.Intf.Entities.Artigo artigo)
         {
             var model = _mapper.Map<ArtigoModel>(artigo);
 
@@ -73,7 +73,7 @@ namespace Artigo.DbContext.Repositories
             _mapper.Map(model, artigo);
         }
 
-        public async Task<bool> UpdateAsync(Artigo artigo)
+        public async Task<bool> UpdateAsync(Artigo.Intf.Entities.Artigo artigo)
         {
             if (!ObjectId.TryParse(artigo.Id, out var objectId)) return false;
 

@@ -14,7 +14,7 @@ namespace Artigo.Intf.Entities
         public string Id { get; set; } = string.Empty;
 
         // O ID do usuário no sistema externo (UsuarioApi) ao qual este Autor se refere.
-        public string UsarioId { get; set; } = string.Empty;
+        public string UsuarioId { get; set; } = string.Empty;
 
         // Historico de Artigos criados ou co-criados pelo autor.
         // Referencia a colecao Artigo.

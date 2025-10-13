@@ -21,7 +21,7 @@ namespace Artigo.Intf.Interfaces
         /// REGRA: Qualquer usuario pode ler se o Status for 'Published'.
         /// </sumario>
         /// <param name="id">O ID do artigo.</param>
-        Task<Artigo?> GetPublishedArtigoAsync(string id);
+        Task<Artigo.Intf.Entities.Artigo?> GetPublishedArtigoAsync(string id);
 
         /// <sumario>
         /// Retorna um Artigo para o ciclo editorial (unidade de trabalho).
@@ -29,7 +29,7 @@ namespace Artigo.Intf.Interfaces
         /// </sumario>
         /// <param name="id">O ID do artigo.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando acessar.</param>
-        Task<Artigo?> GetArtigoForEditorialAsync(string id, string currentUsuarioId);
+        Task<Artigo.Intf.Entities.Artigo?> GetArtigoForEditorialAsync(string id, string currentUsuarioId);
 
         /// <sumario>
         /// Cria um novo artigo e a entrada Editorial correspondente.
@@ -37,7 +37,7 @@ namespace Artigo.Intf.Interfaces
         /// </sumario>
         /// <param name="artigo">O objeto Artigo preenchido.</param>
         /// <param name="usuarioId">O ID do usuario externo que esta criando o artigo (AutorPrincipal).</param>
-        Task<Artigo> CreateArtigoAsync(Artigo artigo, string usuarioId);
+        Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string usuarioId);
 
         /// <sumario>
         /// Atualiza metadados simples (titulo, resumo) de um artigo.
@@ -45,7 +45,7 @@ namespace Artigo.Intf.Interfaces
         /// </sumario>
         /// <param name="artigo">Artigo com dados para atualizacao.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando atualizar.</param>
-        Task<bool> UpdateArtigoMetadataAsync(Artigo artigo, string currentUsuarioId);
+        Task<bool> UpdateArtigoMetadataAsync(Artigo.Intf.Entities.Artigo artigo, string currentUsuarioId);
 
         /// <sumario>
         /// Atualiza o corpo do artigo, criando um novo registro em ArtigoHistory.
@@ -70,7 +70,7 @@ namespace Artigo.Intf.Interfaces
         /// REGRA: Requer permissao de Staff.
         /// </sumario>
         /// <param name="status">O status editorial a ser filtrado.</param>
-        Task<IReadOnlyList<Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId);
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId);
 
         // =========================================================================
         // INTERACTION (COMENTARIOS) MANAGEMENT

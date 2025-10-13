@@ -10,7 +10,9 @@ namespace Artigo.Intf.Interfaces
     /// </sumario>
     public interface IMongoDbContext
     {
-        IMongoCollection<Artigo> Artigos { get; }
+        IMongoCollection<Artigo.Intf.Entities.Artigo> Artigos { get; }
+        // Uso do endereço literal do Artigo type porque tanto ele quanto o namespace Artigo tem a mesma grafia
+        // Poderiamos usar ArtigoType para o tipo Artigo, mas esse tipo de nomeclatura não é ideal
         IMongoCollection<Autor> Autores { get; }
         IMongoCollection<Editorial> Editoriais { get; }
         IMongoCollection<Interaction> Interactions { get; }

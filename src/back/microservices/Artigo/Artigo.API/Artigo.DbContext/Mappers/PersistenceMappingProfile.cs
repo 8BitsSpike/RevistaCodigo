@@ -29,7 +29,7 @@ namespace Artigo.DbContext.Mappers
             // =================================================================================
 
             // Artigo <-> ArtigoModel
-            CreateMap<Artigo, ArtigoModel>().ReverseMap();
+            CreateMap<Artigo.Intf.Entities.Artigo, ArtigoModel>().ReverseMap();
             // Nota: O .ReverseMap() lidara com a conversao de ObjectId (string) para string,
             // e os Enums padrao (ArtigoStatus, ArtigoTipo) que sao consistentes.
 
@@ -61,7 +61,7 @@ namespace Artigo.DbContext.Mappers
             CreateMap<ArtigoHistory, ArtigoHistoryModel>().ReverseMap();
 
             // Interaction <-> InteractionModel
-            CreateMap<Interaction, InteractionModel>().ReverseMap();
+            CreateMap<Artigo.Intf.Entities.Interaction, InteractionModel>().ReverseMap();
 
             // Pending <-> PendingModel
             CreateMap<Pending, PendingModel>().ReverseMap();
@@ -70,7 +70,7 @@ namespace Artigo.DbContext.Mappers
             CreateMap<Staff, StaffModel>().ReverseMap();
 
             // Volume <-> VolumeModel
-            CreateMap<Volume, VolumeModel>().ReverseMap();
+            CreateMap<Artigo.Intf.Entities.Volume, VolumeModel>().ReverseMap();
         }
     }
 }

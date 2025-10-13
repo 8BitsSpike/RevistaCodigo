@@ -21,8 +21,8 @@ namespace Artigo.Intf.Entities
         public ArtigoStatus Status { get; set; } = ArtigoStatus.Draft;
         public ArtigoTipo Tipo { get; set; } // Classificacao do tipo de artigo
 
-        // Relacionamento com outras colecoes (guardadas como referencias ao ID)
-        // Referencia a colecao Autor (Autores involvidos na creacao)
+        // Relacionamento com outras colecoes (guardadas como referencias ao UsuarioId)
+        // Referencia a colecao Autor (Autores involvidos na criacao)
         public List<string> AutorIds { get; set; } = [];
 
         // Lista somente pelo nome Autores que nao sao usuarios cadastrados na plataforma

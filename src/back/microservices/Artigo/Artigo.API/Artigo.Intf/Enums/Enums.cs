@@ -74,7 +74,7 @@
     public enum InteractionType
     {
         ComentarioPublico,      // Comentário padrão de um usuário leitor.
-        ComentarioEditorial    // Comentário feito por um membro da equipe editorial sobre o conteúdo.
+        ComentarioEditorial     // Comentário feito por um membro da equipe editorial sobre o conteúdo.
     }
 
     /// <sumario>

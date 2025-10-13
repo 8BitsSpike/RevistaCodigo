@@ -31,7 +31,7 @@ namespace Artigo.DbContext.Repositories
 
         // --- Implementação dos Métodos da Interface ---
 
-        public async Task<Interaction?> GetByIdAsync(string id)
+        public async Task<Artigo.Intf.Entities.Interaction?> GetByIdAsync(string id)
         {
             if (!ObjectId.TryParse(id, out var objectId)) return null;
 
@@ -39,11 +39,11 @@ namespace Artigo.DbContext.Repositories
                 .Find(i => i.Id == objectId.ToString())
                 .FirstOrDefaultAsync();
 
-            return _mapper.Map<Interaction>(model);
+            return _mapper.Map<Artigo.Intf.Entities.Interaction>(model);
         }
 
         // Implementa o contrato IInteractionRepository (que espera IReadOnlyList<Interaction>)
-        public async Task<IReadOnlyList<Interaction>> GetByArtigoIdAsync(string artigoId)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Interaction>> GetByArtigoIdAsync(string artigoId)
         {
             // O serviço de aplicação é responsável por filtrar o tipo (público/editorial).
             // Aqui, retornamos todos os comentários associados ao ArtigoId.
@@ -51,20 +51,20 @@ namespace Artigo.DbContext.Repositories
                 .Find(i => i.ArtigoId == artigoId)
                 .ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Interaction>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Interaction>>(models);
         }
 
         // NOVO MÉTODO (Implementa o contrato IInteractionRepository para DataLoaders)
-        public async Task<IReadOnlyList<Interaction>> GetByIdsAsync(IReadOnlyList<string> ids)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Interaction>> GetByIdsAsync(IReadOnlyList<string> ids)
         {
             var filter = Builders<InteractionModel>.Filter.In(i => i.Id, ids);
             var models = await _interactions.Find(filter).ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Interaction>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Interaction>>(models);
         }
 
         // Método de filtro auxiliar (útil internamente, mas não no contrato IInteractionRepository)
-        public async Task<List<Interaction>> GetByArtigoIdAndTypeAsync(string artigoId, InteractionType typeFilter)
+        public async Task<List<Artigo.Intf.Entities.Interaction>> GetByArtigoIdAndTypeAsync(string artigoId, InteractionType typeFilter)
         {
             var filter = Builders<InteractionModel>.Filter.Eq(i => i.ArtigoId, artigoId) &
                          Builders<InteractionModel>.Filter.Eq(i => i.Type, typeFilter);
@@ -73,10 +73,10 @@ namespace Artigo.DbContext.Repositories
                 .Find(filter)
                 .ToListAsync();
 
-            return _mapper.Map<List<Interaction>>(models);
+            return _mapper.Map<List<Artigo.Intf.Entities.Interaction>>(models);
         }
 
-        public async Task AddAsync(Interaction interaction)
+        public async Task AddAsync(Artigo.Intf.Entities.Interaction interaction)
         {
             var model = _mapper.Map<InteractionModel>(interaction);
 
@@ -97,7 +97,7 @@ namespace Artigo.DbContext.Repositories
         }
 
         // Implementa o contrato IInteractionRepository (UpdateAsync)
-        public async Task<bool> UpdateAsync(Interaction interaction)
+        public async Task<bool> UpdateAsync(Artigo.Intf.Entities.Interaction interaction)
         {
             if (!ObjectId.TryParse(interaction.Id, out var objectId)) return false;
 
@@ -128,6 +128,20 @@ namespace Artigo.DbContext.Repositories
             var result = await _interactions.DeleteManyAsync(i => i.ArtigoId == artigoId);
 
             return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
+        public async Task<IReadOnlyList<Intf.Entities.Interaction>> GetByArtigoIdsAsync(IReadOnlyList<string> artigoIds)
+        {
+            var filter = Builders<InteractionModel>.Filter.In(i => i.ArtigoId, artigoIds);
+            var models = await _interactions.Find(filter).ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Interaction>>(models);
+        }
+        public async Task<IReadOnlyList<Intf.Entities.Interaction>> GetByParentIdsAsync(IReadOnlyList<string> parentIds)
+        {
+            var filter = Builders<InteractionModel>.Filter.In(i => i.ParentCommentId, parentIds);
+            var models = await _interactions.Find(filter).ToListAsync();
+            return _mapper.Map<IReadOnlyList<Intf.Entities.Interaction>>(models);
         }
     }
 }

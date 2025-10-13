@@ -36,8 +36,9 @@ namespace Artigo.Intf.Interfaces
         /// REGRA: Qualquer usuario pode enviar um novo artigo.
         /// </sumario>
         /// <param name="artigo">O objeto Artigo preenchido.</param>
+        /// <param name="initialContent">O conteúdo inicial do corpo do artigo (necessário para o ArtigoHistory).</param> // ADDED
         /// <param name="usuarioId">O ID do usuario externo que esta criando o artigo (AutorPrincipal).</param>
-        Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string usuarioId);
+        Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string initialContent, string usuarioId); // UPDATED SIGNATURE
 
         /// <sumario>
         /// Atualiza metadados simples (titulo, resumo) de um artigo.
@@ -50,7 +51,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Atualiza o corpo do artigo, criando um novo registro em ArtigoHistory.
         /// REGRA: Apenas Staff/Autores listados no artigo podem editar.
-        /// </sumario>
+        /// </summary>
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newContent">O novo corpo do texto do artigo.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando editar.</param>
@@ -59,7 +60,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Altera o Status (Draft, InReview, Published, etc.) do artigo.
         /// REGRA: Apenas EditorBolsista e EditorChefe podem modificar o ArtigoStatus.
-        /// </sumario>
+        /// </summary>
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newStatus">O novo status a ser definido.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo solicitando a mudanca.</param>
@@ -68,7 +69,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Retorna todos os artigos que estao em um status editorial especifico.
         /// REGRA: Requer permissao de Staff.
-        /// </sumario>
+        /// </summary>
         /// <param name="status">O status editorial a ser filtrado.</param>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId);
 
@@ -90,7 +91,7 @@ namespace Artigo.Intf.Interfaces
         /// Cria um ComentarioEditorial em um artigo.
         /// REGRA: Apenas usuarios relacionados ao EditorialTeam podem comentar.
         /// REGRA: Ninguem pode comentar em um ComentarioEditorial (parentCommentId deve ser nulo).
-        /// </sumario>
+        /// </summary>
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newComment">O objeto Interaction preenchido (Content, UsuarioId).</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando comentar.</param>
@@ -103,7 +104,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Cria uma nova requisicao pendente (Pedido) no sistema.
         /// REGRA: Apenas EditorBolsistas podem criar novos itens Pendentes.
-        /// </sumario>
+        /// </summary>
         /// <param name="newRequest">O objeto Pending a ser criado.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo solicitando.</param>
         Task<Pending> CreatePendingRequestAsync(Pending newRequest, string currentUsuarioId);
@@ -111,7 +112,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Modifica o Status de um item Pendente (Aprovado/Rejeitado).
         /// REGRA: Apenas EditorChefes e Administradores podem modificar PendingStatus.
-        /// </sumario>
+        /// </summary>
         /// <param name="pendingId">ID da requisicao pendente.</param>
         /// <param name="isApproved">Indica se a requisicao foi aprovada (true) ou rejeitada (false).</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando resolver.</param>
@@ -124,7 +125,7 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Atualiza os metadados e o indice de artigos de uma edicao (Volume).
         /// REGRA: Apenas usuarios na lista Staff podem editar.
-        /// </sumario>
+        /// </summary>
         /// <param name="updatedVolume">O objeto Volume com os dados atualizados.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando atualizar.</param>
         Task<bool> UpdateVolumeMetadataAsync(Volume updatedVolume, string currentUsuarioId);

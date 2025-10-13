@@ -40,7 +40,7 @@ namespace Artigo.DbContext.Repositories
         }
 
         // NOVO MÉTODO (Implementa o contrato IArtigoHistoryRepository)
-        public async Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, ArtigoVersion version)
+        public async Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, Artigo.Intf.Enums.ArtigoVersion version)
         {
             var filter = Builders<ArtigoHistoryModel>.Filter.Eq(h => h.ArtigoId, artigoId) &
                          Builders<ArtigoHistoryModel>.Filter.Eq(h => h.Version, version);

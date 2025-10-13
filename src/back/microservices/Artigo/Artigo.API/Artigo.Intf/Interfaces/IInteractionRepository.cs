@@ -24,6 +24,15 @@ namespace Artigo.Intf.Interfaces
         /// <param name="artigoId">O ID do artigo principal.</param>
         Task<IReadOnlyList<Interaction>> GetByArtigoIdAsync(string artigoId);
 
+        Task<IReadOnlyList<Interaction>> GetByParentIdsAsync(IReadOnlyList<string> parentIds);
+
+        /// <sumario>
+        /// Retorna todos os comentarios (publicos e editoriais) associados a multiplos Artigos.
+        /// Crucial para DataLoaders que buscam respostas aninhadas ou coleções de artigos.
+        /// </sumario>
+        /// <param name="artigoId">O ID do artigo principal.</param>
+        Task<IReadOnlyList<Interaction>> GetByArtigoIdsAsync(IReadOnlyList<string> artigoIds);
+
         /// <sumario>
         /// Retorna multiplos comentarios com base em uma lista de IDs.
         /// Crucial para DataLoaders que buscam respostas aninhadas ou coleções de comentários.

@@ -31,7 +31,7 @@ namespace Artigo.DbContext.Repositories
 
         // --- Implementação dos Métodos da Interface ---
 
-        public async Task<Volume?> GetByIdAsync(string id)
+        public async Task<Artigo.Intf.Entities.Volume?> GetByIdAsync(string id)
         {
             if (!ObjectId.TryParse(id, out var objectId)) return null;
 
@@ -39,21 +39,21 @@ namespace Artigo.DbContext.Repositories
                 .Find(v => v.Id == objectId.ToString())
                 .FirstOrDefaultAsync();
 
-            return _mapper.Map<Volume>(model);
+            return _mapper.Map<Artigo.Intf.Entities.Volume>(model);
         }
 
-        public async Task<IReadOnlyList<Volume>> GetByYearAsync(int year)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Volume>> GetByYearAsync(int year)
         {
             var models = await _volumes
                 .Find(v => v.Year == year)
                 .SortByDescending(v => v.M)
                 .ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Volume>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Volume>>(models);
         }
 
         // Implementa o contrato IVolumeRepository
-        public async Task<IReadOnlyList<Volume>> GetAllAsync()
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Volume>> GetAllAsync()
         {
             var models = await _volumes
                 .Find(_ => true) // Busca todos
@@ -61,10 +61,10 @@ namespace Artigo.DbContext.Repositories
                 .ThenByDescending(v => v.M)
                 .ToListAsync();
 
-            return _mapper.Map<IReadOnlyList<Volume>>(models);
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Volume>>(models);
         }
 
-        public async Task AddAsync(Volume volume)
+        public async Task AddAsync(Artigo.Intf.Entities.Volume volume)
         {
             var model = _mapper.Map<VolumeModel>(volume);
 
@@ -83,7 +83,7 @@ namespace Artigo.DbContext.Repositories
             _mapper.Map(model, volume);
         }
 
-        public async Task<bool> UpdateAsync(Volume volume)
+        public async Task<bool> UpdateAsync(Artigo.Intf.Entities.Volume volume)
         {
             if (!ObjectId.TryParse(volume.Id, out var objectId))
             {

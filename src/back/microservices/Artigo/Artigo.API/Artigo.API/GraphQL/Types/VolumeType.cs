@@ -1,11 +1,6 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
-using Artigo.Intf.Interfaces;
 using Artigo.Server.DTOs;
-using HotChocolate.Resolvers;
-using HotChocolate.Types;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -51,37 +46,6 @@ namespace Artigo.API.GraphQL.Types
         {
             // O DataLoader usará a lista de ArtigoIds do Volume para buscar os ArtigoDTOs.
             return dataLoader.LoadAsync(volume.ArtigoIds, cancellationToken);
-        }
-    }
-
-    // DataLoader para Artigo (GroupedDataLoader, reutiliza o conceito para ArtigoDTO)
-    // Este DataLoader precisa ser criado na pasta Artigo.API/GraphQL/DataLoaders/
-    public class ArtigoGroupedDataLoader : GroupedDataLoader<string, ArtigoDTO>
-    {
-        private readonly IArtigoService _artigoService;
-
-        public ArtigoGroupedDataLoader(IBatchScheduler scheduler, IArtigoService artigoService) : base(scheduler)
-        {
-            _artigoService = artigoService;
-        }
-
-        protected override async Task<ILookup<string, ArtigoDTO>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
-        {
-            // Nota: Esta lógica é complexa. O serviço não tem um GetByIdsAsync que retorna ArtigoDTOs diretamente.
-            // Para simplificar a implementação, assumimos que ArtigoService precisa expor um método
-            // para buscar ArtigoDTOs por IDs, mas, na arquitetura, o serviço normalmente retorna Artigos (Entities).
-            // A solução correta é usar o ArtigoRepository para buscar Artigo entities e mapeá-las aqui.
-
-            // Para prosseguir, usaremos o ArtigoRepository e AutoMapper diretamente aqui.
-            // Isso requer injetar o IArtigoRepository e o IMapper, o que é comum em DataLoaders.
-
-            throw new NotImplementedException("Este DataLoader requer injetar IArtigoRepository e IMapper. Prossiga com a criação do ArtigoType e a configuração do DI.");
-
-            /* Lógica Correta (exigiria refatoração do DI):
-            var artigos = await _artigoRepository.GetByIdsAsync(keys.ToList());
-            var dtos = _mapper.Map<IReadOnlyList<ArtigoDTO>>(artigos);
-            return dtos.ToLookup(a => a.Id, a => a);
-            */
         }
     }
 }

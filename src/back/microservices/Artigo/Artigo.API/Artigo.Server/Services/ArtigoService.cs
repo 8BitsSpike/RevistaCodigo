@@ -3,10 +3,6 @@ using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.DTOs;
 using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Artigo.Server.Services
 {
@@ -47,10 +43,10 @@ namespace Artigo.Server.Services
 
         // ----------------------------------------------------
         // I. Métodos de Autorização (Regras de Negócio)
-        // (Omitted for brevity, assumed correct)
         // ----------------------------------------------------
 
-        private bool CanReadArtigo(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff staff, string currentUsuarioId)
+        // Método alterado para ser assíncrono para evitar deadlocks e usar 'await'.
+        private async Task<bool> CanReadArtigoAsync(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff staff, string currentUsuarioId)
         {
             // 1. Qualquer um pode ler se estiver publicado
             if (artigo.Status == ArtigoStatus.Published)
@@ -65,9 +61,8 @@ namespace Artigo.Server.Services
             }
 
             // 2. Verifica se o usuario faz parte da equipe editorial do artigo
-            // NOTA: Para evitar Deadlock/Wait, este bloco DEVE ser feito com async/await se usado em produção.
-            // Aqui, mantemos .Result para consistência com o arquivo original (embora não seja ideal).
-            var editorial = _editorialRepository.GetByIdAsync(artigo.EditorialId).Result;
+            // Usando 'await' em vez de '.Result'
+            var editorial = await _editorialRepository.GetByIdAsync(artigo.EditorialId);
 
             if (editorial == null) return false;
 
@@ -84,18 +79,21 @@ namespace Artigo.Server.Services
             return allowedUserIds.Contains(currentUsuarioId);
         }
 
-        private bool CanEditArtigo(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff staff, string currentUsuarioId)
+        // O método de edição agora é assíncrono para chamar CanReadArtigoAsync
+        private async Task<bool> CanEditArtigoAsync(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff staff, string currentUsuarioId)
         {
             if (artigo.Status == ArtigoStatus.Published)
             {
                 return false;
             }
-            if (CanReadArtigo(artigo, staff, currentUsuarioId))
+            if (await CanReadArtigoAsync(artigo, staff, currentUsuarioId))
             {
                 return true;
             }
             return false;
         }
+
+        // (Métodos de autorização síncronos como CanModifyStatus permanecem síncronos, pois não fazem I/O)
 
         private bool CanModifyStatus(Artigo.Intf.Entities.Staff staff)
         {
@@ -134,33 +132,32 @@ namespace Artigo.Server.Services
             return staff.Job == JobRole.EditorChefe || staff.Job == JobRole.Administrador;
         }
 
+
         // ----------------------------------------------------
         // II. Metodos de Leitura (Queries)
-        // (Omitted for brevity, assumed correct)
         // ----------------------------------------------------
 
-        public async Task<ArtigoDTO?> GetPublishedArtigoAsync(string id)
+        public async Task<Artigo.Intf.Entities.Artigo?> GetPublishedArtigoAsync(string id)
         {
             var artigo = await _artigoRepository.GetByIdAsync(id);
             if (artigo == null || artigo.Status != ArtigoStatus.Published) return null;
-            return _mapper.Map<ArtigoDTO>(artigo);
+            return artigo; // Retorna a entidade Artigo (IArtigoService exige entidade)
         }
 
-        // Substituído GetByIdAsync por GetArtigoForEditorialAsync
-        public async Task<ArtigoDTO?> GetArtigoForEditorialAsync(string id, string currentUsuarioId)
+        public async Task<Artigo.Intf.Entities.Artigo?> GetArtigoForEditorialAsync(string id, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(id);
             if (artigo == null) return null;
 
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            if (!CanReadArtigo(artigo, staff, currentUsuarioId))
+            // Chamando o método assíncrono corrigido.
+            if (!await CanReadArtigoAsync(artigo, staff, currentUsuarioId))
             {
-                // Nao autorizado a ler este artigo
                 return null;
             }
 
-            return _mapper.Map<ArtigoDTO>(artigo);
+            return artigo; // Retorna a entidade Artigo (IArtigoService exige entidade)
         }
 
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId)
@@ -168,9 +165,15 @@ namespace Artigo.Server.Services
             var artigos = await _artigoRepository.GetByStatusAsync(status);
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            var authorizedArtigos = artigos
-                .Where(a => CanReadArtigo(a, staff, currentUsuarioId))
-                .ToList();
+            // O filtro agora usa await/async para a verificação de autorização.
+            var authorizedArtigos = new List<Artigo.Intf.Entities.Artigo>();
+            foreach (var artigo in artigos)
+            {
+                if (await CanReadArtigoAsync(artigo, staff, currentUsuarioId))
+                {
+                    authorizedArtigos.Add(artigo);
+                }
+            }
 
             return authorizedArtigos;
         }
@@ -179,30 +182,32 @@ namespace Artigo.Server.Services
         // III. Metodos de Escrita (Mutations)
         // ----------------------------------------------------
 
-        public async Task<ArtigoDTO> CreateArtigoAsync(CreateArtigoRequest request, string currentUsuarioId)
+        // FIX: Assinatura alterada para corresponder ao contrato IArtigoService, aceitando 'initialContent'.
+        public async Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string initialContent, string currentUsuarioId)
         {
-            // 1. Mapear DTO de entrada para entidade de domínio
-            var artigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(request);
-
-            // 2. Lógica de Negócio / Inicialização
+            // 1. Lógica de Negócio / Inicialização
             artigo.Id = Guid.NewGuid().ToString();
             artigo.Status = ArtigoStatus.Draft;
-            artigo.AutorIds.Add(currentUsuarioId);
 
-            // 3. Orquestração e Persistência
-            // Transacao Lógica (Deve ser atomica se possivel, mas aqui faremos sequencialmente)
+            // Garante que o usuário logado seja o autor principal (se ainda não estiver na lista)
+            if (!artigo.AutorIds.Contains(currentUsuarioId))
+            {
+                artigo.AutorIds.Insert(0, currentUsuarioId);
+            }
 
-            // 3.1. Criar ArtigoHistory inicial
+            // 2. Orquestração e Persistência
+
+            // 2.1. Criar ArtigoHistory inicial
             var initialHistory = new Artigo.Intf.Entities.ArtigoHistory
             {
                 Id = Guid.NewGuid().ToString(),
                 ArtigoId = artigo.Id,
                 Version = ArtigoVersion.Original,
-                Content = request.Content
+                Content = initialContent // FIX: Usa o novo parâmetro
             };
             await _historyRepository.AddAsync(initialHistory);
 
-            // 3.2. Criar Editorial (e equipe)
+            // 2.2. Criar Editorial (e equipe)
             var editorial = new Artigo.Intf.Entities.Editorial
             {
                 Id = Guid.NewGuid().ToString(),
@@ -214,19 +219,20 @@ namespace Artigo.Server.Services
             };
             await _editorialRepository.AddAsync(editorial);
 
-            // 3.3. Ligar Editorial ao Artigo
+            // 2.3. Ligar Editorial ao Artigo
             artigo.EditorialId = editorial.Id;
 
-            // 3.4. Atualizar registro do Autor (se nao existir, cria-o no repositório)
+            // 2.4. Atualizar registro do Autor (se nao existir, cria-o no repositório)
             var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId) ?? new Artigo.Intf.Entities.Autor { Id = Guid.NewGuid().ToString(), UsuarioId = currentUsuarioId };
             autor.ArtigoWorkIds.Add(artigo.Id);
             autor.Contribuicoes.Add(new ContribuicaoEditorial { ArtigoId = artigo.Id, Role = ContribuicaoRole.AutorPrincipal });
-            autor = await _autorRepository.UpsertAsync(autor); // Upsert garante criacao ou atualizacao
+            autor = await _autorRepository.UpsertAsync(autor);
 
-            // 3.5. Persistir Artigo final
+            // 2.5. Persistir Artigo final
             await _artigoRepository.AddAsync(artigo);
 
-            return _mapper.Map<ArtigoDTO>(artigo);
+            // FIX: Retorna a entidade Artigo (conforme o contrato IArtigoService)
+            return artigo;
         }
 
         // O método UpdateArtigoMetadataAsync foi renomeado de UpdateArtigoAsync no arquivo original
@@ -238,7 +244,8 @@ namespace Artigo.Server.Services
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
             // 1. Aplicar Regra de Autorizacao de Edicao
-            if (!CanEditArtigo(existingArtigo, staff, currentUsuarioId))
+            // Chamando o método assíncrono corrigido.
+            if (!await CanEditArtigoAsync(existingArtigo, staff, currentUsuarioId))
             {
                 throw new UnauthorizedAccessException("Usuário não tem permissão para editar este artigo.");
             }
@@ -252,7 +259,6 @@ namespace Artigo.Server.Services
             // 3. Persistir no Repositorio
             return await _artigoRepository.UpdateAsync(existingArtigo);
         }
-
         // O método ChangeArtigoStatusAsync foi renomeado de UpdateArtigoStatusAsync no arquivo original
         public async Task<bool> ChangeArtigoStatusAsync(string artigoId, ArtigoStatus newStatus, string currentUsuarioId)
         {

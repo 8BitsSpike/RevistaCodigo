@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
-using HotChocolate.DataLoader;
 
 namespace Artigo.Api.GraphQL.Resolvers
 {
@@ -22,7 +21,7 @@ namespace Artigo.Api.GraphQL.Resolvers
         public InteractionDataLoader(
             IBatchScheduler batchScheduler,
             IInteractionRepository interactionRepository)
-            : base(batchScheduler)
+            : base(batchScheduler, new DataLoaderOptions())
         {
             _interactionRepository = interactionRepository;
         }
@@ -41,7 +40,7 @@ namespace Artigo.Api.GraphQL.Resolvers
         {
             // 1. Otimização: Chama o repositório UMA ÚNICA VEZ para todos os IDs.
             // O repositório deve buscar todos os comentários onde ArtigoId está na lista 'keys'.
-            var interacoes = await _interactionRepository.GetByArtigoIdsAsync(keys, cancellationToken);
+            var interacoes = await _interactionRepository.GetByArtigoIdsAsync(keys);
 
             // 2. Mapeamento: Converte a lista de volta para um ILookup.
             // O ILookup é essencial para o GroupedDataLoader, pois mapeia uma única chave (ArtigoId)

@@ -1,7 +1,7 @@
 ﻿using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.DTOs;
-using HotChocolate.AspNetCore.Authorization;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 using System.Collections.Generic;
 using System.Security.Claims;

@@ -60,8 +60,8 @@ namespace Artigo.DbContext.Repositories
         /// <param name="ids">Lista de IDs de volumes.</param>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Volume>> GetByIdsAsync(IReadOnlyList<string> ids)
         {
-            // FIX: Implementação usando a cláusula $in do MongoDB para buscar em lote.
-            var filter = Builders<Artigo.DbContext.PersistenceModels.VolumeModel>.Filter.In(v => v.Id, ids);
+            // Implementação usando a cláusula $in do MongoDB para buscar em lote.
+            var filter = MongoDB.Driver.Builders<Artigo.DbContext.PersistenceModels.VolumeModel>.Filter.In(v => v.Id, ids);
             var models = await _volumes.Find(filter).ToListAsync();
 
             // Mapeia de volta para a Entidade de Domínio.

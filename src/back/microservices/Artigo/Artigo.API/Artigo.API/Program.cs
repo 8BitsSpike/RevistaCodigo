@@ -1,4 +1,3 @@
-using Artigo.API.GraphQL.DataLoaders;
 using Artigo.API.GraphQL.Mutations;
 using Artigo.API.GraphQL.Queries;
 using Artigo.API.GraphQL.Types;
@@ -10,13 +9,20 @@ using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.Mappers;
 using Artigo.Server.Services;
+using AutoMapper;
 using HotChocolate.Data.MongoDb;
-using HotChocolate.Execution; // Added for IErrorFilter
+using HotChocolate.Execution;
 using HotChocolate.Types;
-using Microsoft.Extensions.Logging; // Added for ILoggerFactory (AutoMapper Fix)
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using System.Reflection; // Added for reflection (AutoMapper Fix)
-
+using System.Reflection;
+using GreenDonut;
+using Artigo.API.GraphQL.DataLoaders;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,12 +42,9 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 builder.Services.AddSingleton<Artigo.DbContext.Interfaces.IMongoDbContext>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
-    var databaseName = builder.Configuration["MongoDb:DatabaseName"] ?? "MagazineArtigoDB";
+    var databaseName = builder.Configuration["MongoDb:DatabaseName"] ?? "RBEB";
     return new MongoDbContext(client, databaseName);
 });
-
-// C. Registra a classe de Contexto para injeção
-builder.Services.AddSingleton<MongoDbContext>();
 
 
 // =========================================================================
@@ -96,10 +99,6 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddQueryType<ArtigoQueries>()
     .AddMutationType<ArtigoMutations>()
 
-    // FIX: Add Error Filters for graceful exception handling
-    .AddErrorFilter<AuthorizationErrorFilter>()
-    .AddErrorFilter<ApplicationErrorFilter>()
-
     // Mapeia todos os tipos definidos
     .AddType<ArtigoType>()
     .AddType<EditorialType>()
@@ -109,11 +108,9 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddType<PendingType>()
     .AddType<StaffType>()
     .AddType<ArtigoHistoryType>()
+    .AddType<ExternalUserType>() // FIX: Must add ExternalUserType for user profile data
 
-
-    // Mapeia tipos embutidos (necessário para que HotChocolate os encontre)
-    .AddType<EditorialTeamType>()
-    .AddType<ContribuicaoEditorialType>()
+    // REMOVIDO: AddType calls para tipos aninhados (EditorialTeamType/ContribuicaoEditorialType) que causavam conflito.
 
     // Mapeia Enums
     .BindRuntimeType<ArtigoStatus, EnumType<ArtigoStatus>>()
@@ -176,8 +173,10 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGraphQL();
-
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapGraphQL();
+});
 
 app.Run();
 
@@ -211,8 +210,7 @@ public class ApplicationErrorFilter : IErrorFilter
             case System.Collections.Generic.KeyNotFoundException knfe:
                 return error.WithCode("RESOURCE_NOT_FOUND").WithMessage(knfe.Message);
             default:
-                // FIX: Removed unsupported methods (RemoveException/RemoveExtensions) 
-                // and sanitized the message directly.
+                // FIX: Removed unsupported methods and sanitize the message directly.
                 return error.WithMessage("Ocorreu um erro interno de processamento.");
         }
     }
@@ -220,6 +218,8 @@ public class ApplicationErrorFilter : IErrorFilter
 
 
 // --- Resolver Implementations (Placeholders for Type references in *Type.cs) ---
+
+// NOTE: These placeholder classes are necessary because the Resolvers were not moved to a dedicated Resolvers/ folder.
 
 public class EditorialResolver
 {
@@ -253,7 +253,10 @@ public class ArticleInVolumeResolver
 {
     public Task<IReadOnlyList<Artigo.Server.DTOs.ArtigoDTO>> GetArticlesAsync(Artigo.Intf.Entities.Volume volume, Artigo.API.GraphQL.DataLoaders.ArtigoGroupedDataLoader dataLoader, CancellationToken cancellationToken) => throw new NotImplementedException();
 }
-// Placeholder for EditorialTeamType 
+
+// --- Placeholder/Nested Type Implementations ---
+
+// NOTE: These placeholders were required because the types were not moved to dedicated files.
 public class EditorialTeamType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.EditorialTeam>
 {
     protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.EditorialTeam> descriptor)
@@ -261,7 +264,6 @@ public class EditorialTeamType : HotChocolate.Types.ObjectType<Artigo.Intf.Entit
         descriptor.Field(f => f.EditorId);
     }
 }
-// Placeholder for ContribuicaoEditorialType 
 public class ContribuicaoEditorialType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.ContribuicaoEditorial>
 {
     protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.ContribuicaoEditorial> descriptor)

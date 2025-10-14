@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
@@ -27,7 +28,7 @@ namespace Artigo.DbContext.Repositories
         /// O construtor recebe a interface do contexto de dados (IMongoDbContext)
         /// e o IMapper, injetados pelo ASP.NET Core.
         /// </sumario>
-        public ArtigoRepository(IMongoDbContext dbContext, IMapper mapper)
+        public ArtigoRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _artigos = dbContext.Artigos;
             _mapper = mapper;

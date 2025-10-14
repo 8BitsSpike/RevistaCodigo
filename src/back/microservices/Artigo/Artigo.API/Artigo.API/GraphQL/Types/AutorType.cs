@@ -1,9 +1,12 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
+using Artigo.Server.DTOs;
+using Artigo.API.GraphQL.DataLoaders; // Necessary for ExternalUserDataLoader
 using HotChocolate.Types;
 using HotChocolate.Resolvers;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -18,16 +21,40 @@ namespace Artigo.API.GraphQL.Types
 
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo ao qual esta contribuição se refere.");
             descriptor.Field(f => f.Role).Type<NonNullType<EnumType<ContribuicaoRole>>>().Description("O papel desempenhado (e.g., AutorPrincipal, Corretor).");
+        }
+    }
 
-            // O Artigo relacionado a esta contribuição pode ser resolvido aqui se necessário.
-            // Exemplo:
-            // descriptor.Field<ArtigoResolver>(r => r.GetArtigoByIdAsync(default!, default!, default!)).Name("artigo");
+    /// <sumario>
+    /// Tipo de objeto GraphQL para as informações de perfil buscadas do UsuarioAPI.
+    /// </sumario>
+    public class ExternalUserType : ObjectType<ExternalUserDTO>
+    {
+        protected override void Configure(IObjectTypeDescriptor<ExternalUserDTO> descriptor)
+        {
+            descriptor.Description("Informações de perfil (nome, media) do Autor, buscadas no UsuarioAPI.");
+            descriptor.Field(f => f.Name).Description("Nome de exibição do usuário.");
+            descriptor.Field(f => f.MediaUrl).Description("URL da imagem de perfil/avatar.");
+        }
+    }
+
+    /// <sumario>
+    /// Resolver que busca dados externos do UsuarioAPI.
+    /// NOTA: Compartilhado entre AutorType e StaffType.
+    /// </sumario>
+    public class ExternalUserResolver
+    {
+        public Task<ExternalUserDTO> GetExternalUserAsync(
+            [Parent] Autor autor,
+            ExternalUserDataLoader dataLoader,
+            CancellationToken cancellationToken)
+        {
+            // A chave de busca é o UsuarioId externo. O ! asserts non-null return based on schema.
+            return dataLoader.LoadAsync(autor.UsuarioId, cancellationToken)!;
         }
     }
 
     /// <sumario>
     /// Mapeia a entidade Autor para um tipo de objeto GraphQL.
-    /// Esta entidade liga o UsuarioId externo ao histórico de trabalho local.
     /// </sumario>
     public class AutorType : ObjectType<Autor>
     {
@@ -38,24 +65,16 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Id).Type<NonNullType<IdType>>().Description("ID local do registro do autor.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário no sistema externo (UsuarioApi).");
 
-            // Histórico de Artigos (Work)
-            descriptor.Field(f => f.ArtigoWorkIds).Description("Lista de IDs de artigos criados ou co-criados.");
-
             // Histórico de Contribuições Editoriais (Funções em outros artigos)
             descriptor.Field(f => f.Contribuicoes)
                 .Type<NonNullType<ListType<NonNullType<ContribuicaoEditorialType>>>>()
                 .Description("Lista de todas as funções editoriais e de autoria que o usuário desempenhou.");
 
-            // **TODO:** Campo para resolver o nome e media (avatar) do Autor a partir do UsuarioAPI
-            // Exemplo de como um campo externo seria resolvido:
-            // descriptor.Field<ExternalUserResolver>(r => r.GetExternalUserAsync(default!, default!))
-            //     .Name("usuarioInfo")
-            //     .Type<ExternalUserInfoType>() // Tipo que representa Nome, Media, etc.
-            //     .Description("Informações de perfil (nome, media) do Autor, buscadas no UsuarioAPI.");
+            // Campo para resolver o nome e media (avatar) do Autor a partir do UsuarioAPI
+            descriptor.Field<ExternalUserResolver>(r => r.GetExternalUserAsync(default!, default!, default!))
+                .Name("usuarioInfo")
+                .Type<ExternalUserType>()
+                .Description("Informações de perfil (nome, media) do Autor, buscadas no UsuarioAPI.");
         }
     }
-
-    // NOTA: Resolvers e DataLoaders para Artigos/Contribuicoes serao definidos aqui
-    // se precisarmos de carregamento lazy, mas nao sao estritamente necessarios 
-    // para a definicao inicial do tipo Autor.
 }

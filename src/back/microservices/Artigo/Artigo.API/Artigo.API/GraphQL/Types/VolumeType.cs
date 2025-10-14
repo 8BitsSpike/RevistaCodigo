@@ -1,6 +1,13 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
+using Artigo.Intf.Interfaces; // Added for IReadOnlyList reference if needed
 using Artigo.Server.DTOs;
+using HotChocolate.Types;
+using HotChocolate.Resolvers;
+using System.Collections.Generic; // Added
+using System.Threading; // Added
+using System.Threading.Tasks; // Added
+using Artigo.API.GraphQL.DataLoaders; // Added to resolve ArtigoGroupedDataLoader
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -37,15 +44,26 @@ namespace Artigo.API.GraphQL.Types
     // =========================================================================
 
     // Resolver para buscar a lista de Artigos por Volume
+    // Resolver para buscar a lista de Artigos por Volume
     public class ArticleInVolumeResolver
     {
-        public Task<IReadOnlyList<ArtigoDTO>> GetArticlesAsync(
+        public async Task<IReadOnlyList<ArtigoDTO>> GetArticlesAsync( // FIX: Made method async
             [Parent] Volume volume,
-            ArtigoGroupedDataLoader dataLoader,
+            [Service] ArtigoGroupedDataLoader dataLoader,
             CancellationToken cancellationToken)
         {
-            // O DataLoader usará a lista de ArtigoIds do Volume para buscar os ArtigoDTOs.
-            return dataLoader.LoadAsync(volume.ArtigoIds, cancellationToken);
+            // O DataLoader retorna um ILookup. O Hot Chocolate normalmente resolve isso, 
+            // mas para forçar o compilador a aceitar a tipagem, usaremos o await e a conversão implícita.
+
+            // NOTE: GroupedDataLoader.LoadAsync returns Task<ILookup<TKey, TValue>>.
+            var lookup = await dataLoader.LoadAsync(volume.ArtigoIds, cancellationToken);
+
+            // The compiler expects the final type IReadOnlyList<ArtigoDTO>.
+            // We need to flatten the ILookup's result, as the type system is struggling to infer it.
+            // Since this resolver is called for a single Volume, we can get the list of values directly.
+
+            // This explicit conversion to IReadOnlyList<T> is required to guarantee the type system's satisfaction.
+            return lookup.SelectMany(g => g!).ToList()!; // FIX: Explicitly flatten the ILookup into a List/IReadOnlyList
         }
     }
 }

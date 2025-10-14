@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
@@ -23,7 +24,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<InteractionModel> _interactions;
         private readonly IMapper _mapper;
 
-        public InteractionRepository(IMongoDbContext dbContext, IMapper mapper)
+        public InteractionRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _interactions = dbContext.Interactions;
             _mapper = mapper;

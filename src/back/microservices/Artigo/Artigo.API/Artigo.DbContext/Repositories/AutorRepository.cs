@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
@@ -20,7 +21,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<AutorModel> _autores;
         private readonly IMapper _mapper;
 
-        public AutorRepository(IMongoDbContext dbContext, IMapper mapper)
+        public AutorRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _autores = dbContext.Autores;
             _mapper = mapper;

@@ -18,7 +18,7 @@ namespace Artigo.API.GraphQL.DataLoaders
         protected override async Task<ILookup<string, Autor>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
         {
             // keys é a lista consolidada de todos os AutorIds
-            var autores = await _repository.GetByIdsAsync(keys, cancellationToken);
+            var autores = await _repository.GetByIdsAsync(keys);
 
             // Retorna como ILookup, onde a chave é o Autor.Id
             return autores.ToLookup(a => a.Id, a => a);

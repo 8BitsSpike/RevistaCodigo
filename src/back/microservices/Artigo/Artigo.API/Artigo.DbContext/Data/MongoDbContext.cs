@@ -1,9 +1,6 @@
-﻿using Artigo.Intf.Interfaces;
-using Microsoft.Extensions.Options;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
+using Artigo.DbContext.PersistenceModels; // CRITICAL: Re-adding this namespace reference
 using System.ComponentModel.DataAnnotations;
-using Artigo.Intf.Entities; // Adicionado para referenciar as Entidades de Dominio
-using Artigo.DbContext.PersistenceModels; // Necessário para referenciar os Persistence Models
 
 namespace Artigo.DbContext.Config
 {
@@ -13,12 +10,13 @@ namespace Artigo.DbContext.Config
 namespace Artigo.DbContext.Data
 {
     using Artigo.DbContext.Config;
+    using Artigo.DbContext.Interfaces;
 
     /// <sumario>
     /// Implementação do contexto de dados. Centraliza a conexão do MongoClient
     /// e a inicialização de todas as coleções do projeto.
     /// </sumario>
-    public class MongoDbContext : IMongoDbContext
+    public class MongoDbContext : Artigo.DbContext.Interfaces.IMongoDbContext
     {
         private readonly IMongoDatabase _database;
 
@@ -27,17 +25,16 @@ namespace Artigo.DbContext.Data
             _database = client.GetDatabase(databaseName);
         }
 
-        // --- Implementação das Coleções com Cast Explícito ---
-        // A implementação GetCollection<TModel> é castada para IMongoCollection<TEntity>
-        // O driver do MongoDB lida com isso corretamente, tratando o ArtigoModel como Artigo.
-
-        public IMongoCollection<Artigo.Intf.Entities.Artigo> Artigos => (IMongoCollection<Artigo.Intf.Entities.Artigo>)_database.GetCollection<ArtigoModel>(nameof(ArtigoModel));
-        public IMongoCollection<Autor> Autores => (IMongoCollection<Autor>)_database.GetCollection<AutorModel>(nameof(AutorModel));
-        public IMongoCollection<Editorial> Editoriais => (IMongoCollection<Editorial>)_database.GetCollection<EditorialModel>(nameof(EditorialModel));
-        public IMongoCollection<Interaction> Interactions => (IMongoCollection<Interaction>)_database.GetCollection<InteractionModel>(nameof(InteractionModel));
-        public IMongoCollection<ArtigoHistory> ArtigoHistories => (IMongoCollection<ArtigoHistory>)_database.GetCollection<ArtigoHistoryModel>(nameof(ArtigoHistoryModel));
-        public IMongoCollection<Pending> Pendings => (IMongoCollection<Pending>)_database.GetCollection<PendingModel>(nameof(PendingModel));
-        public IMongoCollection<Staff> Staffs => (IMongoCollection<Staff>)_database.GetCollection<StaffModel>(nameof(StaffModel));
-        public IMongoCollection<Volume> Volumes => (IMongoCollection<Volume>)_database.GetCollection<VolumeModel>(nameof(VolumeModel));
+        // FIX: The collection properties must use the unqualified Persistence Model type.
+        // The return type is correctly inferred by the using Artigo.DbContext.PersistenceModels;
+        // which now matches the IMongoDbContext contract's expectations.
+        public IMongoCollection<ArtigoModel> Artigos => _database.GetCollection<ArtigoModel>(nameof(ArtigoModel));
+        public IMongoCollection<AutorModel> Autores => _database.GetCollection<AutorModel>(nameof(AutorModel));
+        public IMongoCollection<EditorialModel> Editoriais => _database.GetCollection<EditorialModel>(nameof(EditorialModel));
+        public IMongoCollection<InteractionModel> Interactions => _database.GetCollection<InteractionModel>(nameof(InteractionModel));
+        public IMongoCollection<ArtigoHistoryModel> ArtigoHistories => _database.GetCollection<ArtigoHistoryModel>(nameof(ArtigoHistoryModel));
+        public IMongoCollection<PendingModel> Pendings => _database.GetCollection<PendingModel>(nameof(PendingModel));
+        public IMongoCollection<StaffModel> Staffs => _database.GetCollection<StaffModel>(nameof(StaffModel));
+        public IMongoCollection<VolumeModel> Volumes => _database.GetCollection<VolumeModel>(nameof(VolumeModel));
     }
 }

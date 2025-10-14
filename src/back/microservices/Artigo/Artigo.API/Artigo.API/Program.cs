@@ -1,24 +1,21 @@
+using Artigo.API.GraphQL.DataLoaders;
 using Artigo.API.GraphQL.Mutations;
 using Artigo.API.GraphQL.Queries;
 using Artigo.API.GraphQL.Types;
 using Artigo.DbContext.Data;
 using Artigo.DbContext.Mappers;
 using Artigo.DbContext.Repositories;
+using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.Mappers;
 using Artigo.Server.Services;
-using AutoMapper;
 using HotChocolate.Data.MongoDb;
-using HotChocolate.DataLoader; // Needed for IBatchScheduler
-using HotChocolate.Execution.Configuration; // Needed for AddGraphQLServer
+using HotChocolate.Execution; // Added for IErrorFilter
 using HotChocolate.Types;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging; // Added for ILoggerFactory (AutoMapper Fix)
 using MongoDB.Driver;
-using System.Reflection; // Added for completeness, though often implicit
-using Artigo.Intf.Entities; // Added for Entities like EditorialTeam, ContribuicaoEditorial
-using GreenDonut; // Added for DataLoaderOptions
-using Artigo.API.GraphQL.DataLoaders; // Added for DataLoaders defined in separate files
+using System.Reflection; // Added for reflection (AutoMapper Fix)
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +33,7 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 });
 
 // B. Implementação do contexto de dados (IMongoDbContext)
-builder.Services.AddSingleton<IMongoDbContext>(sp =>
+builder.Services.AddSingleton<Artigo.DbContext.Interfaces.IMongoDbContext>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
     var databaseName = builder.Configuration["MongoDb:DatabaseName"] ?? "MagazineArtigoDB";
@@ -51,18 +48,21 @@ builder.Services.AddSingleton<MongoDbContext>();
 // 2. CONFIGURAÇÃO DO AUTOMAPPER
 // =========================================================================
 
-// FIX: Usamos a inicialização manual e registro explícito para evitar ambiguidades do compilador.
-var mapperConfig = new AutoMapper.MapperConfiguration(cfg =>
+// FIX: Usamos a inicialização explícita e registro para evitar ambiguidades.
+builder.Services.AddSingleton<AutoMapper.IMapper>(sp =>
 {
-    // Usa o método AddProfile para carregar os perfis de ambas as assemblies.
-    cfg.AddProfile<ArtigoMappingProfile>();
-    cfg.AddProfile<PersistenceMappingProfile>();
+    var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+
+    var mapperConfig = new AutoMapper.MapperConfiguration(cfg =>
+    {
+        cfg.AddProfile<ArtigoMappingProfile>();
+        cfg.AddProfile<PersistenceMappingProfile>();
+    }, loggerFactory);
+
+    mapperConfig.AssertConfigurationIsValid();
+
+    return mapperConfig.CreateMapper();
 });
-
-mapperConfig.AssertConfigurationIsValid();
-
-// Registra a instância IMapper como Singleton no DI.
-builder.Services.AddSingleton<AutoMapper.IMapper>(sp => mapperConfig.CreateMapper());
 
 
 // =========================================================================
@@ -81,6 +81,7 @@ builder.Services.AddScoped<IVolumeRepository, VolumeRepository>();
 
 // Services (Application Layer)
 builder.Services.AddScoped<IArtigoService, ArtigoService>();
+builder.Services.AddScoped<Artigo.Server.Interfaces.IExternalUserService, Artigo.Server.Services.ExternalUserService>();
 
 
 // =========================================================================
@@ -88,12 +89,16 @@ builder.Services.AddScoped<IArtigoService, ArtigoService>();
 // =========================================================================
 
 var graphQLServer = builder.Services.AddGraphQLServer()
-    .AddAuthorizationCore() // FIX: Correct method for GraphQL authorization logic
+    .AddAuthorizationCore()
     .AddFiltering()
     .AddSorting()
     .AddProjections()
     .AddQueryType<ArtigoQueries>()
     .AddMutationType<ArtigoMutations>()
+
+    // FIX: Add Error Filters for graceful exception handling
+    .AddErrorFilter<AuthorizationErrorFilter>()
+    .AddErrorFilter<ApplicationErrorFilter>()
 
     // Mapeia todos os tipos definidos
     .AddType<ArtigoType>()
@@ -104,6 +109,7 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddType<PendingType>()
     .AddType<StaffType>()
     .AddType<ArtigoHistoryType>()
+
 
     // Mapeia tipos embutidos (necessário para que HotChocolate os encontre)
     .AddType<EditorialTeamType>()
@@ -120,8 +126,7 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .BindRuntimeType<JobRole, EnumType<JobRole>>()
     .BindRuntimeType<VolumeMes, EnumType<VolumeMes>>()
 
-    // Configura DataLoaders (definidos em Artigo.API.GraphQL.DataLoaders)
-    // Os DataLoaders sem dependências complexas podem ser registrados diretamente
+    // Configura DataLoaders
     .AddDataLoader<EditorialDataLoader>()
     .AddDataLoader<VolumeDataLoader>()
     .AddDataLoader<AutorDataLoader>()
@@ -129,11 +134,10 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddDataLoader<CurrentHistoryContentDataLoader>()
     .AddDataLoader<ArtigoHistoryGroupedDataLoader>()
     .AddDataLoader<InteractionRepliesDataLoader>()
-
-    // DataLoaders com dependências complexas (ArtigoGroupedDataLoader)
+    .AddDataLoader<ExternalUserDataLoader>()
     .AddDataLoader(sp =>
-        new ArtigoGroupedDataLoader(
-            sp.GetRequiredService<GreenDonut.IBatchScheduler>(), // Necessário para evitar ambiguidade com HotChocolate
+        new Artigo.API.GraphQL.DataLoaders.ArtigoGroupedDataLoader(
+            sp.GetRequiredService<GreenDonut.IBatchScheduler>(),
             sp.GetRequiredService<IArtigoRepository>(),
             sp.GetRequiredService<AutoMapper.IMapper>()
         )
@@ -149,7 +153,6 @@ var graphQLServer = builder.Services.AddGraphQLServer()
 // 5. CONFIGURAÇÃO DE AUTENTICAÇÃO E ROTEAMENTO
 // =========================================================================
 
-// FIX: using Microsoft.AspNetCore.Authentication.JwtBearer; is implicitly included
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
@@ -173,22 +176,103 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapGraphQL();
-    // Opcional: endpoints.MapBananaCakePop("/graphql-ui");
-});
+app.MapGraphQL();
 
 
 app.Run();
 
 
 // =========================================================================
-// Placeholder/Helper Definitions (Re-introduced for compilation consistency)
+// Helper Definitions (Needed for compilation: Error Handlers & Resolvers)
 // =========================================================================
 
-// Esta classe é necessária para o HotChocolate encontrar a definição para injeção.
-public class ArtigoGroupedDataLoader : GroupedDataLoader<string, Artigo.Server.DTOs.ArtigoDTO>
+// --- Error Filter Implementations ---
+
+public class AuthorizationErrorFilter : IErrorFilter
+{
+    public IError OnError(IError error)
+    {
+        if (error.Exception is UnauthorizedAccessException)
+        {
+            return error.WithCode("AUTH_FORBIDDEN").WithMessage("Acesso negado. O usuário não tem as permissões necessárias para executar esta ação.");
+        }
+        return error;
+    }
+}
+
+public class ApplicationErrorFilter : IErrorFilter
+{
+    public IError OnError(IError error)
+    {
+        switch (error.Exception)
+        {
+            case InvalidOperationException ioe:
+                return error.WithCode("BUSINESS_INVALID_OPERATION").WithMessage(ioe.Message);
+            case System.Collections.Generic.KeyNotFoundException knfe:
+                return error.WithCode("RESOURCE_NOT_FOUND").WithMessage(knfe.Message);
+            default:
+                // FIX: Removed unsupported methods (RemoveException/RemoveExtensions) 
+                // and sanitized the message directly.
+                return error.WithMessage("Ocorreu um erro interno de processamento.");
+        }
+    }
+}
+
+
+// --- Resolver Implementations (Placeholders for Type references in *Type.cs) ---
+
+public class EditorialResolver
+{
+    public Task<Artigo.Intf.Entities.Editorial?> GetEditorialAsync(Artigo.Server.DTOs.ArtigoDTO artigo, Artigo.API.GraphQL.DataLoaders.EditorialDataLoader dataLoader, HotChocolate.Resolvers.IResolverContext context) => throw new NotImplementedException();
+}
+public class AutorResolver
+{
+    public Task<IReadOnlyList<Artigo.Intf.Entities.Autor>> GetAutoresAsync(Artigo.Server.DTOs.ArtigoDTO artigo, Artigo.API.GraphQL.DataLoaders.AutorDataLoader dataLoader, HotChocolate.Resolvers.IResolverContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
+}
+public class ArtigoHistoryResolver
+{
+    public Task<string> GetCurrentContentAsync(Artigo.Server.DTOs.ArtigoDTO artigo, Artigo.API.GraphQL.DataLoaders.CurrentHistoryContentDataLoader dataLoader, HotChocolate.Resolvers.IResolverContext context) => throw new NotImplementedException();
+}
+public class VolumeResolver
+{
+    public Task<Artigo.Intf.Entities.Volume?> GetVolumeAsync(Artigo.Server.DTOs.ArtigoDTO artigo, Artigo.API.GraphQL.DataLoaders.VolumeDataLoader dataLoader, HotChocolate.Resolvers.IResolverContext context) => throw new NotImplementedException();
+}
+public class ArtigoHistoryListResolver
+{
+    public Task<IReadOnlyList<Artigo.Intf.Entities.ArtigoHistory>> GetHistoryAsync(Artigo.Intf.Entities.Editorial editorial, Artigo.API.GraphQL.DataLoaders.ArtigoHistoryGroupedDataLoader dataLoader, CancellationToken cancellationToken) => throw new NotImplementedException();
+}
+public class InteractionListResolver
+{
+    public Task<IReadOnlyList<Artigo.Intf.Entities.Interaction>> GetEditorialCommentsAsync(Artigo.Intf.Entities.Editorial editorial, Artigo.API.GraphQL.DataLoaders.InteractionDataLoader dataLoader, CancellationToken cancellationToken) => throw new NotImplementedException();
+}
+public class RepliesResolver
+{
+    public Task<IReadOnlyList<Artigo.Intf.Entities.Interaction>> GetRepliesAsync(Artigo.Intf.Entities.Interaction parentComment, Artigo.API.GraphQL.DataLoaders.InteractionRepliesDataLoader dataLoader, CancellationToken cancellationToken) => throw new NotImplementedException();
+}
+public class ArticleInVolumeResolver
+{
+    public Task<IReadOnlyList<Artigo.Server.DTOs.ArtigoDTO>> GetArticlesAsync(Artigo.Intf.Entities.Volume volume, Artigo.API.GraphQL.DataLoaders.ArtigoGroupedDataLoader dataLoader, CancellationToken cancellationToken) => throw new NotImplementedException();
+}
+// Placeholder for EditorialTeamType 
+public class EditorialTeamType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.EditorialTeam>
+{
+    protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.EditorialTeam> descriptor)
+    {
+        descriptor.Field(f => f.EditorId);
+    }
+}
+// Placeholder for ContribuicaoEditorialType 
+public class ContribuicaoEditorialType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.ContribuicaoEditorial>
+{
+    protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.ContribuicaoEditorial> descriptor)
+    {
+        descriptor.Field(f => f.ArtigoId);
+    }
+}
+
+// DataLoaders are defined in their own files but ArtigoGroupedDataLoader's definition 
+// remains here as it's manually instantiated in the DI setup (Section 4).
+public class ArtigoGroupedDataLoader : GreenDonut.GroupedDataLoader<string, Artigo.Server.DTOs.ArtigoDTO>
 {
     private readonly IArtigoRepository _artigoRepository;
     private readonly AutoMapper.IMapper _mapper;
@@ -203,26 +287,10 @@ public class ArtigoGroupedDataLoader : GroupedDataLoader<string, Artigo.Server.D
         _mapper = mapper;
     }
 
-    protected override async Task<ILookup<string, Artigo.Server.DTOs.ArtigoDTO>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
+    protected override async Task<System.Linq.ILookup<string, Artigo.Server.DTOs.ArtigoDTO>> LoadGroupedBatchAsync(System.Collections.Generic.IReadOnlyList<string> keys, System.Threading.CancellationToken cancellationToken)
     {
         var artigos = await _artigoRepository.GetByIdsAsync(keys.ToList());
-        var dtos = _mapper.Map<IReadOnlyList<Artigo.Server.DTOs.ArtigoDTO>>(artigos);
+        var dtos = _mapper.Map<System.Collections.Generic.IReadOnlyList<Artigo.Server.DTOs.ArtigoDTO>>(artigos);
         return dtos.ToLookup(a => a.Id, a => a);
-    }
-}
-// Placeholder for EditorialTeamType (needed if not defined as nested in EditorialType.cs)
-public class EditorialTeamType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.EditorialTeam>
-{
-    protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.EditorialTeam> descriptor)
-    {
-        descriptor.Field(f => f.EditorId);
-    }
-}
-// Placeholder for ContribuicaoEditorialType (needed if not defined as nested in AutorType.cs)
-public class ContribuicaoEditorialType : HotChocolate.Types.ObjectType<Artigo.Intf.Entities.ContribuicaoEditorial>
-{
-    protected override void Configure(HotChocolate.Types.IObjectTypeDescriptor<Artigo.Intf.Entities.ContribuicaoEditorial> descriptor)
-    {
-        descriptor.Field(f => f.ArtigoId);
     }
 }

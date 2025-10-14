@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
@@ -23,7 +24,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<VolumeModel> _volumes;
         private readonly IMapper _mapper;
 
-        public VolumeRepository(IMongoDbContext dbContext, IMapper mapper)
+        public VolumeRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _volumes = dbContext.Volumes;
             _mapper = mapper;
@@ -49,6 +50,21 @@ namespace Artigo.DbContext.Repositories
                 .SortByDescending(v => v.M)
                 .ToListAsync();
 
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Volume>>(models);
+        }
+
+        /// <sumario>
+        /// Retorna multiplos Volumes com base em uma lista de IDs.
+        /// Essencial para DataLoaders.
+        /// </sumario>
+        /// <param name="ids">Lista de IDs de volumes.</param>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Volume>> GetByIdsAsync(IReadOnlyList<string> ids)
+        {
+            // FIX: Implementação usando a cláusula $in do MongoDB para buscar em lote.
+            var filter = Builders<Artigo.DbContext.PersistenceModels.VolumeModel>.Filter.In(v => v.Id, ids);
+            var models = await _volumes.Find(filter).ToListAsync();
+
+            // Mapeia de volta para a Entidade de Domínio.
             return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Volume>>(models);
         }
 

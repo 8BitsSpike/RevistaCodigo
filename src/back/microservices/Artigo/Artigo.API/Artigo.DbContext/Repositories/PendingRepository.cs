@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
@@ -22,7 +23,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<PendingModel> _pendings;
         private readonly IMapper _mapper;
 
-        public PendingRepository(IMongoDbContext dbContext, IMapper mapper)
+        public PendingRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _pendings = dbContext.Pendings;
             _mapper = mapper;

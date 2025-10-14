@@ -47,5 +47,12 @@ namespace Artigo.Intf.Interfaces
         /// </summary>
         /// <param name="id">O ID do Volume a ser removido.</param>
         Task<bool> DeleteAsync(string id);
+
+        /// <sumario>
+        /// Retorna multiplos Volumes com base em uma lista de IDs.
+        /// Essencial para DataLoaders.
+        /// </sumario>
+        /// <param name="ids">Lista de IDs de volumes.</param>
+        Task<IReadOnlyList<Volume>> GetByIdsAsync(IReadOnlyList<string> ids);
     }
 }

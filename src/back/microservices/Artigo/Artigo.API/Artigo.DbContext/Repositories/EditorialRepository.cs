@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
@@ -22,7 +23,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<EditorialModel> _editoriais;
         private readonly IMapper _mapper;
 
-        public EditorialRepository(IMongoDbContext dbContext, IMapper mapper)
+        public EditorialRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _editoriais = dbContext.Editoriais;
             _mapper = mapper;

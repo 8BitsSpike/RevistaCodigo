@@ -21,12 +21,14 @@ namespace Artigo.API.GraphQL.Queries
         /// </sumario>
         /// <param name="id">O ID do artigo (string ObjectId).</param>
         /// <param name="artigoService">Injeção do serviço de aplicação.</param>
+        /// <param name="mapper">Injeção do AutoMapper para conversão.</param>
         /// <param name="claims">Claims do usuário autenticado para verificar permissões.</param>
         /// <returns>O ArtigoDTO se encontrado e autorizado, ou null.</returns>
         [Query]
         public async Task<ArtigoDTO?> GetArtigoByIdAsync(
             string id,
             [Service] IArtigoService artigoService,
+            [Service] AutoMapper.IMapper mapper, // FIX: Inject IMapper
             ClaimsPrincipal claims)
         {
             // Extrai o ID do usuário (UsuarioId externo) do token JWT.
@@ -40,7 +42,10 @@ namespace Artigo.API.GraphQL.Queries
                 currentUsuarioId = string.Empty;
             }
 
-            return await artigoService.GetArtigoForEditorialAsync(id, currentUsuarioId);
+            var entity = await artigoService.GetArtigoForEditorialAsync(id, currentUsuarioId);
+
+            // FIX: Map Entity to DTO before returning
+            return mapper.Map<ArtigoDTO>(entity);
         }
 
         /// <sumario>
@@ -49,6 +54,7 @@ namespace Artigo.API.GraphQL.Queries
         /// </sumario>
         /// <param name="status">O status editorial a ser filtrado (e.g., InReview).</param>
         /// <param name="artigoService">Injeção do serviço de aplicação.</param>
+        /// <param name="mapper">Injeção do AutoMapper para conversão.</param>
         /// <param name="claims">Claims do usuário autenticado.</param>
         /// <returns>Lista de ArtigoDTOs.</returns>
         [Query]
@@ -58,6 +64,7 @@ namespace Artigo.API.GraphQL.Queries
         public async Task<IReadOnlyList<ArtigoDTO>> GetArtigosByStatusAsync(
             ArtigoStatus status,
             [Service] IArtigoService artigoService,
+            [Service] AutoMapper.IMapper mapper, // FIX: Inject IMapper
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -68,8 +75,11 @@ namespace Artigo.API.GraphQL.Queries
                 return new List<ArtigoDTO>(); // Segurança caso a autorização falhe silenciosamente.
             }
 
-            // O ArtigoService fará a verificação de permissão (se o usuário é Staff) e aplicará os filtros.
-            return await artigoService.GetArtigosByStatusAsync(status, currentUsuarioId);
+            // Service returns list of entities
+            var entities = await artigoService.GetArtigosByStatusAsync(status, currentUsuarioId);
+
+            // FIX: Map the list of Entities to a list of DTOs
+            return mapper.Map<IReadOnlyList<ArtigoDTO>>(entities);
         }
     }
 }

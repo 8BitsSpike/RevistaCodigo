@@ -1,4 +1,5 @@
 ﻿using Artigo.DbContext.Data;
+using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
@@ -20,7 +21,7 @@ namespace Artigo.DbContext.Repositories
         private readonly IMongoCollection<ArtigoHistoryModel> _history;
         private readonly IMapper _mapper;
 
-        public ArtigoHistoryRepository(IMongoDbContext dbContext, IMapper mapper)
+        public ArtigoHistoryRepository(Artigo.DbContext.Interfaces.IMongoDbContext dbContext, IMapper mapper)
         {
             _history = dbContext.ArtigoHistories;
             _mapper = mapper;

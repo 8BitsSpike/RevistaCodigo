@@ -8,9 +8,13 @@ using HotChocolate.Types;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System;
+using System.Collections.Generic; // Added for List<string> needed in ArtigoEntity creation
 
 namespace Artigo.API.GraphQL.Mutations
 {
+    /// <sumario>
+    /// Define os métodos de modificação de dados (Mutations) do GraphQL relacionados à entidade Artigo.
+    /// </sumario>
     public class ArtigoMutations
     {
         /// <sumario>
@@ -22,11 +26,23 @@ namespace Artigo.API.GraphQL.Mutations
         public async Task<ArtigoDTO> CreateArtigoAsync(
             CreateArtigoRequest input,
             [Service] IArtigoService artigoService,
+            [Service] AutoMapper.IMapper mapper, // FIX: Inject IMapper
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
 
-            return await artigoService.CreateArtigoAsync(input, currentUsuarioId);
+            // 1. Map DTO input (which includes Title, Resume, Type) to the Domain Entity (Artigo)
+            var newArtigo = mapper.Map<Artigo.Intf.Entities.Artigo>(input);
+
+            // 2. Call service with the three required arguments (Entity, Content, UsuarioId)
+            var createdArtigo = await artigoService.CreateArtigoAsync(
+                newArtigo,
+                input.Content, // Extracted Content (second argument)
+                currentUsuarioId // Extracted UsuarioId (third argument)
+            );
+
+            // 3. Map the returned Domain Entity back to the output DTO for the GraphQL response
+            return mapper.Map<ArtigoDTO>(createdArtigo);
         }
 
         /// <sumario>
@@ -37,35 +53,33 @@ namespace Artigo.API.GraphQL.Mutations
         [Authorize]
         public async Task<ArtigoDTO> UpdateArtigoMetadataAsync(
             string id,
-            // FIX: Usar o novo tipo de input específico para updates.
             UpdateArtigoMetadataInput input,
             [Service] IArtigoService artigoService,
+            [Service] AutoMapper.IMapper mapper, // FIX: Inject IMapper
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
 
-            // FIX: Mapear o Update Input para o DTO de Domain/Service
+            // Mapear o Update Input para a Entidade Artigo (apenas campos parciais)
             var artigoEntity = new Artigo.Intf.Entities.Artigo
             {
                 Id = id,
-                Titulo = input.Titulo ?? string.Empty, // A Entidade Artigo não permite nullables aqui,
-                Resumo = input.Resumo ?? string.Empty, // então assumimos string.Empty se nulo for passado.
-                Tipo = input.Tipo ?? ArtigoTipo.Artigo, // Se nulo, assumir um default para evitar erro de tipo.
+                Titulo = input.Titulo ?? string.Empty,
+                Resumo = input.Resumo ?? string.Empty,
+                Tipo = input.Tipo ?? ArtigoTipo.Artigo,
                 AutorIds = input.AutorIds ?? new List<string>(),
                 AutorReference = input.AutorReference ?? new List<string>()
             };
 
-            // O ArtigoService precisa ser ajustado para lidar com DTOs parciais ou
-            // este método de construção da entidade Artigo precisa ser feito com o AutoMapper.
-
-            // NOTE: Para fins de compilação, vamos passar a Entidade Artigo para o service.
-            // O service deve lidar com a busca do objeto existente e a aplicação dos campos não-nulos.
             var success = await artigoService.UpdateArtigoMetadataAsync(artigoEntity, currentUsuarioId);
 
             if (success)
             {
-                return await artigoService.GetArtigoForEditorialAsync(id, currentUsuarioId)
-                       ?? throw new InvalidOperationException("Artigo atualizado, mas falha ao recuperá-lo.");
+                var updatedEntity = await artigoService.GetArtigoForEditorialAsync(id, currentUsuarioId)
+                                       ?? throw new InvalidOperationException("Artigo atualizado, mas falha ao recuperá-lo.");
+
+                // FIX: Map the returned Entity back to DTO
+                return mapper.Map<ArtigoDTO>(updatedEntity);
             }
 
             throw new InvalidOperationException("Falha ao atualizar metadados do artigo. Verifique a ID ou permissões.");

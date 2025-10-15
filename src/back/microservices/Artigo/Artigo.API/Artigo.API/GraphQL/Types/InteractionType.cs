@@ -1,7 +1,7 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
-using HotChocolate.Resolvers;
+using Artigo.API.GraphQL.Resolvers;
 using HotChocolate.Types;
 using System.Collections.Generic;
 using System.Threading.Tasks;

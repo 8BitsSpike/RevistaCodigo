@@ -3,7 +3,7 @@ using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces; // Added for IReadOnlyList reference if needed
 using Artigo.Server.DTOs;
 using HotChocolate.Types;
-using HotChocolate.Resolvers;
+using Artigo.API.GraphQL.Resolvers;
 using System.Collections.Generic; // Added
 using System.Threading; // Added
 using System.Threading.Tasks; // Added

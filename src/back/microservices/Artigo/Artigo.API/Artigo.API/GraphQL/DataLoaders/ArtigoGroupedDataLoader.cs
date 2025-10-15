@@ -1,9 +1,15 @@
 ﻿using Artigo.Intf.Interfaces;
 using Artigo.Server.DTOs;
+using GreenDonut;
 using AutoMapper;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Artigo.API.GraphQL.DataLoaders
 {
+    // NOTE: This class definition was originally at the bottom of Program.cs
     public class ArtigoGroupedDataLoader : GroupedDataLoader<string, ArtigoDTO>
     {
         private readonly IArtigoRepository _artigoRepository;
@@ -19,15 +25,12 @@ namespace Artigo.API.GraphQL.DataLoaders
             _mapper = mapper;
         }
 
-        protected override async Task<ILookup<string, ArtigoDTO>> LoadGroupedBatchAsync(IReadOnlyList<string> keys, CancellationToken cancellationToken)
+        protected override async Task<ILookup<string, ArtigoDTO>> LoadGroupedBatchAsync(
+            IReadOnlyList<string> keys,
+            CancellationToken cancellationToken)
         {
-            // 1. Busca as Entidades do Domínio em lote
             var artigos = await _artigoRepository.GetByIdsAsync(keys.ToList());
-
-            // 2. Mapeia as Entidades (Artigo) para DTOs (ArtigoDTO)
             var dtos = _mapper.Map<IReadOnlyList<ArtigoDTO>>(artigos);
-
-            // 3. Retorna como ILookup, usando o ID do Artigo como chave de agrupamento
             return dtos.ToLookup(a => a.Id, a => a);
         }
     }

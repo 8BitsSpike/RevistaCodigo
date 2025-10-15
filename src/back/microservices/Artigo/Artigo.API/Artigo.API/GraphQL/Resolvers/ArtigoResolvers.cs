@@ -103,4 +103,68 @@ namespace Artigo.API.GraphQL.Resolvers
             return lookup.SelectMany(g => g!).ToList().AsReadOnly();
         }
     }
+    /// <sumario>
+    /// Resolver para buscar o histórico de revisões associadas a um Editorial (Usado em EditorialType).
+    /// </sumario>
+    public class ArtigoHistoryListResolver
+    {
+        public async Task<IReadOnlyList<ArtigoHistory>> GetHistoryAsync(
+            [Parent] Editorial editorial,
+            ArtigoHistoryGroupedDataLoader dataLoader,
+            CancellationToken cancellationToken)
+        {
+            // O DataLoader agrupa ArtigoHistory por EditorialId, que é o campo 'Id' do Editorial.
+            IReadOnlyList<string> keys = new List<string> { editorial.Id };
+            var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
+
+            // Flatten the ILookup<string, ArtigoHistory> into a single IReadOnlyList<ArtigoHistory>.
+            return lookup.SelectMany(g => g!).ToList().AsReadOnly();
+        }
+    }
+
+    /// <sumario>
+    /// Resolver para buscar interações/comentários associados a um Editorial (Usado em EditorialType).
+    /// Depende de ArtigoId ser acessível via Editorial, que é usado como chave para o DataLoader.
+    /// </sumario>
+    public class InteractionListResolver
+    {
+        public async Task<IReadOnlyList<Interaction>> GetEditorialCommentsAsync(
+            [Parent] Editorial editorial,
+            InteractionDataLoader dataLoader,
+            CancellationToken cancellationToken)
+        {
+            // ATENÇÃO: É necessário que a entidade Editorial tenha o ArtigoId para carregar os comentários.
+            // Esta implementação assume que Editorial.ArtigoId existe.
+            if (string.IsNullOrEmpty(editorial.ArtigoId))
+            {
+                return new List<Interaction>().AsReadOnly();
+            }
+
+            // InteractionDataLoader (se for GroupedDataLoader) usa o ArtigoId como chave.
+            IReadOnlyList<string> keys = new List<string> { editorial.ArtigoId };
+            var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
+
+            // Flatten the ILookup<string, Interaction> into a single IReadOnlyList<Interaction>.
+            return lookup.SelectMany(g => (IEnumerable<Interaction>)g!).ToList().AsReadOnly();
+        }
+    }
+
+    /// <sumario>
+    /// Resolver para buscar respostas/réplicas para uma interação (comentário) pai (Usado em InteractionType).
+    /// </sumario>
+    public class RepliesResolver
+    {
+        public async Task<IReadOnlyList<Interaction>> GetRepliesAsync(
+            [Parent] Interaction parentComment,
+            InteractionRepliesDataLoader dataLoader,
+            CancellationToken cancellationToken)
+        {
+            // O DataLoader agrupa respostas por ParentInteractionId, que é o 'Id' do comentário pai.
+            IReadOnlyList<string> keys = new List<string> { parentComment.Id };
+            var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
+
+            // Flatten the ILookup<string, Interaction> into a single IReadOnlyList<Interaction>.
+            return lookup.SelectMany(g => g!).ToList().AsReadOnly();
+        }
+    }
 }

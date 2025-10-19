@@ -19,10 +19,11 @@ namespace Artigo.Intf.Interfaces
         Task<Pending?> GetByIdAsync(string id);
 
         /// <sumario>
-        /// Retorna uma lista de requisições pendentes, tipicamente filtradas por status (e.g., AwaitingReview).
+        /// Retorna uma lista de requisições pendentes, tipicamente filtradas por status (e.g., AguardandoRevisao).
         /// </sumario>
+        // CORRIGIDO: PendingStatus -> StatusPendente
         /// <param name="status">Filtra pelo status da requisição.</param>
-        Task<IReadOnlyList<Pending>> GetByStatusAsync(PendingStatus status);
+        Task<IReadOnlyList<Pending>> GetByStatusAsync(StatusPendente status);
 
         /// <sumario>
         /// Adiciona uma nova requisição pendente.

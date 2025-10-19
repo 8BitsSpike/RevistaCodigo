@@ -70,7 +70,8 @@ namespace Artigo.DbContext.Repositories
 
         // --- Metodos de Atualizacao Granular ---
 
-        public async Task<bool> UpdatePositionAsync(string editorialId, EditorialPosition newPosition)
+        // CORRIGIDO: EditorialPosition -> PosicaoEditorial
+        public async Task<bool> UpdatePositionAsync(string editorialId, PosicaoEditorial newPosition)
         {
             if (!ObjectId.TryParse(editorialId, out var objectId)) return false;
 

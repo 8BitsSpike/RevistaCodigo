@@ -21,7 +21,8 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Retorna todos os Artigos que estao em um status especifico.
         /// </sumario>
-        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByStatusAsync(ArtigoStatus status);
+        // CORRIGIDO: ArtigoStatus -> StatusArtigo
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByStatusAsync(StatusArtigo status);
 
         /// <sumario>
         /// Retorna multiplos Artigos com base em uma lista de IDs.

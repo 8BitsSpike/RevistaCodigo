@@ -18,15 +18,15 @@ namespace Artigo.Intf.Entities
         public string Resumo { get; set; } = string.Empty;
 
         // Status e ciclo de vida
-        public ArtigoStatus Status { get; set; } = ArtigoStatus.Draft;
-        public ArtigoTipo Tipo { get; set; } // Classificacao do tipo de artigo
+        public StatusArtigo Status { get; set; } = StatusArtigo.Rascunho; // CORRIGIDO: StatusArtigo.Rascunho
+        public TipoArtigo Tipo { get; set; } // CORRIGIDO: TipoArtigo
 
         // Relacionamento com outras colecoes (guardadas como referencias ao UsuarioId)
         // Referencia a colecao Autor (Autores involvidos na criacao)
         public List<string> AutorIds { get; set; } = [];
 
         // Lista somente pelo nome Autores que nao sao usuarios cadastrados na plataforma
-        public List<string> AutorReference { get; set; } = []; 
+        public List<string> AutorReference { get; set; } = [];
 
         // Referencia a colecao Editorial (Informacoes sobre o ciclo de vida editorial)
         public string EditorialId { get; set; } = string.Empty;
@@ -34,8 +34,8 @@ namespace Artigo.Intf.Entities
         // Referencia a colecao Volume (Somente quando estiver publicado)
         public string? VolumeId { get; set; }
 
-        // Referencia a colecao Midia (a primeira sempre e a midia destaque, depois vem as demais midias)
-        public List<string> MidiaIds { get; set; } = [];
+        // MUDANÇA: Lista de objetos Midia (já alterado)
+        public List<MidiaEntry> Midias { get; set; } = []; // ADICIONADO
 
         // Metricas Denormalizadas (para uso em Padroes de Subset)
         public int TotalInteracoes { get; set; } = 0;
@@ -53,5 +53,16 @@ namespace Artigo.Intf.Entities
 
         // Data de publicacao academica quando o artico ja tiver sido publicado em outra revista
         public DateTime? DataAcademica { get; set; }
+    }
+
+    /// <sumario>
+    /// Objeto embutido para rastrear as informações de uma mídia associada ao Artigo.
+    /// A posição no List<MidiaEntry> define se é a mídia de destaque (index 0).
+    /// </sumario>
+    public class MidiaEntry
+    {
+        public string MidiaID { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public string Alt { get; set; } = string.Empty; // Texto alternativo para SEO e acessibilidade
     }
 }

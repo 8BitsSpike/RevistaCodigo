@@ -19,7 +19,8 @@ namespace Artigo.API.GraphQL.Types
 
             // Campos de Alvo
             descriptor.Field(f => f.TargetEntityId).Type<NonNullType<IdType>>().Description("ID da entidade alvo da ação (e.g., Artigo.Id, Staff.Id).");
-            descriptor.Field(f => f.TargetType).Type<NonNullType<EnumType<TargetEntityType>>>().Description("O tipo de entidade alvo.");
+            // CORRIGIDO: TargetEntityType -> TipoEntidadeAlvo
+            descriptor.Field(f => f.TargetType).Type<NonNullType<EnumType<TipoEntidadeAlvo>>>().Description("O tipo de entidade alvo."); // FIX: TargetEntityType -> TipoEntidadeAlvo
 
             // Campos de Ação
             descriptor.Field(f => f.CommandParametersJson).Description("Parâmetros do comando JSON (dados complexos para execução).");
@@ -27,7 +28,8 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Commentary).Description("Comentário ou justificativa do solicitante.");
 
             // Metadados
-            descriptor.Field(f => f.Status).Type<NonNullType<EnumType<PendingStatus>>>().Description("Status atual da requisição (AwaitingReview, Approved, Rejected).");
+            // CORRIGIDO: PendingStatus -> StatusPendente
+            descriptor.Field(f => f.Status).Type<NonNullType<EnumType<StatusPendente>>>().Description("Status atual da requisição (AguardandoRevisao, Aprovado, Rejeitado)."); // FIX: PendingStatus -> StatusPendente
             descriptor.Field(f => f.RequesterUsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário externo que criou esta requisição.");
             descriptor.Field(f => f.DateRequested).Description("Data e hora em que a requisição foi criada.");
 

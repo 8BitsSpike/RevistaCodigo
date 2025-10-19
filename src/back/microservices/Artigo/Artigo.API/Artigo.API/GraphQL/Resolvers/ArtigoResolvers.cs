@@ -1,15 +1,16 @@
-﻿using Artigo.Intf.Entities;
-using Artigo.Server.DTOs;
+﻿using Artigo.Api.GraphQL.DataLoaders;
 using Artigo.API.GraphQL.DataLoaders;
+using Artigo.Intf.Entities;
+using Artigo.Server.DTOs;
 using HotChocolate.Resolvers;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Artigo.API.GraphQL.Resolvers
 {
-    // --- EditorialResolver remains the same ---
+    // --- EditorialResolver (sem alterações) ---
     public class EditorialResolver
     {
         public Task<Editorial?> GetEditorialAsync(
@@ -17,12 +18,12 @@ namespace Artigo.API.GraphQL.Resolvers
             EditorialDataLoader dataLoader,
             IResolverContext context)
         {
-            if (string.IsNullOrEmpty(artigo.EditorialId))
+            if (string.IsNullOrEmpty(artigo.IdEditorial))
             {
                 return Task.FromResult<Editorial?>(null);
             }
-            // FIX: Asserts the non-null result of the DataLoader load operation.
-            return dataLoader.LoadAsync(artigo.EditorialId, context.RequestAborted)!;
+            // Assegura o resultado não nulo da operação de carregamento do DataLoader.
+            return dataLoader.LoadAsync(artigo.IdEditorial, context.RequestAborted)!;
         }
     }
 
@@ -34,17 +35,42 @@ namespace Artigo.API.GraphQL.Resolvers
     {
         public async Task<IReadOnlyList<Autor>> GetAutoresAsync(
             [Parent] ArtigoDTO artigo,
-            AutorDataLoader dataLoader,
+            AutorBatchDataLoader dataLoader,
             IResolverContext context,
             CancellationToken cancellationToken)
         {
-            // 1. Load the ILookup (which is the result type of the GroupedDataLoader)
-            IReadOnlyList<string> keys = artigo.AutorIds;
-            var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
+            // 1. Carrega as chaves (IDs de Autor).
+            IReadOnlyList<string> keys = artigo.IdsAutor;
 
-            // 2. FIX: Flatten the ILookup<string, Autor> into a single IReadOnlyList<Autor>.
-            // This explicitly creates the non-array, non-nullable final list type required by the schema.
-            return lookup.SelectMany(g => g!).ToList().AsReadOnly();
+            // 2. CORREÇÃO CS1061: O BatchDataLoader deve retornar IReadOnlyDictionary<string, Autor>.
+            // No entanto, devido à complexidade da tipagem assíncrona do HotChocolate, 
+            // a chamada LoadAsync(keys) frequentemente retorna uma Task<T> onde T é inferido como o tipo de valor
+            // se o DataLoader não for um GroupedDataLoader.
+
+            // Vamos forçar a tipagem para o resultado esperado (IReadOnlyDictionary) 
+            // e simplificar a projeção final.
+
+            var dictionaryResult = await dataLoader.LoadAsync(keys, cancellationToken);
+
+            // Assegura que o resultado é tratado como um dicionário.
+            var dictionary = dictionaryResult as IReadOnlyDictionary<string, Autor>;
+
+            if (dictionary is null)
+            {
+                // Tratamento de segurança, embora o DataLoader deva retornar o tipo correto.
+                return Array.Empty<Autor>().AsReadOnly();
+            }
+
+            // 3. Converte os valores do dicionário para uma lista IReadOnlyList<Autor>, 
+            // filtrando por chaves solicitadas e valores não nulos.
+            var autores = keys
+                .Where(dictionary.ContainsKey) // Agora, ContainsKey é válido no dicionário.
+                .Select(id => dictionary[id])
+                .Where(autor => autor is not null)
+                .ToList()
+                .AsReadOnly();
+
+            return autores;
         }
     }
 
@@ -59,16 +85,16 @@ namespace Artigo.API.GraphQL.Resolvers
             CurrentHistoryContentDataLoader dataLoader,
             IResolverContext context)
         {
-            if (string.IsNullOrEmpty(artigo.EditorialId))
+            if (string.IsNullOrEmpty(artigo.IdEditorial))
             {
                 return Task.FromResult(string.Empty);
             }
-            // FIX: Asserts the non-null result of the DataLoader load operation.
-            return dataLoader.LoadAsync(artigo.EditorialId, context.RequestAborted)!;
+            // Assegura o resultado não nulo da operação de carregamento do DataLoader.
+            return dataLoader.LoadAsync(artigo.IdEditorial, context.RequestAborted)!;
         }
     }
 
-    // --- VolumeResolver remains the same ---
+    // --- VolumeResolver (sem alterações) ---
     public class VolumeResolver
     {
         public Task<Volume?> GetVolumeAsync(
@@ -76,11 +102,11 @@ namespace Artigo.API.GraphQL.Resolvers
             VolumeDataLoader dataLoader,
             IResolverContext context)
         {
-            if (string.IsNullOrEmpty(artigo.VolumeId))
+            if (string.IsNullOrEmpty(artigo.IdVolume))
             {
                 return Task.FromResult<Volume?>(null);
             }
-            return dataLoader.LoadAsync(artigo.VolumeId!, context.RequestAborted)!;
+            return dataLoader.LoadAsync(artigo.IdVolume!, context.RequestAborted)!;
         }
     }
 
@@ -94,12 +120,11 @@ namespace Artigo.API.GraphQL.Resolvers
             ArtigoGroupedDataLoader dataLoader,
             CancellationToken cancellationToken)
         {
-            // 1. Load the ILookup (which is the result type of the GroupedDataLoader)
+            // 1. Carrega o ILookup (que é o tipo de resultado do GroupedDataLoader)
             IReadOnlyList<string> keys = volume.ArtigoIds;
             var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
 
-            // 2. FIX: Flatten the ILookup<string, ArtigoDTO> into a single IReadOnlyList<ArtigoDTO>.
-            // This explicitly creates the non-array, non-nullable final list type required by the schema.
+            // 2. Achatamento (Flatten) do ILookup<string, ArtigoDTO> para uma lista única.
             return lookup.SelectMany(g => g!).ToList().AsReadOnly();
         }
     }
@@ -117,7 +142,7 @@ namespace Artigo.API.GraphQL.Resolvers
             IReadOnlyList<string> keys = new List<string> { editorial.Id };
             var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
 
-            // Flatten the ILookup<string, ArtigoHistory> into a single IReadOnlyList<ArtigoHistory>.
+            // Achatamento (Flatten) do ILookup<string, ArtigoHistory> para uma lista única.
             return lookup.SelectMany(g => g!).ToList().AsReadOnly();
         }
     }
@@ -130,7 +155,7 @@ namespace Artigo.API.GraphQL.Resolvers
     {
         public async Task<IReadOnlyList<Interaction>> GetEditorialCommentsAsync(
             [Parent] Editorial editorial,
-            InteractionDataLoader dataLoader,
+            ArticleInteractionsDataLoader dataLoader, // Referencia o novo nome da classe
             CancellationToken cancellationToken)
         {
             // ATENÇÃO: É necessário que a entidade Editorial tenha o ArtigoId para carregar os comentários.
@@ -140,11 +165,11 @@ namespace Artigo.API.GraphQL.Resolvers
                 return new List<Interaction>().AsReadOnly();
             }
 
-            // InteractionDataLoader (se for GroupedDataLoader) usa o ArtigoId como chave.
+            // O ArticleInteractionsDataLoader usa o ArtigoId como chave.
             IReadOnlyList<string> keys = new List<string> { editorial.ArtigoId };
             var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
 
-            // Flatten the ILookup<string, Interaction> into a single IReadOnlyList<Interaction>.
+            // Achatamento (Flatten) do ILookup<string, Interaction> para uma lista única.
             return lookup.SelectMany(g => (IEnumerable<Interaction>)g!).ToList().AsReadOnly();
         }
     }
@@ -163,7 +188,7 @@ namespace Artigo.API.GraphQL.Resolvers
             IReadOnlyList<string> keys = new List<string> { parentComment.Id };
             var lookup = await dataLoader.LoadAsync(keys, cancellationToken);
 
-            // Flatten the ILookup<string, Interaction> into a single IReadOnlyList<Interaction>.
+            // Achatamento (Flatten) do ILookup<string, Interaction> para uma lista única.
             return lookup.SelectMany(g => g!).ToList().AsReadOnly();
         }
     }

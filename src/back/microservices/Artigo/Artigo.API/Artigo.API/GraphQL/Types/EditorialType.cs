@@ -35,7 +35,8 @@ namespace Artigo.API.GraphQL.Types
 
             descriptor.Field(f => f.Id).Type<NonNullType<IdType>>().Description("ID local do registro editorial.");
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo associado.");
-            descriptor.Field(f => f.Position).Type<NonNullType<EnumType<EditorialPosition>>>().Description("Posição atual no fluxo de trabalho (e.g., AwaitingReview).");
+            // CORRIGIDO: EditorialPosition -> PosicaoEditorial
+            descriptor.Field(f => f.Position).Type<NonNullType<EnumType<PosicaoEditorial>>>().Description("Posição atual no fluxo de trabalho (e.g., AguardandoRevisao)."); // FIX: EditorialPosition -> PosicaoEditorial
             descriptor.Field(f => f.CurrentHistoryId).Description("ID da versão atual do conteúdo (ArtigoHistory).");
             descriptor.Field(f => f.LastUpdated).Description("Data da última atualização de status.");
 
@@ -45,17 +46,15 @@ namespace Artigo.API.GraphQL.Types
                 .Description("A equipe editorial designada para o artigo.");
 
             // 2. Histórico de Conteúdo (Lista de Versões)
-            // Este campo usará um DataLoader para buscar todos os ArtigoHistory associados.
             descriptor.Field<ArtigoHistoryListResolver>(r => r.GetHistoryAsync(default!, default!, default!))
                 .Name("history")
-                .Type<NonNullType<ListType<NonNullType<ArtigoHistoryType>>>>() // Presume a existência futura do ArtigoHistoryType
+                .Type<NonNullType<ListType<NonNullType<ArtigoHistoryType>>>>()
                 .Description("Lista de todas as versões históricas do conteúdo deste artigo.");
 
             // 3. Comentários Editoriais
-            // Este campo usará um DataLoader para buscar todos os Comments/Interactions com InteractionType.ComentarioEditorial.
             descriptor.Field<InteractionListResolver>(r => r.GetEditorialCommentsAsync(default!, default!, default!))
                 .Name("comments")
-                .Type<NonNullType<ListType<NonNullType<InteractionType>>>>() // Presume a existência futura do InteractionType
+                .Type<NonNullType<ListType<NonNullType<InteractionType>>>>()
                 .Description("Comentários internos feitos pela equipe editorial sobre o artigo.");
         }
     }

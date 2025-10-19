@@ -19,8 +19,14 @@ namespace Artigo.API.GraphQL.Types
             // O campo principal, que contém o corpo completo do artigo.
             descriptor.Field(f => f.Content).Type<NonNullType<StringType>>().Description("O corpo completo e formatado do artigo nesta versão.");
 
-            descriptor.Field(f => f.Version).Type<NonNullType<EnumType<ArtigoVersion>>>().Description("A versão do artigo (e.g., Original, PrimeiraEdicao, Final).");
+            // CORRIGIDO: ArtigoVersion -> VersaoArtigo
+            descriptor.Field(f => f.Version).Type<NonNullType<EnumType<VersaoArtigo>>>().Description("A versão do artigo (e.g., Original, PrimeiraEdicao, Final)."); // FIX: ArtigoVersion -> VersaoArtigo
             descriptor.Field(f => f.DataRegistro).Description("Data e hora em que esta versão foi registrada.");
+
+            // NOVO CAMPO: Midias associadas à versão do histórico
+            descriptor.Field(f => f.Midias)
+                .Type<NonNullType<ListType<NonNullType<MidiaEntryType>>>>() // Reusa o tipo MidiaEntryType definido em ArtigoType.cs
+                .Description("Lista das mídias associadas a esta versão específica do artigo.");
         }
     }
 }

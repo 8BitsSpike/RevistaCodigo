@@ -42,7 +42,8 @@ namespace Artigo.DbContext.Repositories
             return _mapper.Map<Pending>(model);
         }
 
-        public async Task<IReadOnlyList<Pending>> GetByStatusAsync(PendingStatus status)
+        // CORRIGIDO: PendingStatus -> StatusPendente
+        public async Task<IReadOnlyList<Pending>> GetByStatusAsync(StatusPendente status)
         {
             var models = await _pendings
                 .Find(p => p.Status == status)
@@ -54,8 +55,10 @@ namespace Artigo.DbContext.Repositories
 
         // O método GetByTargetAsync (presente no arquivo original) não é parte da interface
         // IPendingRepository, mas é útil internamente. Mantê-lo aqui.
-        public async Task<IReadOnlyList<Pending>> GetByTargetAsync(TargetEntityType type, string targetId)
+        // CORRIGIDO: TargetEntityType -> TipoEntidadeAlvo
+        public async Task<IReadOnlyList<Pending>> GetByTargetAsync(TipoEntidadeAlvo type, string targetId)
         {
+            // CORRIGIDO: TargetEntityType -> TipoEntidadeAlvo
             var models = await _pendings
                 .Find(p => p.TargetType == type && p.TargetEntityId == targetId)
                 .SortByDescending(p => p.DateRequested)
@@ -78,7 +81,8 @@ namespace Artigo.DbContext.Repositories
                 model.DateRequested = DateTime.UtcNow;
             }
 
-            model.Status = PendingStatus.AwaitingReview; // Nova requisição sempre começa aqui
+            // CORRIGIDO: PendingStatus.AwaitingReview -> StatusPendente.AguardandoRevisao
+            model.Status = StatusPendente.AguardandoRevisao; // Nova requisição sempre começa aqui
 
             await _pendings.InsertOneAsync(model);
 
@@ -86,8 +90,7 @@ namespace Artigo.DbContext.Repositories
             _mapper.Map(model, pending);
         }
 
-        // NOVO MÉTODO: Implementa o contrato IPendingRepository.UpdateAsync(Pending pending)
-        // O arquivo original usava UpdateStatusAsync, mas o contrato espera o objeto inteiro.
+        // Implementa o contrato IPendingRepository.UpdateAsync(Pending pending)
         public async Task<bool> UpdateAsync(Pending pending)
         {
             if (!ObjectId.TryParse(pending.Id, out var objectId)) return false;

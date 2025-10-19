@@ -30,8 +30,13 @@ namespace Artigo.Server.Services
 
         public Task<IReadOnlyList<ExternalUserDTO>> GetUsersByIdsAsync(IReadOnlyList<string> usuarioIds)
         {
+            // FIX: Refatorado para evitar o uso de .Result em um mock assíncrono.
             var results = usuarioIds
-                .Select(id => GetUserByIdAsync(id).Result) // Note: .Result is used here as a placeholder for synchronization in the mock environment.
+                .Select(id =>
+                {
+                    _mockUsers.TryGetValue(id, out var user);
+                    return user;
+                })
                 .Where(user => user != null)
                 .ToList();
 

@@ -20,7 +20,8 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Description("Detalha o papel (Role) do autor em um artigo específico (e.g., Revisor, CoAutor).");
 
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo ao qual esta contribuição se refere.");
-            descriptor.Field(f => f.Role).Type<NonNullType<EnumType<ContribuicaoRole>>>().Description("O papel desempenhado (e.g., AutorPrincipal, Corretor).");
+            // CORRIGIDO: ContribuicaoRole -> FuncaoContribuicao
+            descriptor.Field(f => f.Role).Type<NonNullType<EnumType<FuncaoContribuicao>>>().Description("O papel desempenhado (e.g., AutorPrincipal, Corretor)."); // FIX: ContribuicaoRole -> FuncaoContribuicao
         }
     }
 

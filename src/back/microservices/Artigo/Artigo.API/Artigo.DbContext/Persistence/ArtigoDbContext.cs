@@ -14,7 +14,7 @@ namespace Artigo.DbContext.PersistenceModels
     public class ContribuicaoEditorialModel
     {
         public string ArtigoId { get; set; } = string.Empty;
-        public ContribuicaoRole Role { get; set; }
+        public FuncaoContribuicao Role { get; set; } // CORRIGIDO: FuncaoContribuicao
     }
 
     /// <sumario>
@@ -26,6 +26,16 @@ namespace Artigo.DbContext.PersistenceModels
         public string EditorId { get; set; } = string.Empty;
         public List<string> ReviewerIds { get; set; } = [];
         public List<string> CorrectorIds { get; set; } = [];
+    }
+
+    /// <sumario>
+    /// Objeto embutido para rastrear as informações de uma mídia associada ao Artigo.
+    /// </sumario>
+    public class MidiaEntryModel
+    {
+        public string MidiaID { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public string Alt { get; set; } = string.Empty; // Texto alternativo
     }
 
     // --- Core Collection Models ---
@@ -43,15 +53,15 @@ namespace Artigo.DbContext.PersistenceModels
         // Conteudo principal
         public string Titulo { get; set; } = string.Empty;
         public string Resumo { get; set; } = string.Empty;
-        public ArtigoStatus Status { get; set; }
-        public ArtigoTipo Tipo { get; set; }
+        public StatusArtigo Status { get; set; } // CORRIGIDO: StatusArtigo
+        public TipoArtigo Tipo { get; set; } // CORRIGIDO: TipoArtigo
 
         // Relacionamentos
         public List<string> AutorIds { get; set; } = [];
         public List<string> AutorReference { get; set; } = [];
         public string EditorialId { get; set; } = string.Empty;
         public string? VolumeId { get; set; }
-        public List<string> MidiaIds { get; set; } = [];
+        public List<MidiaEntryModel> Midias { get; set; } = [];
 
         // Metricas Denormalizadas
         public int TotalInteracoes { get; set; } = 0;
@@ -88,7 +98,7 @@ namespace Artigo.DbContext.PersistenceModels
         public string Id { get; set; } = string.Empty;
 
         public string ArtigoId { get; set; } = string.Empty;
-        public EditorialPosition Position { get; set; }
+        public PosicaoEditorial Position { get; set; } // CORRIGIDO: PosicaoEditorial
         public string CurrentHistoryId { get; set; } = string.Empty;
         public List<string> HistoryIds { get; set; } = [];
         public List<string> CommentIds { get; set; } = [];
@@ -105,9 +115,11 @@ namespace Artigo.DbContext.PersistenceModels
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
 
-        public ArtigoVersion Version { get; set; }
+        public VersaoArtigo Version { get; set; } // CORRIGIDO: VersaoArtigo
         public string ArtigoId { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
+        public List<MidiaEntryModel> Midias { get; set; } = [];
+        public DateTime DataRegistro { get; set; } = DateTime.UtcNow;
     }
 
     /// <sumario>
@@ -120,10 +132,13 @@ namespace Artigo.DbContext.PersistenceModels
         public string Id { get; set; } = string.Empty;
 
         public string ArtigoId { get; set; } = string.Empty;
-        // RENOMEADO: Usando ParentCommentId para consistencia com a entidade de Dominio.
-        public string? ParentCommentId { get; set; } // ID do pai do comentario (ou null/string.Empty se for raiz) 
-        public string UsuarioId { get; set; } = string.Empty; // ID do usuário que fez a interação
-        public InteractionType Type { get; set; }
+        public string? ParentCommentId { get; set; }
+        public string UsuarioId { get; set; } = string.Empty;
+
+        // NOVO: Nome de exibição do usuário (obtido do UsuarioAPI no momento da criação).
+        public string UsuarioNome { get; set; } = string.Empty;
+
+        public TipoInteracao Type { get; set; } // CORRIGIDO: TipoInteracao
         public string Content { get; set; } = string.Empty;
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }
@@ -138,7 +153,7 @@ namespace Artigo.DbContext.PersistenceModels
         public string Id { get; set; } = string.Empty;
 
         public string UsuarioId { get; set; } = string.Empty;
-        public JobRole Job { get; set; }
+        public FuncaoTrabalho Job { get; set; } // CORRIGIDO: FuncaoTrabalho
     }
 
     /// <sumario>
@@ -150,15 +165,20 @@ namespace Artigo.DbContext.PersistenceModels
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
 
-        public TargetEntityType TargetType { get; set; }
+        public TipoEntidadeAlvo TargetType { get; set; } // CORRIGIDO: TipoEntidadeAlvo
         public string TargetEntityId { get; set; } = string.Empty;
-        public PendingStatus Status { get; set; } = PendingStatus.AwaitingReview;
+        public StatusPendente Status { get; set; } = StatusPendente.AguardandoRevisao; // CORRIGIDO: StatusPendente
 
-        // RENOMEADOS para consistencia com a entidade de Dominio (Pending.cs)
         public DateTime DateRequested { get; set; } = DateTime.UtcNow;
         public string RequesterUsuarioId { get; set; } = string.Empty;
         public string Commentary { get; set; } = string.Empty;
-        public string CommandParametersJson { get; set; } = string.Empty; // Antigo ComandoCMD, renomeado para consistencia
+        public string CommandParametersJson { get; set; } = string.Empty;
+
+        // NOVO: ID do usuário Staff que aprovou/rejeitou o pedido (UsuarioId externo).
+        public string? IdAprovador { get; set; }
+
+        // NOVO: Data e hora em que o pedido foi resolvido (aprovado ou rejeitado).
+        public DateTime? DataAprovacao { get; set; }
     }
 
     /// <sumario>
@@ -173,7 +193,7 @@ namespace Artigo.DbContext.PersistenceModels
         public int Edicao { get; set; }
         public string VolumeTitulo { get; set; } = string.Empty;
         public string VolumeResumo { get; set; } = string.Empty;
-        public VolumeMes M { get; set; }
+        public MesVolume M { get; set; } // CORRIGIDO: MesVolume
         public int N { get; set; }
         public int Year { get; set; }
         public List<string> ArtigoIds { get; set; } = [];

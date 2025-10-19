@@ -2,7 +2,14 @@
 using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.DTOs;
+using Artigo.Server.Interfaces;
 using AutoMapper;
+using System.Security.Cryptography.X509Certificates;
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using System.Threading.Tasks;
+using MongoDB.Bson; // Necessário para ObjectId.GenerateNewId()
 
 namespace Artigo.Server.Services
 {
@@ -21,6 +28,7 @@ namespace Artigo.Server.Services
         private readonly IInteractionRepository _interactionRepository;
         private readonly IMapper _mapper;
         private readonly IVolumeRepository _volumeRepository;
+        private readonly IExternalUserService _externalUserService;
 
         public ArtigoService(
             IArtigoRepository artigoRepository,
@@ -30,8 +38,9 @@ namespace Artigo.Server.Services
             IArtigoHistoryRepository historyRepository,
             IPendingRepository pendingRepository,
             IInteractionRepository interactionRepository,
-            IVolumeRepository volumeRepository, // It's here
-        IMapper mapper)
+            IVolumeRepository volumeRepository,
+            IExternalUserService externalUserService,
+            IMapper mapper)
         {
             {
                 _artigoRepository = artigoRepository;
@@ -41,33 +50,32 @@ namespace Artigo.Server.Services
                 _historyRepository = historyRepository;
                 _pendingRepository = pendingRepository;
                 _interactionRepository = interactionRepository;
-                _volumeRepository = volumeRepository; // It's assigned here
+                _volumeRepository = volumeRepository;
+                _externalUserService = externalUserService;
                 _mapper = mapper;
             }
         }
 
         // ----------------------------------------------------
         // I. Métodos de Autorização (Regras de Negócio)
+        // ... (Seção I inalterada)
         // ----------------------------------------------------
 
-            // Método alterado para ser assíncrono para evitar deadlocks e usar 'await'.
-            // FIX: Altera a assinatura para aceitar Staff?
         private async Task<bool> CanReadArtigoAsync(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff? staff, string currentUsuarioId)
         {
             // 1. Qualquer um pode ler se estiver publicado
-            if (artigo.Status == ArtigoStatus.Published)
+            if (artigo.Status == StatusArtigo.Publicado)
             {
                 return true;
             }
 
             // Se nao estiver publicado, deve ser membro da equipe editorial
-            if (staff == null) // This check is already correct
+            if (staff == null)
             {
                 return false;
             }
 
             // 2. Verifica se o usuario faz parte da equipe editorial do artigo
-            // Usando 'await' em vez de '.Result'
             var editorial = await _editorialRepository.GetByIdAsync(artigo.EditorialId);
 
             if (editorial == null) return false;
@@ -85,10 +93,9 @@ namespace Artigo.Server.Services
             return allowedUserIds.Contains(currentUsuarioId);
         }
 
-        // O método de edição agora é assíncrono para chamar CanReadArtigoAsync
         private async Task<bool> CanEditArtigoAsync(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff? staff, string currentUsuarioId)
         {
-            if (artigo.Status == ArtigoStatus.Published)
+            if (artigo.Status == StatusArtigo.Publicado)
             {
                 return false;
             }
@@ -99,12 +106,10 @@ namespace Artigo.Server.Services
             return false;
         }
 
-        // (Métodos de autorização síncronos como CanModifyStatus permanecem síncronos, pois não fazem I/O)
-
         private bool CanModifyStatus(Artigo.Intf.Entities.Staff? staff)
         {
             if (staff == null) return false;
-            return staff.Job == JobRole.EditorBolsista || staff.Job == JobRole.EditorChefe || staff.Job == JobRole.Administrador;
+            return staff.Job == FuncaoTrabalho.EditorBolsista || staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.Administrador;
         }
 
         private bool CanCreateEditorialComment(Artigo.Intf.Entities.Editorial editorial, string currentUsuarioId)
@@ -126,49 +131,65 @@ namespace Artigo.Server.Services
             return staff != null;
         }
 
-        // FIX: Altera a assinatura para aceitar Staff?
         private bool CanCreatePending(Artigo.Intf.Entities.Staff? staff)
         {
             if (staff == null) return false;
-            return staff.Job == JobRole.EditorBolsista || staff.Job == JobRole.Administrador;
+            return staff.Job == FuncaoTrabalho.EditorBolsista || staff.Job == FuncaoTrabalho.Administrador;
         }
 
-        // FIX: Altera a assinatura para aceitar Staff?
         private bool CanModifyPendingStatus(Artigo.Intf.Entities.Staff? staff)
         {
             if (staff == null) return false;
-            return staff.Job == JobRole.EditorChefe || staff.Job == JobRole.Administrador;
+            return staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.Administrador;
+        }
+
+        /// <sumario>
+        /// Regra: Apenas EditorChefe e Administrador podem criar um novo registro de Staff.
+        /// </sumario>
+        private bool CanCreateStaff(Artigo.Intf.Entities.Staff? staff)
+        {
+            if (staff == null) return false;
+            return staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.Administrador;
         }
 
 
         // ----------------------------------------------------
         // II. Metodos de Leitura (Queries)
+        // ... (Seção II inalterada)
         // ----------------------------------------------------
 
-        public async Task<Artigo.Intf.Entities.Artigo?> GetPublishedArtigoAsync(string id)
+        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoPublicadoAsync(string id)
         {
             var artigo = await _artigoRepository.GetByIdAsync(id);
-            if (artigo == null || artigo.Status != ArtigoStatus.Published) return null;
-            return artigo; // Retorna a entidade Artigo (IArtigoService exige entidade)
+            if (artigo == null || artigo.Status != StatusArtigo.Publicado) return null;
+            return artigo;
         }
 
-        public async Task<Artigo.Intf.Entities.Artigo?> GetArtigoForEditorialAsync(string id, string currentUsuarioId)
+        // NOVO MÉTODO: Implementação para Visitantes
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPublicadosParaVisitantesAsync()
+        {
+            // Regra: Retorna todos os artigos com Status "Published"
+            return await _artigoRepository.GetByStatusAsync(StatusArtigo.Publicado);
+        }
+
+        // RENOMEADO: GetArtigoForEditorialAsync -> ObterArtigoParaEditorialAsync
+        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoParaEditorialAsync(string id, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(id);
             if (artigo == null) return null;
 
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            // Chamando o método assíncrono corrigido.
             if (!await CanReadArtigoAsync(artigo, staff, currentUsuarioId))
             {
                 return null;
             }
 
-            return artigo; // Retorna a entidade Artigo (IArtigoService exige entidade)
+            return artigo;
         }
 
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId)
+        // RENOMEADO: GetArtigosByStatusAsync -> ObterArtigosPorStatusAsync
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorStatusAsync(StatusArtigo status, string currentUsuarioId)
         {
             var artigos = await _artigoRepository.GetByStatusAsync(status);
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -190,12 +211,11 @@ namespace Artigo.Server.Services
         // III. Metodos de Escrita (Mutations)
         // ----------------------------------------------------
 
-        // FIX: Assinatura alterada para corresponder ao contrato IArtigoService, aceitando 'initialContent'.
-        public async Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string initialContent, string currentUsuarioId)
+        public async Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string conteudoInicial, string currentUsuarioId)
         {
             // 1. Lógica de Negócio / Inicialização
-            artigo.Id = Guid.NewGuid().ToString();
-            artigo.Status = ArtigoStatus.Draft;
+            // REMOVIDO: Artigo.Id = Guid.NewGuid().ToString();
+            artigo.Status = StatusArtigo.Rascunho;
 
             // Garante que o usuário logado seja o autor principal (se ainda não estiver na lista)
             if (!artigo.AutorIds.Contains(currentUsuarioId))
@@ -205,46 +225,52 @@ namespace Artigo.Server.Services
 
             // 2. Orquestração e Persistência
 
+            // 2.0. PERSISTIR ARTIGO PRINCIPAL PRIMEIRO PARA OBTER O ID
+            await _artigoRepository.AddAsync(artigo);
+            // AGORA: artigo.Id contém o ObjectId gerado.
+
             // 2.1. Criar ArtigoHistory inicial
             var initialHistory = new Artigo.Intf.Entities.ArtigoHistory
             {
-                Id = Guid.NewGuid().ToString(),
-                ArtigoId = artigo.Id,
-                Version = ArtigoVersion.Original,
-                Content = initialContent // FIX: Usa o novo parâmetro
+                // Id = string.Empty, o repositório irá gerar o ObjectId.
+                ArtigoId = artigo.Id, // Agora a ID do Artigo está preenchida
+                Version = VersaoArtigo.Original,
+                Content = conteudoInicial
             };
-            await _historyRepository.AddAsync(initialHistory);
+            await _historyRepository.AddAsync(initialHistory); // O repositório irá gerar o ObjectId para initialHistory
 
             // 2.2. Criar Editorial (e equipe)
             var editorial = new Artigo.Intf.Entities.Editorial
             {
-                Id = Guid.NewGuid().ToString(),
-                ArtigoId = artigo.Id,
-                Position = EditorialPosition.Submitted,
+                // Id = string.Empty, o repositório irá gerar o ObjectId.
+                ArtigoId = artigo.Id, // Agora a ID do Artigo está preenchida
+                Position = PosicaoEditorial.Submetido,
                 CurrentHistoryId = initialHistory.Id,
                 HistoryIds = new List<string> { initialHistory.Id },
                 Team = new EditorialTeam { InitialAuthorId = artigo.AutorIds }
             };
-            await _editorialRepository.AddAsync(editorial);
+            await _editorialRepository.AddAsync(editorial); // O repositório irá gerar o ObjectId para editorial
 
             // 2.3. Ligar Editorial ao Artigo
             artigo.EditorialId = editorial.Id;
+            // O Artigo já foi persistido, então esta atualização (EditorialId) será feita no final (Passo 2.6).
 
             // 2.4. Atualizar registro do Autor (se nao existir, cria-o no repositório)
-            var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId) ?? new Artigo.Intf.Entities.Autor { Id = Guid.NewGuid().ToString(), UsuarioId = currentUsuarioId };
-            autor.ArtigoWorkIds.Add(artigo.Id);
-            autor.Contribuicoes.Add(new ContribuicaoEditorial { ArtigoId = artigo.Id, Role = ContribuicaoRole.AutorPrincipal });
+            var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId) ?? new Artigo.Intf.Entities.Autor { Id = ObjectId.GenerateNewId().ToString(), UsuarioId = currentUsuarioId };
+            autor.ArtigoWorkIds.Add(artigo.Id); // Agora a ID do Artigo está preenchida
+            autor.Contribuicoes.Add(new ContribuicaoEditorial { ArtigoId = artigo.Id, Role = FuncaoContribuicao.AutorPrincipal });
             autor = await _autorRepository.UpsertAsync(autor);
 
-            // 2.5. Persistir Artigo final
-            await _artigoRepository.AddAsync(artigo);
+            // 2.5. Atualizar Artigo final (Para persistir a referência EditorialId)
+            // Nota: O método AddAsync não retorna o Artigo, mas já o modifica na memória.
+            // Precisamos garantir que o Artigo final seja atualizado com o EditorialId.
+            await _artigoRepository.UpdateAsync(artigo);
 
-            // FIX: Retorna a entidade Artigo (conforme o contrato IArtigoService)
             return artigo;
         }
 
-        // O método UpdateArtigoMetadataAsync foi renomeado de UpdateArtigoAsync no arquivo original
-        public async Task<bool> UpdateArtigoMetadataAsync(Artigo.Intf.Entities.Artigo artigo, string currentUsuarioId)
+        // RENOMEADO: UpdateArtigoMetadataAsync -> AtualizarMetadadosArtigoAsync
+        public async Task<bool> AtualizarMetadadosArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string currentUsuarioId)
         {
             var existingArtigo = await _artigoRepository.GetByIdAsync(artigo.Id);
             if (existingArtigo == null) return false;
@@ -252,7 +278,6 @@ namespace Artigo.Server.Services
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
             // 1. Aplicar Regra de Autorizacao de Edicao
-            // Chamando o método assíncrono corrigido.
             if (!await CanEditArtigoAsync(existingArtigo, staff, currentUsuarioId))
             {
                 throw new UnauthorizedAccessException("Usuário não tem permissão para editar este artigo.");
@@ -267,8 +292,9 @@ namespace Artigo.Server.Services
             // 3. Persistir no Repositorio
             return await _artigoRepository.UpdateAsync(existingArtigo);
         }
-        // O método ChangeArtigoStatusAsync foi renomeado de UpdateArtigoStatusAsync no arquivo original
-        public async Task<bool> ChangeArtigoStatusAsync(string artigoId, ArtigoStatus newStatus, string currentUsuarioId)
+
+        // RENOMEADO: ChangeArtigoStatusAsync -> AlterarStatusArtigoAsync
+        public async Task<bool> AlterarStatusArtigoAsync(string artigoId, StatusArtigo newStatus, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
             if (artigo == null) throw new KeyNotFoundException("Artigo não encontrado.");
@@ -285,7 +311,7 @@ namespace Artigo.Server.Services
             artigo.Status = newStatus;
 
             // 3. Se estiver publicando, atualizar DataPublicacao e VolumeId (simplificado aqui)
-            if (newStatus == ArtigoStatus.Published)
+            if (newStatus == StatusArtigo.Publicado)
             {
                 artigo.DataPublicacao = DateTime.UtcNow;
             }
@@ -294,7 +320,8 @@ namespace Artigo.Server.Services
             return await _artigoRepository.UpdateAsync(artigo);
         }
 
-        public async Task<bool> UpdateArtigoContentAsync(string artigoId, string newContent, string currentUsuarioId)
+        // RENOMEADO: UpdateArtigoContentAsync -> AtualizarConteudoArtigoAsync
+        public async Task<bool> AtualizarConteudoArtigoAsync(string artigoId, string newContent, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
             if (artigo == null) throw new System.Collections.Generic.KeyNotFoundException("Artigo não encontrado.");
@@ -314,15 +341,14 @@ namespace Artigo.Server.Services
             if (editorial == null) throw new System.Collections.Generic.KeyNotFoundException("Registro editorial não encontrado.");
 
             // 2.2. Determina a nova versão baseada no status atual
-            // Para simplificar, assumimos que qualquer edição após a original é a "Primeira Edição" 
+            // Para simplificar, assumimos que qualquer edição após a original é a "Primeira Edição"
             // e criamos uma nova versão numérica se já houver uma.
             int nextVersionNum = editorial.HistoryIds.Count;
-            ArtigoVersion nextVersion = (ArtigoVersion)Math.Min(nextVersionNum, (int)ArtigoVersion.Final);
+            VersaoArtigo nextVersion = (VersaoArtigo)Math.Min(nextVersionNum, (int)VersaoArtigo.Final);
 
             // 2.3. Cria o novo registro ArtigoHistory
             var newHistory = new ArtigoHistory
             {
-                Id = Guid.NewGuid().ToString(),
                 ArtigoId = artigoId,
                 Version = nextVersion,
                 Content = newContent,
@@ -347,23 +373,28 @@ namespace Artigo.Server.Services
 
         // ----------------------------------------------------
         // IV. Metodos de Interacao e Workflow
+        // ... (Seção IV inalterada)
         // ----------------------------------------------------
 
-        public async Task<Artigo.Intf.Entities.Interaction> CreatePublicCommentAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string? parentCommentId)
+        // RENOMEADO: CreatePublicCommentAsync -> CriarComentarioPublicoAsync
+        public async Task<Artigo.Intf.Entities.Interaction> CriarComentarioPublicoAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string? parentCommentId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
-            if (artigo == null || artigo.Status != ArtigoStatus.Published)
+            if (artigo == null || artigo.Status != StatusArtigo.Publicado)
             {
                 throw new InvalidOperationException("Comentários públicos só são permitidos em artigos publicados.");
             }
 
+            // NOVO: Busca o nome do usuário para desnormalização
+            var externalUser = await _externalUserService.GetUserByIdAsync(newComment.UsuarioId);
+            newComment.UsuarioNome = externalUser?.Name ?? "Usuário Desconhecido";
+
             // 1. Regra de Negócio: Nao ha regra de autorizacao para ComentarioPublico (qualquer um pode)
 
             // 2. Criar a Interacao
-            newComment.Id = Guid.NewGuid().ToString();
+            // REMOVIDO: newComment.Id = Guid.NewGuid().ToString();
             newComment.ArtigoId = artigoId;
-            newComment.Type = InteractionType.ComentarioPublico;
-            // FIX: Usar ParentCommentId
+            newComment.Type = TipoInteracao.ComentarioPublico;
             newComment.ParentCommentId = parentCommentId;
 
             // 3. Persistir e atualizar Artigo (denormalizacao)
@@ -381,13 +412,18 @@ namespace Artigo.Server.Services
             return newComment;
         }
 
-        public async Task<Artigo.Intf.Entities.Interaction> CreateEditorialCommentAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string currentUsuarioId)
+        // RENOMEADO: CreateEditorialCommentAsync -> CriarComentarioEditorialAsync
+        public async Task<Artigo.Intf.Entities.Interaction> CriarComentarioEditorialAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
             if (artigo == null) throw new KeyNotFoundException("Artigo não encontrado.");
 
             var editorial = await _editorialRepository.GetByArtigoIdAsync(artigo.EditorialId);
             if (editorial == null) throw new KeyNotFoundException("Registro editorial não encontrado.");
+
+            // NOVO: Busca o nome do usuário para desnormalização
+            var externalUser = await _externalUserService.GetUserByIdAsync(newComment.UsuarioId);
+            newComment.UsuarioNome = externalUser?.Name ?? "Usuário Desconhecido";
 
             // 1. Aplicar Regra de Autorizacao
             if (!CanCreateEditorialComment(editorial, currentUsuarioId))
@@ -396,16 +432,12 @@ namespace Artigo.Server.Services
             }
 
             // 2. Criar a Interacao
-            newComment.Id = Guid.NewGuid().ToString();
+            // REMOVIDO: newComment.Id = Guid.NewGuid().ToString();
             newComment.ArtigoId = artigoId;
-            newComment.Type = InteractionType.ComentarioEditorial;
-            // FIX: Garantir que ParentCommentId é nulo para comentários editoriais
+            newComment.Type = TipoInteracao.ComentarioEditorial;
             newComment.ParentCommentId = null;
 
             // 3. Persistir e ligar ao Editorial
-            await _interactionRepository.AddAsync(newComment);
-
-            // Adicionar referencia ao Editorial
             await _editorialRepository.AddCommentIdAsync(editorial.Id, newComment.Id);
 
             return newComment;
@@ -413,7 +445,8 @@ namespace Artigo.Server.Services
 
         // --- Pending Methods (Queue Management) ---
 
-        public async Task<Artigo.Intf.Entities.Pending> CreatePendingRequestAsync(Artigo.Intf.Entities.Pending newRequest, string currentUsuarioId)
+        // RENOMEADO: CreatePendingRequestAsync -> CriarRequisicaoPendenteAsync
+        public async Task<Artigo.Intf.Entities.Pending> CriarRequisicaoPendenteAsync(Artigo.Intf.Entities.Pending newRequest, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
@@ -424,10 +457,10 @@ namespace Artigo.Server.Services
             }
 
             // 2. Lógica de Negócio: Inicializar a requisição
-            newRequest.Id = Guid.NewGuid().ToString();
+            // REMOVIDO: newRequest.Id = Guid.NewGuid().ToString();
             newRequest.RequesterUsuarioId = currentUsuarioId; // Garantir que o solicitante esteja correto
             newRequest.DateRequested = DateTime.UtcNow;
-            newRequest.Status = Artigo.Intf.Enums.PendingStatus.AwaitingReview;
+            newRequest.Status = Artigo.Intf.Enums.StatusPendente.AguardandoRevisao;
 
             // 3. Persistir
             await _pendingRepository.AddAsync(newRequest);
@@ -435,7 +468,8 @@ namespace Artigo.Server.Services
             return newRequest;
         }
 
-        public async Task<bool> ResolvePendingRequestAsync(string pendingId, bool isApproved, string currentUsuarioId)
+        // RENOMEADO: ResolvePendingRequestAsync -> ResolverRequisicaoPendenteAsync
+        public async Task<bool> ResolverRequisicaoPendenteAsync(string pendingId, bool isApproved, string currentUsuarioId)
         {
             var pendingRequest = await _pendingRepository.GetByIdAsync(pendingId);
             if (pendingRequest == null) throw new KeyNotFoundException($"Requisição pendente com ID {pendingId} não encontrada.");
@@ -448,10 +482,14 @@ namespace Artigo.Server.Services
                 throw new UnauthorizedAccessException("Usuário não tem permissão para resolver requisições pendentes.");
             }
 
+            // NOVO: Define o IdAprovador e DataAprovacao antes de qualquer persistência, garantindo o registro.
+            pendingRequest.IdAprovador = currentUsuarioId;
+            pendingRequest.DataAprovacao = DateTime.UtcNow;
+
             // Rejeita ou Arquiva a requisição imediatamente se não for aprovada
             if (!isApproved)
             {
-                pendingRequest.Status = Artigo.Intf.Enums.PendingStatus.Rejected;
+                pendingRequest.Status = Artigo.Intf.Enums.StatusPendente.Rejeitado;
                 return await _pendingRepository.UpdateAsync(pendingRequest);
             }
 
@@ -471,26 +509,30 @@ namespace Artigo.Server.Services
                 switch (pendingRequest.CommandType)
                 {
                     case "ChangeArtigoStatus":
-                        // Ex: TargetType=Artigo, CommandType=ChangeArtigoStatus, Parameters={"NewStatus":"InReview"}
-                        if (pendingRequest.TargetType != Artigo.Intf.Enums.TargetEntityType.Artigo) throw new InvalidOperationException("TargetType inválido para o comando ChangeArtigoStatus.");
+                        // Ex: TargetType=Artigo, CommandType=ChangeArtigoStatus, Parameters={"NewStatus":"EmRevisao"}
+                        if (pendingRequest.TargetType != Artigo.Intf.Enums.TipoEntidadeAlvo.Artigo) throw new InvalidOperationException("TargetType inválido para o comando ChangeArtigoStatus.");
 
-                        if (parameters.TryGetValue("NewStatus", out string? newStatusString) && Enum.TryParse<ArtigoStatus>(newStatusString, true, out ArtigoStatus newStatus))
+                        if (parameters.TryGetValue("NewStatus", out string? newStatusString) && Enum.TryParse<StatusArtigo>(newStatusString, true, out StatusArtigo newStatus))
                         {
                             // Chamamos o método do Service para aplicar a lógica de transição de status
-                            executionSuccess = await ChangeArtigoStatusAsync(pendingRequest.TargetEntityId, newStatus, currentUsuarioId);
+                            executionSuccess = await AlterarStatusArtigoAsync(pendingRequest.TargetEntityId, newStatus, currentUsuarioId);
                         }
                         break;
 
                     case "UpdateStaffJob":
                         // Ex: TargetType=Staff, CommandType=UpdateStaffJob, Parameters={"NewJob":"EditorChefe"}
-                        if (pendingRequest.TargetType != Artigo.Intf.Enums.TargetEntityType.Staff) throw new InvalidOperationException("TargetType inválido para o comando UpdateStaffJob.");
+                        if (pendingRequest.TargetType != Artigo.Intf.Enums.TipoEntidadeAlvo.Staff) throw new InvalidOperationException("TargetType inválido para o comando UpdateStaffJob.");
 
                         // NOTE: Esta chamada deve ser implementada em IStaffService, mas usamos o Repositório para simplificar o fluxo de execução aqui.
                         var staffToUpdate = await _staffRepository.GetByIdAsync(pendingRequest.TargetEntityId);
-                        if (staffToUpdate != null && parameters.TryGetValue("NewJob", out string? newJobString) && Enum.TryParse<JobRole>(newJobString, true, out JobRole newJob))
+
+                        if (staffToUpdate != null && parameters.TryGetValue("NewJob", out string? newJobString) && Enum.TryParse<FuncaoTrabalho>(newJobString, true, out FuncaoTrabalho newJob))
                         {
-                            staffToUpdate.Job = newJob;
-                            executionSuccess = await _staffRepository.UpdateAsync(staffToUpdate);
+                            if (newJobString.Equals(newJob.ToString(), StringComparison.OrdinalIgnoreCase)) // Confirma que o valor é válido para o enum
+                            {
+                                staffToUpdate.Job = newJob;
+                                executionSuccess = await _staffRepository.UpdateAsync(staffToUpdate);
+                            }
                         }
                         break;
 
@@ -502,12 +544,12 @@ namespace Artigo.Server.Services
                 // 3. Finaliza a Requisição se a execução for bem-sucedida
                 if (executionSuccess)
                 {
-                    pendingRequest.Status = Artigo.Intf.Enums.PendingStatus.Approved;
+                    pendingRequest.Status = Artigo.Intf.Enums.StatusPendente.Aprovado;
                 }
                 else
                 {
                     // Se a execução da mudança falhar (e.g., ID não existe), rejeitamos a pending request.
-                    pendingRequest.Status = Artigo.Intf.Enums.PendingStatus.Rejected;
+                    pendingRequest.Status = Artigo.Intf.Enums.StatusPendente.Rejeitado;
                     // Lançar exceção para o log, mas registrar o status de rejeição.
                     throw new InvalidOperationException($"Falha na execução do comando '{pendingRequest.CommandType}' no item alvo ID {pendingRequest.TargetEntityId}.");
                 }
@@ -515,7 +557,7 @@ namespace Artigo.Server.Services
             catch (Exception ex)
             {
                 // Captura falhas de deserialização ou exceções de execução e marca como rejeitado.
-                pendingRequest.Status = Artigo.Intf.Enums.PendingStatus.Rejected;
+                pendingRequest.Status = Artigo.Intf.Enums.StatusPendente.Rejeitado;
                 // Re-lança a exceção para que o ErrorFilter do GraphQL a capture.
                 throw new InvalidOperationException($"Falha ao processar a requisição pendente: {ex.Message}", ex);
             }
@@ -525,12 +567,13 @@ namespace Artigo.Server.Services
                 await _pendingRepository.UpdateAsync(pendingRequest);
             }
 
-            return pendingRequest.Status == Artigo.Intf.Enums.PendingStatus.Approved;
+            return pendingRequest.Status == Artigo.Intf.Enums.StatusPendente.Aprovado;
         }
 
         // --- Volume Methods ---
 
-        public async Task<bool> UpdateVolumeMetadataAsync(Artigo.Intf.Entities.Volume updatedVolume, string currentUsuarioId)
+        // RENOMEADO: UpdateVolumeMetadataAsync -> AtualizarMetadadosVolumeAsync
+        public async Task<bool> AtualizarMetadadosVolumeAsync(Artigo.Intf.Entities.Volume updatedVolume, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
@@ -548,8 +591,46 @@ namespace Artigo.Server.Services
             }
 
             // 3. Persiste a atualização
-            // O repositório usa ReplaceOneAsync, então passamos o objeto com os novos dados.
             return await _volumeRepository.UpdateAsync(updatedVolume);
+        }
+
+        // =========================================================================
+        // STAFF MANAGEMENT
+        // =========================================================================
+
+        /// <sumario>
+        /// Cria um novo registro de Staff para um usuário externo e define sua função de trabalho.
+        /// REGRA: Apenas Administradores ou Editores Chefes podem executar esta ação.
+        /// </summary>
+        public async Task<Staff> CriarNovoStaffAsync(string usuarioId, FuncaoTrabalho job, string currentUsuarioId)
+        {
+            var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+
+            // 1. Aplicar Regra de Autorizacao
+            if (!CanCreateStaff(requestingStaff))
+            {
+                throw new UnauthorizedAccessException("Apenas Administradores ou Editores Chefes podem adicionar novos membros Staff.");
+            }
+
+            // 2. Lógica de Negócio: Evitar duplicação
+            var existingStaff = await _staffRepository.GetByUsuarioIdAsync(usuarioId);
+            if (existingStaff != null)
+            {
+                throw new InvalidOperationException($"O usuário com ID '{usuarioId}' já é um membro Staff (Função: {existingStaff.Job}).");
+            }
+
+            // 3. Criar e Persistir o novo registro Staff
+            var newStaff = new Staff
+            {
+                Id = string.Empty, // Garante que o ID seja string.Empty para o Repositório gerar o ObjectId
+                UsuarioId = usuarioId, // ID externa
+                Job = job,
+                IsActive = true
+            };
+
+            await _staffRepository.AddAsync(newStaff); // Repositório irá gerar o ObjectId
+
+            return newStaff;
         }
     }
 }

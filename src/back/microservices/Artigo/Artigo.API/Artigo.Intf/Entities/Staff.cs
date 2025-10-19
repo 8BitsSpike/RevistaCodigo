@@ -15,7 +15,7 @@ namespace Artigo.Intf.Entities
         public string UsuarioId { get; set; } = string.Empty;
 
         // A funcao principal do membro da equipe, usada para verificacao de permissao.
-        public JobRole Job { get; set; } = JobRole.EditorBolsista;
+        public FuncaoTrabalho Job { get; set; } = FuncaoTrabalho.EditorBolsista; // CORRIGIDO: FuncaoTrabalho.EditorBolsista
 
         // Identificador do ciclo de vida: Se este Staff esta ativo ou inativo.
         public bool IsActive { get; set; } = true;

@@ -1,13 +1,13 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
-using Artigo.Intf.Interfaces; // Added for IReadOnlyList reference if needed
+using Artigo.Intf.Interfaces; 
 using Artigo.Server.DTOs;
 using HotChocolate.Types;
 using Artigo.API.GraphQL.Resolvers;
-using System.Collections.Generic; // Added
-using System.Threading; // Added
-using System.Threading.Tasks; // Added
-using Artigo.API.GraphQL.DataLoaders; // Added to resolve ArtigoGroupedDataLoader
+using System.Collections.Generic; 
+using System.Threading; 
+using System.Threading.Tasks; 
+using Artigo.API.GraphQL.DataLoaders;
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -26,7 +26,8 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Edicao).Description("O número sequencial desta edição.");
             descriptor.Field(f => f.VolumeTitulo).Description("Título temático desta edição.");
             descriptor.Field(f => f.VolumeResumo).Description("Resumo do conteúdo desta edição.");
-            descriptor.Field(f => f.M).Type<NonNullType<EnumType<VolumeMes>>>().Description("O mês de publicação.");
+            // CORRIGIDO: VolumeMes -> MesVolume
+            descriptor.Field(f => f.M).Type<NonNullType<EnumType<MesVolume>>>().Description("O mês de publicação."); // FIX: VolumeMes -> MesVolume
             descriptor.Field(f => f.N).Description("O número do volume (compatibilidade histórica).");
             descriptor.Field(f => f.Year).Description("O ano de publicação.");
             descriptor.Field(f => f.DataCriacao).Description("Data de criação do registro do volume.");
@@ -42,28 +43,19 @@ namespace Artigo.API.GraphQL.Types
     // =========================================================================
     // Resolver para Artigos dentro do Volume
     // =========================================================================
-
-    // Resolver para buscar a lista de Artigos por Volume
     // Resolver para buscar a lista de Artigos por Volume
     public class ArticleInVolumeResolver
     {
-        public async Task<IReadOnlyList<ArtigoDTO>> GetArticlesAsync( // FIX: Made method async
+        public async Task<IReadOnlyList<ArtigoDTO>> GetArticlesAsync( 
             [Parent] Volume volume,
             [Service] ArtigoGroupedDataLoader dataLoader,
             CancellationToken cancellationToken)
         {
-            // O DataLoader retorna um ILookup. O Hot Chocolate normalmente resolve isso, 
-            // mas para forçar o compilador a aceitar a tipagem, usaremos o await e a conversão implícita.
-
-            // NOTE: GroupedDataLoader.LoadAsync returns Task<ILookup<TKey, TValue>>.
+            // NOTa: GroupedDataLoader.LoadAsync returna Task<ILookup<TKey, TValue>>.
             var lookup = await dataLoader.LoadAsync(volume.ArtigoIds, cancellationToken);
 
-            // The compiler expects the final type IReadOnlyList<ArtigoDTO>.
-            // We need to flatten the ILookup's result, as the type system is struggling to infer it.
-            // Since this resolver is called for a single Volume, we can get the list of values directly.
-
-            // This explicit conversion to IReadOnlyList<T> is required to guarantee the type system's satisfaction.
-            return lookup.SelectMany(g => g!).ToList()!; // FIX: Explicitly flatten the ILookup into a List/IReadOnlyList
+            
+            return lookup.SelectMany(g => g!).ToList()!;
         }
     }
 }

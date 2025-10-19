@@ -17,7 +17,7 @@ namespace Artigo.Intf.Entities
         public string TargetEntityId { get; set; } = string.Empty;
 
         // Tipo de entidade alvo (ajuda o serviço a saber qual coleção modificar).
-        public TargetEntityType TargetType { get; set; } = TargetEntityType.Artigo;
+        public TipoEntidadeAlvo TargetType { get; set; } = TipoEntidadeAlvo.Artigo; // CORRIGIDO: TipoEntidadeAlvo.Artigo
 
         // O ID do usuário (UsuarioId externo) que solicitou a ação.
         public string RequesterUsuarioId { get; set; } = string.Empty;
@@ -36,6 +36,12 @@ namespace Artigo.Intf.Entities
         public DateTime DateRequested { get; set; } = DateTime.UtcNow;
 
         // O status da requisição (Em analise, Aprovado, Rejeitado).
-        public PendingStatus Status { get; set; } = PendingStatus.AwaitingReview;
+        public StatusPendente Status { get; set; } = StatusPendente.AguardandoRevisao; // CORRIGIDO: StatusPendente.AguardandoRevisao
+
+        // NOVO: ID do usuário Staff que aprovou/rejeitou o pedido (UsuarioId externo).
+        public string? IdAprovador { get; set; }
+
+        // NOVO: Data e hora em que o pedido foi resolvido (aprovado ou rejeitado).
+        public DateTime? DataAprovacao { get; set; }
     }
 }

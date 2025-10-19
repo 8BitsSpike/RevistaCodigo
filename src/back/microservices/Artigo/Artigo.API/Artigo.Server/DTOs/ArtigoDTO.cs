@@ -1,4 +1,4 @@
-﻿using Artigo.Intf.Enums;
+﻿using Artigo.Intf.Enums; // Adicionado para acessar os nomes de enum corretos
 using System.Collections.Generic;
 using System;
 
@@ -19,17 +19,23 @@ namespace Artigo.Server.DTOs
         public string Resumo { get; set; } = string.Empty;
 
         // Status e tipo
-        public ArtigoStatus Status { get; set; }
-        public ArtigoTipo Tipo { get; set; }
+        public StatusArtigo Status { get; set; } // FIX: ArtigoStatus -> StatusArtigo
+        public TipoArtigo Tipo { get; set; } // FIX: ArtigoTipo -> TipoArtigo
 
         // Referencias de relacionamento
-        public List<string> AutorIds { get; set; } = []; // Autores cadastrados (UsuarioApi)
-        public List<string> AutorReference { get; set; } = []; // Autores nao cadastrados (Nome)
+        // RENOMEADO: AutorIds -> IdsAutor
+        public List<string> IdsAutor { get; set; } = []; // Autores cadastrados (UsuarioApi)
+        // RENOMEADO: AutorReference -> ReferenciasAutor
+        public List<string> ReferenciasAutor { get; set; } = []; // Autores nao cadastrados (Nome)
 
         // Referencias de ligacao 1:1 ou 1:N
-        public string EditorialId { get; set; } = string.Empty;
-        public string? VolumeId { get; set; } // Opcional, so existe se publicado
-        public List<string> MidiaIds { get; set; } = []; // Referencias a colecao Midia
+        // RENOMEADO: EditorialId -> IdEditorial
+        public string IdEditorial { get; set; } = string.Empty;
+        // RENOMEADO: VolumeId -> IdVolume
+        public string? IdVolume { get; set; } // Opcional, so existe se publicado
+
+        // MUDANÇA: Lista de objetos Midia (já alterado)
+        public List<MidiaEntryDTO> Midias { get; set; } = []; // ADICIONADO
 
         // Metricas Denormalizadas (Subset Pattern)
         public int TotalInteracoes { get; set; } = 0;
@@ -40,5 +46,17 @@ namespace Artigo.Server.DTOs
         public DateTime? DataPublicacao { get; set; }
         public DateTime? DataEdicao { get; set; }
         public DateTime? DataAcademica { get; set; }
+    }
+
+    /// <sumario>
+    /// Data Transfer Object (DTO) para uma entrada de Midia (URL, Alt Text, ID).
+    /// </sumario>
+    public class MidiaEntryDTO
+    {
+        // RENOMEADO: MidiaID -> IdMidia
+        public string IdMidia { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        // RENOMEADO: Alt -> TextoAlternativo
+        public string TextoAlternativo { get; set; } = string.Empty;
     }
 }

@@ -13,7 +13,7 @@ namespace Artigo.Intf.Interfaces
     {
         /// <sumario>
         /// Retorna o registro de Staff pelo ID do Usuário (UsuarioId).
-        /// Usado primariamente para checar a JobRole de um usuario antes de executar uma Query/Mutation.
+        /// Usado primariamente para checar a FuncaoTrabalho de um usuario antes de executar uma Query/Mutation.
         /// </sumario>
         /// <param name="usuarioId">O ID do usuário externo (do UsuarioApi).</param>
         Task<Staff?> GetByUsuarioIdAsync(string usuarioId);
@@ -28,8 +28,9 @@ namespace Artigo.Intf.Interfaces
         /// Retorna uma lista de todos os membros da Staff com uma funcao especifica.
         /// Útil para listar editores disponíveis para atribuicao.
         /// </sumario>
-        /// <param name="role">A funcao (JobRole) para filtrar.</param>
-        Task<IReadOnlyList<Staff>> GetByRoleAsync(JobRole role);
+        // CORRIGIDO: JobRole -> FuncaoTrabalho
+        /// <param name="role">A funcao (FuncaoTrabalho) para filtrar.</param>
+        Task<IReadOnlyList<Staff>> GetByRoleAsync(FuncaoTrabalho role);
 
         /// <sumario>
         /// Adiciona um novo membro à equipe Staff.
@@ -38,7 +39,7 @@ namespace Artigo.Intf.Interfaces
         Task AddAsync(Staff staffMember);
 
         /// <sumario>
-        /// Atualiza o registro de um membro da Staff (e.g., mudanca de JobRole).
+        /// Atualiza o registro de um membro da Staff (e.g., mudanca de FuncaoTrabalho).
         /// Requer permissao de Administrador.
         /// </sumario>
         /// <param name="staffMember">O objeto Staff com os dados atualizados.</param>

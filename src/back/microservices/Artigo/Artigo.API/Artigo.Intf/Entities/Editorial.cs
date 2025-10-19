@@ -17,7 +17,7 @@ namespace Artigo.Intf.Entities
         public string ArtigoId { get; set; } = string.Empty;
 
         // Posicao atual do artigo no ciclo de revisao.
-        public EditorialPosition Position { get; set; } = EditorialPosition.AwaitingReview;
+        public PosicaoEditorial Position { get; set; } = PosicaoEditorial.AguardandoRevisao; // CORRIGIDO: PosicaoEditorial.AguardandoRevisao
 
         // Versao atual do corpo do artigo sendo trabalhada (referencia a ArtigoHistory).
         public string CurrentHistoryId { get; set; } = string.Empty;

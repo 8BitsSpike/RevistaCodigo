@@ -33,6 +33,6 @@ namespace Artigo.Intf.Entities
         public string ArtigoId { get; set; } = string.Empty;
 
         // O papel desempenhado pelo autor naquele ciclo.
-        public ContribuicaoRole Role { get; set; }
+        public FuncaoContribuicao Role { get; set; } // CORRIGIDO: FuncaoContribuicao
     }
 }

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 
+
 namespace Artigo.Intf.Interfaces
 {
     /// <sumario>
@@ -22,8 +23,9 @@ namespace Artigo.Intf.Interfaces
         /// Retorna uma versao especifica de um artigo com base no ArtigoId e no Enum de Versao.
         /// </sumario>
         /// <param name="artigoId">O ID do artigo principal.</param>
-        /// <param name="version">O enum ArtigoVersion para a versao desejada.</param>
-        Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, ArtigoVersion version);
+        // CORRIGIDO: ArtigoVersion -> VersaoArtigo
+        /// <param name="version">O enum VersaoArtigo para a versao desejada.</param>
+        Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, VersaoArtigo version);
 
         /// <sumario>
         /// Retorna multiplos registros de ArtigoHistory com base em uma lista de IDs.

@@ -20,8 +20,13 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Id).Type<NonNullType<IdType>>().Description("ID único da interação/comentário.");
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo principal ao qual esta interação se aplica.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário externo que fez a interação.");
+
+            // NOVO CAMPO: Nome desnormalizado do usuário
+            descriptor.Field(f => f.UsuarioNome).Description("Nome de exibição do autor da interação (desnormalizado).");
+
             descriptor.Field(f => f.Content).Description("O conteúdo do comentário.");
-            descriptor.Field(f => f.Type).Type<NonNullType<EnumType<Artigo.Intf.Enums.InteractionType>>>().Description("Tipo de interação (Comentário Público ou Editorial).");
+            // CORRIGIDO: Artigo.Intf.Enums.InteractionType -> TipoInteracao
+            descriptor.Field(f => f.Type).Type<NonNullType<EnumType<TipoInteracao>>>().Description("Tipo de interação (Comentário Público ou Editorial).");
             descriptor.Field(f => f.ParentCommentId).Description("ID do comentário pai, se esta interação for uma resposta.");
             descriptor.Field(f => f.DataCriacao).Description("Data e hora de criação.");
             descriptor.Field(f => f.DataUltimaEdicao).Description("Data da última edição.");

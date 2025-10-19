@@ -3,6 +3,7 @@ using Artigo.DbContext.Interfaces;
 using Artigo.DbContext.PersistenceModels;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
+using Artigo.Intf.Enums; // Adicionado para VersaoArtigo
 using AutoMapper;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -40,9 +41,13 @@ namespace Artigo.DbContext.Repositories
             return _mapper.Map<ArtigoHistory>(model);
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoHistoryRepository)
-        public async Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, Artigo.Intf.Enums.ArtigoVersion version)
+        /// <sumario>
+        /// Retorna uma versao especifica de um artigo com base no ArtigoId e no Enum de Versao.
+        /// </sumario>
+        // CORRIGIDO: ArtigoVersion -> VersaoArtigo
+        public async Task<ArtigoHistory?> GetByArtigoAndVersionAsync(string artigoId, VersaoArtigo version)
         {
+            // CORRIGIDO: ArtigoVersion -> VersaoArtigo
             var filter = Builders<ArtigoHistoryModel>.Filter.Eq(h => h.ArtigoId, artigoId) &
                          Builders<ArtigoHistoryModel>.Filter.Eq(h => h.Version, version);
 
@@ -51,7 +56,6 @@ namespace Artigo.DbContext.Repositories
             return _mapper.Map<ArtigoHistory>(model);
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoHistoryRepository)
         public async Task<IReadOnlyList<ArtigoHistory>> GetByIdsAsync(IReadOnlyList<string> ids)
         {
             var filter = Builders<ArtigoHistoryModel>.Filter.In(h => h.Id, ids);
@@ -76,7 +80,6 @@ namespace Artigo.DbContext.Repositories
             _mapper.Map(model, history);
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoHistoryRepository)
         public async Task<bool> UpdateAsync(ArtigoHistory historyEntry)
         {
             if (!ObjectId.TryParse(historyEntry.Id, out var objectId)) return false;

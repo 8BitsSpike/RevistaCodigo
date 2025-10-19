@@ -20,12 +20,12 @@ var builder = WebApplication.CreateBuilder(args);
 // =========================================================================
 
 // A. Singleton do IMongoClient (Conexão Centralizada)
-//builder.Services.AddSingleton<IMongoClient>(sp =>
-//{
-//    var connectionString = builder.Configuration.GetConnectionString("MongoDb")
-//        ?? "mongodb://localhost:27017/";
-//    return new MongoClient(connectionString);
-//});
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("MongoDb")
+        ?? "mongodb://localhost:27017/";
+    return new MongoClient(connectionString);
+});
 
 // B. Implementação do contexto de dados (IMongoDbContext)
 builder.Services.AddSingleton<Artigo.DbContext.Interfaces.IMongoDbContext>(sp =>
@@ -104,20 +104,20 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddType<ExternalUserType>()
 
     // Mapeia Enums
-    .BindRuntimeType<ArtigoStatus, EnumType<ArtigoStatus>>()
-    .BindRuntimeType<ArtigoTipo, EnumType<ArtigoTipo>>()
-    .BindRuntimeType<EditorialPosition, EnumType<EditorialPosition>>()
-    .BindRuntimeType<ContribuicaoRole, EnumType<ContribuicaoRole>>()
-    .BindRuntimeType<Artigo.Intf.Enums.InteractionType, EnumType<Artigo.Intf.Enums.InteractionType>>()
-    .BindRuntimeType<PendingStatus, EnumType<PendingStatus>>()
-    .BindRuntimeType<TargetEntityType, EnumType<TargetEntityType>>()
-    .BindRuntimeType<JobRole, EnumType<JobRole>>()
-    .BindRuntimeType<VolumeMes, EnumType<VolumeMes>>()
+    .BindRuntimeType<StatusArtigo, EnumType<StatusArtigo>>() // FIX: ArtigoStatus -> StatusArtigo
+    .BindRuntimeType<TipoArtigo, EnumType<TipoArtigo>>() // FIX: ArtigoTipo -> TipoArtigo
+    .BindRuntimeType<PosicaoEditorial, EnumType<PosicaoEditorial>>() // FIX: EditorialPosition -> PosicaoEditorial
+    .BindRuntimeType<FuncaoContribuicao, EnumType<FuncaoContribuicao>>() // FIX: ContribuicaoRole -> FuncaoContribuicao
+    .BindRuntimeType<TipoInteracao, EnumType<TipoInteracao>>() // FIX: InteractionType -> TipoInteracao
+    .BindRuntimeType<StatusPendente, EnumType<StatusPendente>>() // FIX: PendingStatus -> StatusPendente
+    .BindRuntimeType<TipoEntidadeAlvo, EnumType<TipoEntidadeAlvo>>() // FIX: TargetEntityType -> TipoEntidadeAlvo
+    .BindRuntimeType<FuncaoTrabalho, EnumType<FuncaoTrabalho>>() // FIX: JobRole -> FuncaoTrabalho
+    .BindRuntimeType<MesVolume, EnumType<MesVolume>>() // FIX: VolumeMes -> MesVolume
 
     // Configura DataLoaders (registro simplificado)
     .AddDataLoader<EditorialDataLoader>()
     .AddDataLoader<VolumeDataLoader>()
-    .AddDataLoader<AutorDataLoader>()
+    .AddDataLoader<AutorBatchDataLoader>()
     .AddDataLoader<InteractionDataLoader>()
     .AddDataLoader<CurrentHistoryContentDataLoader>()
     .AddDataLoader<ArtigoHistoryGroupedDataLoader>()

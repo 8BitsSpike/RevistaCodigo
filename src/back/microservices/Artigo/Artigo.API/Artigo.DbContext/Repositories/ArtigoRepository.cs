@@ -45,8 +45,11 @@ namespace Artigo.DbContext.Repositories
             return _mapper.Map<Artigo.Intf.Entities.Artigo>(model);
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoRepository)
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByStatusAsync(ArtigoStatus status)
+        /// <sumario>
+        /// Retorna todos os Artigos que estao em um status especifico.
+        /// </sumario>
+        // CORRIGIDO: ArtigoStatus -> StatusArtigo
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByStatusAsync(StatusArtigo status)
         {
             var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, status);
             var models = await _artigos.Find(filter).ToListAsync();
@@ -54,7 +57,11 @@ namespace Artigo.DbContext.Repositories
             return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoRepository)
+        /// <sumario>
+        /// Retorna multiplos Artigos com base em uma lista de IDs.
+        /// Essencial para DataLoaders e bulk retrieval.
+        /// </sumario>
+        /// <param name="ids">Lista de IDs de artigos.</param>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetByIdsAsync(IReadOnlyList<string> ids)
         {
             // O MongoDB Driver lida com a lista de strings (IDs) na clausula $in
@@ -70,7 +77,7 @@ namespace Artigo.DbContext.Repositories
 
             await _artigos.InsertOneAsync(model);
 
-            // Atualiza a entidade de domínio com o ID gerado (que o MongoDB setou no model)
+            // FIX 60: Atualiza a entidade de domínio com o ID gerado (que o MongoDB setou no model)
             _mapper.Map(model, artigo);
         }
 
@@ -89,7 +96,9 @@ namespace Artigo.DbContext.Repositories
             return result.IsAcknowledged && result.ModifiedCount == 1;
         }
 
-        // NOVO MÉTODO (Implementa o contrato IArtigoRepository)
+        /// <sumario>
+        /// Atualiza apenas as métricas de interação e comentário do artigo (otimização).
+        /// </sumario>
         public async Task<bool> UpdateMetricsAsync(string id, int totalComentarios, int totalInteracoes)
         {
             if (!ObjectId.TryParse(id, out var objectId)) return false;

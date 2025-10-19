@@ -1,16 +1,16 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
+using GreenDonut; // Assuming GreenDonut is the correct using for HotChocolate DataLoaders
 
-
-namespace Artigo.Api.GraphQL.Resolvers
+namespace Artigo.API.GraphQL.DataLoaders // FIX: Artigo.Api.GraphQL.DataLoaders -> Artigo.API.GraphQL.DataLoaders
 {
     /// <sumario>
     /// DataLoader responsável por resolver o problema N+1 ao buscar Autores por ID.
     /// </sumario>
-    public class AutorDataLoader : BatchDataLoader<string, Autor>
+    public class AutorBatchDataLoader : BatchDataLoader<string, Autor>
     {
         private readonly IAutorRepository _autorRepository;
-        public AutorDataLoader(
+        public AutorBatchDataLoader(
             IAutorRepository autorRepository,
             IBatchScheduler scheduler)
             : base(scheduler, new DataLoaderOptions())

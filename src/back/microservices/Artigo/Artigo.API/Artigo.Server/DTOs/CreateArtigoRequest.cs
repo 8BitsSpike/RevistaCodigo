@@ -20,13 +20,15 @@ namespace Artigo.Server.DTOs
 
         // Conteúdo Principal do Artigo
         [Required(ErrorMessage = "O conteúdo do artigo é obrigatório.")]
-        public string Content { get; set; } = string.Empty; // CAMPO ADICIONADO
+        public string Conteudo { get; set; } = string.Empty; // CAMPO ADICIONADO
 
         // Tipo de artigo (Enum)
-        public ArtigoTipo Tipo { get; set; } = ArtigoTipo.Artigo;
+        public TipoArtigo Tipo { get; set; } = TipoArtigo.Artigo; // FIX: ArtigoTipo -> TipoArtigo
 
         // Autores: O cliente envia a lista de IDs de usuários cadastrados e os nomes dos não-cadastrados.
-        public List<string> AutorIds { get; set; } = [];
-        public List<string> AutorReference { get; set; } = [];
+        // RENOMEADO: AutorIds -> IdsAutor
+        public List<string> IdsAutor { get; set; } = [];
+        // RENOMEADO: AutorReference -> ReferenciasAutor
+        public List<string> ReferenciasAutor { get; set; } = [];
     }
 }

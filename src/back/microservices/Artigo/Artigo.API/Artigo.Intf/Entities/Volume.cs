@@ -17,7 +17,7 @@ namespace Artigo.Intf.Entities
         public int Edicao { get; set; } // O numero sequencial desta edicao da revista.
         public string VolumeTitulo { get; set; } = string.Empty; // Titulo desta edicao
         public string VolumeResumo { get; set; } = string.Empty; // Resumo do contepudo desta edicao
-        public VolumeMes M { get; set; } // O mes de publicacao (Enum).
+        public MesVolume M { get; set; } // CORRIGIDO: MesVolume (O mes de publicacao (Enum).)
         public int N { get; set; } // O numero do volume (mantido por compatibilidade historica).
         public int Year { get; set; } // O ano da publicacao.
 

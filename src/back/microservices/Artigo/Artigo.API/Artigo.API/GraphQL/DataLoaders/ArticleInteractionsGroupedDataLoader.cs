@@ -5,20 +5,20 @@ using System.Threading.Tasks;
 using Artigo.Intf.Entities;
 using Artigo.Intf.Interfaces;
 
-namespace Artigo.Api.GraphQL.Resolvers
+namespace Artigo.Api.GraphQL.DataLoaders
 {
     /// <sumario>
     /// DataLoader responsável por resolver o problema N+1 ao buscar Interacoes (Comentarios)
     /// para multiplos artigos em uma única chamada.
     /// </sumario>
-    public class InteractionDataLoader : GroupedDataLoader<string, Interaction>
+    public class ArticleInteractionsDataLoader : GroupedDataLoader<string, Interaction>
     {
         private readonly IInteractionRepository _interactionRepository;
 
         /// <sumario>
         /// Construtor que recebe o IInteractionRepository via injeção de dependência.
         /// </sumario>
-        public InteractionDataLoader(
+        public ArticleInteractionsDataLoader(
             IBatchScheduler batchScheduler,
             IInteractionRepository interactionRepository)
             : base(batchScheduler, new DataLoaderOptions())

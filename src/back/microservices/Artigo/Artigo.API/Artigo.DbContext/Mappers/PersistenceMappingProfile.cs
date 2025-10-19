@@ -24,14 +24,16 @@ namespace Artigo.DbContext.Mappers
             // EditorialTeam <-> EditorialTeamModel
             CreateMap<EditorialTeam, EditorialTeamModel>().ReverseMap();
 
+            // ADICIONADO: MidiaEntry <-> MidiaEntryModel
+            CreateMap<MidiaEntry, MidiaEntryModel>().ReverseMap();
+
             // =================================================================================
             // Mapeamentos de Entidades de Colecoes (Collection Entities)
             // =================================================================================
 
             // Artigo <-> ArtigoModel
             CreateMap<Artigo.Intf.Entities.Artigo, ArtigoModel>().ReverseMap();
-            // Nota: O .ReverseMap() lidara com a conversao de ObjectId (string) para string,
-            // e os Enums padrao (ArtigoStatus, ArtigoTipo) que sao consistentes.
+            // Nota: O .ReverseMap() lidara com a conversao da lista Midias automaticamente.
 
             // Autor <-> AutorModel
             CreateMap<Autor, AutorModel>()
@@ -61,10 +63,19 @@ namespace Artigo.DbContext.Mappers
             CreateMap<ArtigoHistory, ArtigoHistoryModel>().ReverseMap();
 
             // Interaction <-> InteractionModel
-            CreateMap<Artigo.Intf.Entities.Interaction, InteractionModel>().ReverseMap();
+            CreateMap<Artigo.Intf.Entities.Interaction, InteractionModel>()
+                // Mapeamento do novo campo de desnormalização
+                .ForMember(dest => dest.UsuarioNome, opt => opt.MapFrom(src => src.UsuarioNome))
+                .ReverseMap();
+            // Nota: ReverseMap cuida do mapeamento de InteractionModel para Interaction, incluindo UsuarioNome.
 
             // Pending <-> PendingModel
-            CreateMap<Pending, PendingModel>().ReverseMap();
+            CreateMap<Pending, PendingModel>()
+                // Mapeamento de rastreabilidade
+                .ForMember(dest => dest.IdAprovador, opt => opt.MapFrom(src => src.IdAprovador))
+                .ForMember(dest => dest.DataAprovacao, opt => opt.MapFrom(src => src.DataAprovacao))
+                .ReverseMap();
+            // Nota: Mapeamento dos novos campos incluído na linha acima.
 
             // Staff <-> StaffModel
             CreateMap<Staff, StaffModel>().ReverseMap();

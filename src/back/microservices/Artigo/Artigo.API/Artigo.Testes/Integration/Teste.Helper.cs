@@ -4,59 +4,117 @@ using Artigo.DbContext.Repositories;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.Mappers;
 using Artigo.Server.Services;
+using Artigo.Server.Interfaces;
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using Xunit;
+using Microsoft.Extensions.Logging;
+using Artigo.Intf.Entities;
+using Artigo.Intf.Enums;
+using System;
+using System.Threading.Tasks;
 
 namespace Artigo.Testes.Integration
 {
     // Usado para garantir que a conexão e o banco de dados sejam configurados uma vez por classe de teste.
-    public class ArtigoIntegrationTestFixture
+    public class ArtigoIntegrationTestFixture : IDisposable
     {
         public IServiceProvider ServiceProvider { get; }
         private const string TestDatabaseName = "MagazineArtigoTestDB";
         private const string MongoConnectionString = "mongodb://localhost:27017";
 
+        // ID de usuário Administrador de teste (para checagem de autorização)
+        private const string AdminTestUsuarioId = "test_admin_401";
+
         public ArtigoIntegrationTestFixture()
         {
             var services = new ServiceCollection();
 
-            // 1. Configuração do AutoMapper - FIX: Usando a inicialização explícita
+            services.AddLogging();
+
+            // 1. Configuração do AutoMapper
             services.AddSingleton<AutoMapper.IMapper>(sp =>
             {
-                // Inject ILoggerFactory to satisfy the MapperConfiguration constructor's strict requirement.
-                var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
                 var mapperConfig = new AutoMapper.MapperConfiguration(cfg =>
                 {
                     cfg.AddProfile<ArtigoMappingProfile>();
                     cfg.AddProfile<PersistenceMappingProfile>();
-                }, loggerFactory); // Explicitly pass the logger factory
+                }, loggerFactory);
 
                 mapperConfig.AssertConfigurationIsValid();
                 return mapperConfig.CreateMapper();
             });
 
-            // Ensure ILoggerFactory is available in the services collection
-            services.AddLogging(); // Provides ILoggerFactory dependency
-
-            // 2. Configuração do MongoDB e Contexto (remains the same)
+            // 2. Configuração do MongoDB e Contexto
             var mongoClient = new MongoClient(MongoConnectionString);
-            // ... (rest of the mongo setup) ...
 
-            // 3. Registro de Repositories e Services (remains the same)
-            // ...
+            services.AddSingleton<IMongoClient>(mongoClient);
+
+            services.AddSingleton<Artigo.DbContext.Interfaces.IMongoDbContext>(sp =>
+            {
+                var client = sp.GetRequiredService<IMongoClient>();
+                return new MongoDbContext(client, TestDatabaseName);
+            });
+
+            // 3. REGISTRO DE REPOSITORIES E SERVICES
+
+            services.AddScoped<IArtigoRepository, ArtigoRepository>();
+            services.AddScoped<IAutorRepository, AutorRepository>();
+            services.AddScoped<IEditorialRepository, EditorialRepository>();
+            services.AddScoped<IArtigoHistoryRepository, ArtigoHistoryRepository>();
+            services.AddScoped<IInteractionRepository, InteractionRepository>();
+            services.AddScoped<IPendingRepository, PendingRepository>();
+            services.AddScoped<IStaffRepository, StaffRepository>();
+            services.AddScoped<IVolumeRepository, VolumeRepository>();
+
+            services.AddScoped<IArtigoService, ArtigoService>();
+            services.AddScoped<IExternalUserService, ExternalUserService>();
+
 
             ServiceProvider = services.BuildServiceProvider();
+
+            // 4. SETUP INICIAL DO BANCO DE DADOS (INSERÇÃO DE STAFF ADMINISTRADOR)
+            SetupInitialStaff(ServiceProvider).GetAwaiter().GetResult();
         }
 
-        // Método para limpar o banco de dados de teste após a execução dos testes
+        /// <sumario>
+        /// Garante que o Staff Administrador necessário para testes de autorização exista.
+        /// </sumario>
+        private async Task SetupInitialStaff(IServiceProvider serviceProvider)
+        {
+            // O IStaffRepository é Scoped, então precisamos de um novo escopo para resolvê-lo.
+            using var scope = serviceProvider.CreateScope();
+            var staffRepository = scope.ServiceProvider.GetRequiredService<IStaffRepository>();
+
+            var existingStaff = await staffRepository.GetByUsuarioIdAsync(AdminTestUsuarioId);
+
+            if (existingStaff == null)
+            {
+                var adminStaff = new Staff
+                {
+                    Id = string.Empty, // FIX: Remoção da atribuição de Guid.NewGuid().ToString()
+                    UsuarioId = AdminTestUsuarioId,
+                    Job = FuncaoTrabalho.Administrador,
+                    IsActive = true
+                };
+
+                // Nota: Usando AddAsync do IStaffRepository para persistir.
+                await staffRepository.AddAsync(adminStaff);
+            }
+        }
+
+        /// <sumario>
+        /// Método para LIMPAR (DELETAR) o banco de dados de teste após a execução dos testes.
+        /// </sumario>
         public void Dispose()
         {
-            // Opcional: Implementar a remoção do banco de dados de teste aqui
-            // var client = new MongoClient(MongoConnectionString);
-            // client.DropDatabase(TestDatabaseName);
+            // Nota: O método Dispose não pode ser async, então usamos .GetAwaiter().GetResult() 
+            // para execução síncrona do DropDatabase.
+            var client = new MongoClient(MongoConnectionString);
+            client.DropDatabase(TestDatabaseName);
         }
     }
 }

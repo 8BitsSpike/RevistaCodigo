@@ -16,7 +16,7 @@ namespace Artigo.DbContext.Repositories
 {
     /// <sumario>
     /// Implementacao do contrato de persistencia IStaffRepository.
-    /// Gerencia a lista de membros da equipe editorial e suas funcoes (JobRole).
+    /// Gerencia a lista de membros da equipe editorial e suas funcoes (FuncaoTrabalho).
     /// Essencial para a camada de Autorizacao.
     /// </sumario>
     public class StaffRepository : IStaffRepository
@@ -54,8 +54,10 @@ namespace Artigo.DbContext.Repositories
         }
 
         // Implementa o contrato IStaffRepository (novo método)
-        public async Task<IReadOnlyList<Staff>> GetByRoleAsync(JobRole role)
+        // CORRIGIDO: JobRole -> FuncaoTrabalho
+        public async Task<IReadOnlyList<Staff>> GetByRoleAsync(FuncaoTrabalho role)
         {
+            // CORRIGIDO: StaffModel.Job -> FuncaoTrabalho
             var models = await _staff
                 .Find(s => s.Job == role)
                 .ToListAsync();
@@ -86,7 +88,7 @@ namespace Artigo.DbContext.Repositories
 
             var model = _mapper.Map<StaffModel>(staffMember);
 
-            // Usa ReplaceOneAsync para atualizar todo o documento (incluindo JobRole)
+            // Usa ReplaceOneAsync para atualizar todo o documento (incluindo FuncaoTrabalho)
             var result = await _staff.ReplaceOneAsync(
                 s => s.Id == objectId.ToString(),
                 model

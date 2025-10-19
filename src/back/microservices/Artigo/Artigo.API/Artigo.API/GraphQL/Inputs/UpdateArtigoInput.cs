@@ -15,11 +15,11 @@ namespace Artigo.API.GraphQL.Inputs
         public string? Resumo { get; set; }
 
         // Tipo de artigo (Enum)
-        public ArtigoTipo? Tipo { get; set; }
+        public TipoArtigo? Tipo { get; set; } // FIX: ArtigoTipo -> TipoArtigo
 
         // Autores: Permite adicionar ou remover autores/co-autores, mas como uma lista completa.
-        public List<string>? AutorIds { get; set; }
-        public List<string>? AutorReference { get; set; }
+        public List<string>? IdsAutor { get; set; } // FIX: AutorIds -> IdsAutor
+        public List<string>? ReferenciasAutor { get; set; } // FIX: AutorReference -> ReferenciasAutor
     }
 
     /// <sumario>

@@ -21,7 +21,13 @@ namespace Artigo.Intf.Interfaces
         /// REGRA: Qualquer usuario pode ler se o Status for 'Published'.
         /// </sumario>
         /// <param name="id">O ID do artigo.</param>
-        Task<Artigo.Intf.Entities.Artigo?> GetPublishedArtigoAsync(string id);
+        Task<Artigo.Intf.Entities.Artigo?> ObterArtigoPublicadoAsync(string id);
+
+        /// <sumario>
+        /// Retorna todos os artigos publicados para leitores não autenticados (visitantes).
+        /// REGRA: Retorna apenas Artigos com Status 'Published'.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPublicadosParaVisitantesAsync();
 
         /// <sumario>
         /// Retorna um Artigo para o ciclo editorial (unidade de trabalho).
@@ -29,16 +35,16 @@ namespace Artigo.Intf.Interfaces
         /// </sumario>
         /// <param name="id">O ID do artigo.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando acessar.</param>
-        Task<Artigo.Intf.Entities.Artigo?> GetArtigoForEditorialAsync(string id, string currentUsuarioId);
+        Task<Artigo.Intf.Entities.Artigo?> ObterArtigoParaEditorialAsync(string id, string currentUsuarioId);
 
         /// <sumario>
         /// Cria um novo artigo e a entrada Editorial correspondente.
         /// REGRA: Qualquer usuario pode enviar um novo artigo.
         /// </sumario>
         /// <param name="artigo">O objeto Artigo preenchido.</param>
-        /// <param name="initialContent">O conteúdo inicial do corpo do artigo (necessário para o ArtigoHistory).</param> // ADDED
+        /// <param name="conteudoInicial">O conteúdo inicial do corpo do artigo (necessário para o ArtigoHistory).</param> 
         /// <param name="usuarioId">O ID do usuario externo que esta criando o artigo (AutorPrincipal).</param>
-        Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string initialContent, string usuarioId); // UPDATED SIGNATURE
+        Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string conteudoInicial, string usuarioId);
 
         /// <sumario>
         /// Atualiza metadados simples (titulo, resumo) de um artigo.
@@ -46,7 +52,7 @@ namespace Artigo.Intf.Interfaces
         /// </sumario>
         /// <param name="artigo">Artigo com dados para atualizacao.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando atualizar.</param>
-        Task<bool> UpdateArtigoMetadataAsync(Artigo.Intf.Entities.Artigo artigo, string currentUsuarioId);
+        Task<bool> AtualizarMetadadosArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string currentUsuarioId);
 
         /// <sumario>
         /// Atualiza o corpo do artigo, criando um novo registro em ArtigoHistory.
@@ -55,7 +61,7 @@ namespace Artigo.Intf.Interfaces
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newContent">O novo corpo do texto do artigo.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando editar.</param>
-        Task<bool> UpdateArtigoContentAsync(string artigoId, string newContent, string currentUsuarioId);
+        Task<bool> AtualizarConteudoArtigoAsync(string artigoId, string newContent, string currentUsuarioId);
 
         /// <sumario>
         /// Altera o Status (Draft, InReview, Published, etc.) do artigo.
@@ -64,14 +70,14 @@ namespace Artigo.Intf.Interfaces
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newStatus">O novo status a ser definido.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo solicitando a mudanca.</param>
-        Task<bool> ChangeArtigoStatusAsync(string artigoId, ArtigoStatus newStatus, string currentUsuarioId);
+        Task<bool> AlterarStatusArtigoAsync(string artigoId, StatusArtigo newStatus, string currentUsuarioId); // FIX: ArtigoStatus -> StatusArtigo
 
         /// <sumario>
         /// Retorna todos os artigos que estao em um status editorial especifico.
         /// REGRA: Requer permissao de Staff.
         /// </summary>
         /// <param name="status">O status editorial a ser filtrado.</param>
-        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> GetArtigosByStatusAsync(ArtigoStatus status, string currentUsuarioId);
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorStatusAsync(StatusArtigo status, string currentUsuarioId); // FIX: ArtigoStatus -> StatusArtigo
 
         // =========================================================================
         // INTERACTION (COMENTARIOS) MANAGEMENT
@@ -85,7 +91,7 @@ namespace Artigo.Intf.Interfaces
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newComment">O objeto Interaction preenchido (Content, UsuarioId).</param>
         /// <param name="parentCommentId">ID do comentario pai (threading). Deve ser um ComentarioPublico ou null.</param>
-        Task<Interaction> CreatePublicCommentAsync(string artigoId, Interaction newComment, string? parentCommentId);
+        Task<Interaction> CriarComentarioPublicoAsync(string artigoId, Interaction newComment, string? parentCommentId);
 
         /// <sumario>
         /// Cria um ComentarioEditorial em um artigo.
@@ -95,7 +101,7 @@ namespace Artigo.Intf.Interfaces
         /// <param name="artigoId">ID do artigo.</param>
         /// <param name="newComment">O objeto Interaction preenchido (Content, UsuarioId).</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando comentar.</param>
-        Task<Interaction> CreateEditorialCommentAsync(string artigoId, Interaction newComment, string currentUsuarioId);
+        Task<Interaction> CriarComentarioEditorialAsync(string artigoId, Interaction newComment, string currentUsuarioId);
 
         // =========================================================================
         // PENDING (FLUXO DE APROVACAO) MANAGEMENT
@@ -107,7 +113,7 @@ namespace Artigo.Intf.Interfaces
         /// </summary>
         /// <param name="newRequest">O objeto Pending a ser criado.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo solicitando.</param>
-        Task<Pending> CreatePendingRequestAsync(Pending newRequest, string currentUsuarioId);
+        Task<Pending> CriarRequisicaoPendenteAsync(Pending newRequest, string currentUsuarioId);
 
         /// <sumario>
         /// Modifica o Status de um item Pendente (Aprovado/Rejeitado).
@@ -116,7 +122,7 @@ namespace Artigo.Intf.Interfaces
         /// <param name="pendingId">ID da requisicao pendente.</param>
         /// <param name="isApproved">Indica se a requisicao foi aprovada (true) ou rejeitada (false).</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando resolver.</param>
-        Task<bool> ResolvePendingRequestAsync(string pendingId, bool isApproved, string currentUsuarioId);
+        Task<bool> ResolverRequisicaoPendenteAsync(string pendingId, bool isApproved, string currentUsuarioId);
 
         // =========================================================================
         // VOLUME MANAGEMENT
@@ -128,6 +134,19 @@ namespace Artigo.Intf.Interfaces
         /// </summary>
         /// <param name="updatedVolume">O objeto Volume com os dados atualizados.</param>
         /// <param name="currentUsuarioId">O ID do usuario externo tentando atualizar.</param>
-        Task<bool> UpdateVolumeMetadataAsync(Volume updatedVolume, string currentUsuarioId);
+        Task<bool> AtualizarMetadadosVolumeAsync(Volume updatedVolume, string currentUsuarioId);
+
+        // =========================================================================
+        // STAFF MANAGEMENT
+        // =========================================================================
+
+        /// <sumario>
+        /// Cria um novo registro de Staff para um usuário externo e define sua função de trabalho.
+        /// REGRA: Apenas Administradores podem executar esta ação diretamente.
+        /// </summary>
+        /// <param name="usuarioId">O ID do usuário externo a ser promovido.</param>
+        /// <param name="job">A função de trabalho inicial (e.g., EditorBolsista).</param>
+        /// <param name="currentUsuarioId">O ID do usuário externo que está realizando a promoção (requer ser Administrador).</param>
+        Task<Staff> CriarNovoStaffAsync(string usuarioId, FuncaoTrabalho job, string currentUsuarioId);
     }
 }

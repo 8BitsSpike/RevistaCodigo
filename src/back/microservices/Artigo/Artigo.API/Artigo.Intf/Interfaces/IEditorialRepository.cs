@@ -43,7 +43,8 @@ namespace Artigo.Intf.Interfaces
         /// <sumario>
         /// Atualiza apenas a Position e a data LastUpdated do registro Editorial.
         /// </sumario>
-        Task<bool> UpdatePositionAsync(string editorialId, EditorialPosition newPosition);
+        // CORRIGIDO: EditorialPosition -> PosicaoEditorial
+        Task<bool> UpdatePositionAsync(string editorialId, PosicaoEditorial newPosition);
 
         /// <sumario>
         /// Atualiza a referencia CurrentHistoryId e a lista HistoryIds.

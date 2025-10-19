@@ -37,7 +37,8 @@ namespace Artigo.API.GraphQL.Types
 
             descriptor.Field(f => f.Id).Type<NonNullType<IdType>>().Description("ID local do registro de Staff.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário no sistema externo (UsuarioApi).");
-            descriptor.Field(f => f.Job).Type<NonNullType<EnumType<JobRole>>>().Description("A função principal do membro da equipe (e.g., EditorChefe).");
+            // CORRIGIDO: JobRole -> FuncaoTrabalho
+            descriptor.Field(f => f.Job).Type<NonNullType<EnumType<FuncaoTrabalho>>>().Description("A função principal do membro da equipe (e.g., EditorChefe)."); // FIX: JobRole -> FuncaoTrabalho
             descriptor.Field(f => f.IsActive).Description("Indicador de status: se o membro da Staff está ativo.");
 
             // FIX: Campo para resolver o nome e media (avatar) do Staff a partir do UsuarioAPI

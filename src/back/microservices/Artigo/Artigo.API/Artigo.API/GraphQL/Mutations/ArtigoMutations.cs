@@ -32,7 +32,8 @@ namespace Artigo.API.GraphQL.Mutations
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
             var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(input);
 
-            var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, input.Content, currentUsuarioId);
+            // CORRIGIDO: Passando input.Conteudo para o serviço
+            var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, input.Conteudo, currentUsuarioId);
             return _mapper.Map<ArtigoDTO>(createdArtigo);
         }
 
@@ -43,21 +44,23 @@ namespace Artigo.API.GraphQL.Mutations
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
 
+            // NOTE: Este mapeamento manual deve ser revisado em um passo futuro para usar AutoMapper para um mapeamento parcial mais robusto.
             var artigoEntity = new Artigo.Intf.Entities.Artigo
             {
                 Id = id,
                 Titulo = input.Titulo ?? string.Empty,
                 Resumo = input.Resumo ?? string.Empty,
-                Tipo = input.Tipo ?? ArtigoTipo.Artigo,
-                AutorIds = input.AutorIds ?? new List<string>(),
-                AutorReference = input.AutorReference ?? new List<string>()
+                Tipo = input.Tipo ?? TipoArtigo.Artigo,
+                // Propriedades do DTO já corrigidas para IdsAutor/ReferenciasAutor
+                AutorIds = input.IdsAutor ?? new List<string>(),
+                AutorReference = input.ReferenciasAutor ?? new List<string>()
             };
 
-            var success = await _artigoService.UpdateArtigoMetadataAsync(artigoEntity, currentUsuarioId);
+            var success = await _artigoService.AtualizarMetadadosArtigoAsync(artigoEntity, currentUsuarioId);
 
             if (success)
             {
-                var updatedEntity = await _artigoService.GetArtigoForEditorialAsync(id, currentUsuarioId)
+                var updatedEntity = await _artigoService.ObterArtigoParaEditorialAsync(id, currentUsuarioId)
                                        ?? throw new InvalidOperationException("Artigo atualizado, mas falha ao recuperá-lo.");
                 return _mapper.Map<ArtigoDTO>(updatedEntity);
             }
@@ -77,11 +80,11 @@ namespace Artigo.API.GraphQL.Mutations
             {
                 UsuarioId = currentUsuarioId,
                 Content = content,
-                Type = Artigo.Intf.Enums.InteractionType.ComentarioPublico,
+                Type = TipoInteracao.ComentarioPublico,
                 ParentCommentId = parentCommentId
             };
 
-            return await _artigoService.CreatePublicCommentAsync(artigoId, newComment, parentCommentId);
+            return await _artigoService.CriarComentarioPublicoAsync(artigoId, newComment, parentCommentId);
         }
 
         public async Task<Interaction> CreateEditorialCommentAsync(
@@ -95,11 +98,28 @@ namespace Artigo.API.GraphQL.Mutations
             {
                 UsuarioId = currentUsuarioId,
                 Content = content,
-                Type = Artigo.Intf.Enums.InteractionType.ComentarioEditorial,
+                Type = TipoInteracao.ComentarioEditorial,
                 ParentCommentId = null
             };
 
-            return await _artigoService.CreateEditorialCommentAsync(artigoId, newComment, currentUsuarioId);
+            return await _artigoService.CriarComentarioEditorialAsync(artigoId, newComment, currentUsuarioId);
+        }
+
+        /// <summary>
+        /// NOVO: Cria um novo registro de Staff para um usuário e define sua função de trabalho.
+        /// </summary>
+        public async Task<Staff> CriarNovoStaffAsync(
+            CreateStaffRequest input,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            // A lógica de negócio e autorização (apenas Admin/EditorChefe) está toda no ArtigoService.
+            return await _artigoService.CriarNovoStaffAsync(
+                input.UsuarioId,
+                input.Job,
+                currentUsuarioId
+            );
         }
     }
 }

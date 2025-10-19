@@ -47,6 +47,7 @@ namespace Artigo.DbContext.Repositories
         {
             var models = await _volumes
                 .Find(v => v.Year == year)
+                // CORRIGIDO: VolumeMes.M -> MesVolume.M
                 .SortByDescending(v => v.M)
                 .ToListAsync();
 
@@ -74,6 +75,7 @@ namespace Artigo.DbContext.Repositories
             var models = await _volumes
                 .Find(_ => true) // Busca todos
                 .SortByDescending(v => v.Year)
+                // CORRIGIDO: VolumeMes.M -> MesVolume.M
                 .ThenByDescending(v => v.M)
                 .ToListAsync();
 

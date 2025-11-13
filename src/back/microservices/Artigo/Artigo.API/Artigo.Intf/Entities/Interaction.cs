@@ -18,7 +18,7 @@ namespace Artigo.Intf.Entities
         // Referência ao ID do usuário que fez o comentário (ID do sistema externo UsuarioApi).
         public string UsuarioId { get; set; } = string.Empty;
 
-        // Nome de exibição do usuário (obtido do UsuarioAPI no momento da criação).
+        // Nome de exibição do usuário.
         public string UsuarioNome { get; set; } = string.Empty;
 
         // Conteúdo do comentário.

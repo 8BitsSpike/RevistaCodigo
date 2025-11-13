@@ -5,7 +5,6 @@ using HotChocolate.Types;
 namespace Artigo.API.GraphQL.Types
 {
     /// <sumario>
-    /// *** NOVA CLASSE ***
     /// Mapeia a entidade StaffComentario para um tipo de objeto GraphQL.
     /// </sumario>
     public class StaffComentarioType : ObjectType<StaffComentario>
@@ -49,7 +48,6 @@ namespace Artigo.API.GraphQL.Types
                 .Type<NonNullType<ListType<NonNullType<MidiaEntryType>>>>() // Reusa o tipo MidiaEntryType definido em ArtigoType.cs
                 .Description("Lista das mídias associadas a esta versão específica do artigo.");
 
-            // *** NOVO CAMPO ***
             descriptor.Field(f => f.StaffComentarios)
                 .Type<NonNullType<ListType<NonNullType<StaffComentarioType>>>>()
                 .Description("Lista de comentários internos da equipe editorial sobre esta versão.");

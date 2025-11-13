@@ -23,6 +23,7 @@ namespace Artigo.DbContext.PersistenceModels
     public class EditorialTeamModel
     {
         public List<string> InitialAuthorId { get; set; } = [];
+
         public string EditorId { get; set; } = string.Empty;
         public List<string> ReviewerIds { get; set; } = [];
         public List<string> CorrectorIds { get; set; } = [];
@@ -34,12 +35,12 @@ namespace Artigo.DbContext.PersistenceModels
     public class MidiaEntryModel
     {
         public string MidiaID { get; set; } = string.Empty;
+
         public string Url { get; set; } = string.Empty;
         public string Alt { get; set; } = string.Empty; // Texto alternativo para inclusividade
     }
 
     /// <sumario>
-    /// *** NOVA CLASSE ***
     /// Objeto embutido para rastrear os comentários internos da equipe editorial
     /// sobre uma versão específica do ArtigoHistory.
     /// </sumario>
@@ -47,6 +48,7 @@ namespace Artigo.DbContext.PersistenceModels
     {
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
         public string UsuarioId { get; set; } = string.Empty;
         public DateTime Data { get; set; } = DateTime.UtcNow;
         public string? Parent { get; set; }
@@ -77,7 +79,9 @@ namespace Artigo.DbContext.PersistenceModels
         public List<string> AutorReference { get; set; } = [];
         public string EditorialId { get; set; } = string.Empty;
         public string? VolumeId { get; set; }
-        public List<MidiaEntryModel> Midias { get; set; } = [];
+
+        // Armazena apenas a mídia de destaque (capa) para performance em listas.
+        public MidiaEntryModel? MidiaDestaque { get; set; }
 
         // Metricas Denormalizadas
         public int TotalInteracoes { get; set; } = 0;
@@ -88,8 +92,6 @@ namespace Artigo.DbContext.PersistenceModels
         public DateTime? DataPublicacao { get; set; }
         public DateTime? DataEdicao { get; set; }
         public DateTime? DataAcademica { get; set; }
-
-        // *** NOVO CAMPO ***
         public bool PermitirComentario { get; set; } = true;
     }
 
@@ -103,11 +105,8 @@ namespace Artigo.DbContext.PersistenceModels
         public string Id { get; set; } = string.Empty;
 
         public string UsuarioId { get; set; } = string.Empty;
-
-        // *** NOVOS CAMPOS (DENORMALIZADOS) ***
         public string Nome { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
-
         public List<string> ArtigoWorkIds { get; set; } = [];
         public List<ContribuicaoEditorialModel> Contribuicoes { get; set; } = [];
     }
@@ -143,10 +142,7 @@ namespace Artigo.DbContext.PersistenceModels
         public string ArtigoId { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public List<MidiaEntryModel> Midias { get; set; } = [];
-
-        // *** NOVO CAMPO ***
         public List<StaffComentarioModel> StaffComentarios { get; set; } = [];
-
         public DateTime DataRegistro { get; set; } = DateTime.UtcNow;
     }
 
@@ -165,7 +161,6 @@ namespace Artigo.DbContext.PersistenceModels
 
         // Nome de exibição do usuário (obtido do UsuarioAPI no momento da criação).
         public string UsuarioNome { get; set; } = string.Empty;
-
         public TipoInteracao Type { get; set; }
         public string Content { get; set; } = string.Empty;
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
@@ -181,17 +176,13 @@ namespace Artigo.DbContext.PersistenceModels
         public string Id { get; set; } = string.Empty;
 
         public string UsuarioId { get; set; } = string.Empty;
-
-        // *** NOVOS CAMPOS (DENORMALIZADOS) ***
         public string Nome { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
-
         public FuncaoTrabalho Job { get; set; }
     }
 
     /// <sumario>
     /// Modelo de Persistencia para a colecao Pending.
-    /// *** ATUALIZADO (CORREÇÃO DO TESTE) ***
     /// </sumario>
     public class PendingModel
     {
@@ -202,14 +193,10 @@ namespace Artigo.DbContext.PersistenceModels
         public TipoEntidadeAlvo TargetType { get; set; }
         public string TargetEntityId { get; set; } = string.Empty;
         public StatusPendente Status { get; set; } = StatusPendente.AguardandoRevisao;
-
         public DateTime DateRequested { get; set; } = DateTime.UtcNow;
         public string RequesterUsuarioId { get; set; } = string.Empty;
         public string Commentary { get; set; } = string.Empty;
-
-        // *** CAMPO ADICIONADO ***
         public string CommandType { get; set; } = string.Empty;
-
         public string CommandParametersJson { get; set; } = string.Empty;
 
         // ID do usuário Staff que aprovou/rejeitou o pedido (UsuarioId externo).
@@ -235,9 +222,9 @@ namespace Artigo.DbContext.PersistenceModels
         public int N { get; set; }
         public int Year { get; set; }
 
-        // *** NOVO CAMPO ***
+        [BsonRepresentation(BsonType.String)] // Salva o enum como string
+        public StatusVolume Status { get; set; } = StatusVolume.EmRevisao;
         public MidiaEntryModel? ImagemCapa { get; set; }
-
         public List<string> ArtigoIds { get; set; } = [];
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }

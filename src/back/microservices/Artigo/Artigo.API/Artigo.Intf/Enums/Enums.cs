@@ -66,7 +66,7 @@
         AguardandoRedacao,      // Aguardando redacao final.
         RedacaoConcluida,       // Redacao concluída, pronto para a pauta.
         Rejeitado,              // Rejeitado em qualquer fase.
-        EmEspera                // Em espera.
+        EmEspera                // Em espera de que algo aconteça.
     }
 
     /// <sumario>
@@ -98,7 +98,8 @@
         Autor,                  // Ação afeta o registro local do autor.
         Comentario,             // Ação afeta o comentário
         Staff,                  // Ação afeta o registro de staff (e.g., mudança de função).
-        Volume                  // Ação afeta a publicação (e.g., reordenar artigos em uma edição).
+        Volume,                 // Ação afeta a publicação (e.g., reordenar artigos em uma edição).
+        Editorial               // Ação afeta a equipe editorial.
     }
 
     /// <sumario>
@@ -130,5 +131,15 @@
         Outubro = 10,
         Novembro = 11,
         Dezembro = 12
+    }
+
+    /// <sumario>
+    /// Status do ciclo de vida de um Volume (Edição).
+    /// </sumario>
+    public enum StatusVolume
+    {
+        EmRevisao,      // Em planejamento, não visível publicamente.
+        Publicado,      // Visível publicamente.
+        Arquivado       // Edição antiga, não visível na lista principal.
     }
 }

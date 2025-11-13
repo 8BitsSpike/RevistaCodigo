@@ -22,6 +22,7 @@ namespace Artigo.Intf.Entities
         public TipoArtigo Tipo { get; set; }
 
         // Relacionamento com outras coleções (guardadas como referencias ao UsuarioId)
+
         // Referência a coleção Autor (Autores involvidos na criacao)
         public List<string> AutorIds { get; set; } = [];
 
@@ -34,14 +35,16 @@ namespace Artigo.Intf.Entities
         // Referência a coleção Volume (Somente quando estiver publicado)
         public string? VolumeId { get; set; }
 
-        // Lista de imagens associadas ao artigo
-        public List<MidiaEntry> Midias { get; set; } = [];
+        // Armazena apenas a mídia de destaque (capa) para performance em listas.
+        // A lista completa de mídias fica no ArtigoHistory.
+        public MidiaEntry? MidiaDestaque { get; set; }
 
         // Metricas Denormalizadas (para uso em Padrões de Subset)
         public int TotalInteracoes { get; set; } = 0;
         public int TotalComentarios { get; set; } = 0;
 
         // Datas importantes
+
         // Data de criação do artigo
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
 
@@ -54,7 +57,6 @@ namespace Artigo.Intf.Entities
         // Data de publicacao acadêmica quando o artigo já tiver sido publicado em outra revista
         public DateTime? DataAcademica { get; set; }
 
-        // *** NOVA PROPRIEDADE ***
         // Controla se comentários públicos são permitidos neste artigo.
         public bool PermitirComentario { get; set; } = true;
     }

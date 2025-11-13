@@ -6,20 +6,18 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
-
-
 
 builder.Services.Configure<UsuarioDatabaseSettings>(builder.Configuration.GetSection("UsuarioDatabase"));
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddControllers();
 
-// Configuração do Swagger/OpenAPI
+// Configuração do Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 // Configuração do JWT
 var jwtKey = builder.Configuration["Key"];
@@ -41,26 +39,36 @@ builder.Services.AddAuthentication(options =>
     options.RequireHttpsMetadata = false;
     options.TokenValidationParameters = new TokenValidationParameters()
     {
+        // Tornando as validações mais explícitas
         ValidateIssuer = false,
         ValidateAudience = false,
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+
+        // Valida se a chave usada para assinar o token é a mesma que temos (a Key)
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+
+        // Garante que o token não expirou.
+        ValidateLifetime = true,
+
+        // Diz ao sistema para usar o campo "sub" (NameIdentifier) como o ID principal.
+        NameClaimType = ClaimTypes.NameIdentifier
     };
+
 });
 
 // Configuração do CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    policy =>
+    {
+        policy.AllowAnyOrigin()
+    .AllowAnyHeader()
+    .AllowAnyMethod();
+    });
 });
 
 var app = builder.Build();
-
 
 // Ambiente de desenvolvimento: habilita Swagger e endpoint raiz
 if (app.Environment.IsDevelopment())
@@ -69,6 +77,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(); // Interface gráfica do Swagger
 
     app.MapGet("/", () => Results.Ok("API de Usuário está rodando"));
+
 }
 
 app.UseCors("AllowReactApp");

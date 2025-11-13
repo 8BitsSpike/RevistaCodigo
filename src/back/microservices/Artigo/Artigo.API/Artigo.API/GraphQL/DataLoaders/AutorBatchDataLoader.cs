@@ -28,10 +28,9 @@ namespace Artigo.API.GraphQL.DataLoaders
             IReadOnlyList<string> Ids,
             CancellationToken cancellationToken)
         {
-            // 1. Otimização: Chama o repositório UMA ÚNICA VEZ para todos os IDs.
             var autores = await _autorRepository.GetByIdsAsync(Ids);
 
-            // 2. Mapeamento: Converte a lista de volta para um dicionário, onde a chave é o Id do Autor.
+            // Mapeamento: Converte a lista de volta para um dicionário, onde a chave é o Id do Autor.
             return autores.ToDictionary(a => a.Id);
         }
     }

@@ -9,7 +9,6 @@ namespace Artigo.Intf.Interfaces
     /// </sumario>
     public interface IUnitOfWork : IDisposable
     {
-        // *** NOVA PROPRIEDADE ***
         /// <sumario>
         /// Verifica se uma transação está atualmente ativa e em andamento.
         /// </sumario>
@@ -34,6 +33,6 @@ namespace Artigo.Intf.Interfaces
         /// Expõe a sessão de transação subjacente para os repositórios.
         /// O tipo é 'object' para evitar uma dependência direta do MongoDB no 'Intf'.
         /// </sumario>
-        object? GetSessionHandle(); // *** ATUALIZADO para permitir nulo ***
+        object? GetSessionHandle();
     }
 }

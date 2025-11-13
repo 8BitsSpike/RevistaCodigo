@@ -5,12 +5,13 @@ using Artigo.Intf.Entities;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using System; // *** ADICIONADO ***
+using System;
+using System.Linq;
 
 namespace Artigo.API.GraphQL.Queries
 {
     /// <summary>
-    /// Define os métodos de consulta (Query) do GraphQL, utilizando Constructor Injection.
+    /// Define os métodos de consulta (Query) do GraphQL, utilizing Constructor Injection.
     /// Esta classe é mapeada manually em ArtigoQueryType.cs para evitar erros.
     /// </summary>
     public class ArtigoQueries
@@ -28,11 +29,11 @@ namespace Artigo.API.GraphQL.Queries
         }
 
         // =========================================================================
-        // *** NOVAS QUERIES PÚBLICAS (Formatos de Visitante) ***
+        // *** QUERIES PÚBLICAS (Formatos de Visitante) ***
         // =========================================================================
 
         /// <sumario>
-        /// (NOVO) Consulta para obter artigos publicados no 'Card List Format'.
+        /// Consulta para obter artigos publicados no 'Card List Format'.
         /// Não requer autenticação.
         /// </sumario>
         public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListAsync(
@@ -44,19 +45,69 @@ namespace Artigo.API.GraphQL.Queries
         }
 
         /// <sumario>
-        /// (NOVO) Consulta para obter volumes publicados no 'Volume List Format'.
+        /// Consulta para obter artigos publicados no 'Card List Format' filtrados por tipo.
         /// Não requer autenticação.
         /// </sumario>
-        public async Task<IReadOnlyList<VolumeListDTO>> ObterVolumesListAsync(
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListPorTipoAsync(
+            TipoArtigo tipo,
+            int pagina,
+            int tamanho)
+        {
+            var entities = await _artigoService.ObterArtigosCardListPorTipoAsync(tipo, pagina, tamanho);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// Busca artigos (formato card) pelo título.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListPorTituloAsync(
+            string searchTerm,
+            int pagina,
+            int tamanho)
+        {
+            var entities = await _artigoService.ObterArtigosCardListPorTituloAsync(searchTerm, pagina, tamanho);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// Busca artigos (formato card) pelo nome do autor (registrado ou não).
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListPorNomeAutorAsync(
+            string searchTerm,
+            int pagina,
+            int tamanho)
+        {
+            var entities = await _artigoService.ObterArtigosCardListPorNomeAutorAsync(searchTerm, pagina, tamanho);
+            // O serviço já retorna entidades de Artigo, prontas para serem mapeadas para o DTO de card.
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// Consulta para 'Card List Format' por Lista de IDs (Público)
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListPorListaAsync(
+            string[] ids)
+        {
+            // Converte array para IReadOnlyList
+            var idList = ids.ToList().AsReadOnly();
+            var entities = await _artigoService.ObterArtigosPorListaIdsAsync(idList);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// Consulta para obter volumes publicados no 'Volume Card Format'.
+        /// Não requer autenticação.
+        /// </sumario>
+        public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesListAsync( // <-- TIPO DE RETORNO ALTERADO
             int pagina,
             int tamanho)
         {
             var entities = await _artigoService.ObterVolumesListAsync(pagina, tamanho);
-            return _mapper.Map<IReadOnlyList<VolumeListDTO>>(entities);
+            return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities); // <-- MAPEAMENTO ALTERADO
         }
 
         /// <sumario>
-        /// (NOVO) Consulta para obter um autor no 'Autor Format'.
+        /// Consulta para obter um autor no 'Autor Format'.
         /// Não requer autenticação.
         /// </sumario>
         public async Task<AutorViewDTO?> ObterAutorViewAsync(string autorId)
@@ -66,9 +117,9 @@ namespace Artigo.API.GraphQL.Queries
         }
 
         /// <sumario>
-        /// (NOVO) Consulta para obter um artigo publicado no 'Artigo Format'.
+        /// Consulta para obter um artigo publicado no 'Artigo Format'.
         /// Não requer autenticação.
-        /// (FIX N+1): Lógica de agregação removida.
+        /// (N+1): Lógica de agregação removida.
         /// </sumario>
         public async Task<ArtigoViewDTO?> ObterArtigoViewAsync(string artigoId)
         {
@@ -82,7 +133,22 @@ namespace Artigo.API.GraphQL.Queries
         }
 
         /// <sumario>
-        /// (NOVO) Consulta para obter um autor no 'Autor Card Format'.
+        /// Consulta para obter um volume publicado no 'Volume View Format'.
+        /// Não requer autenticação.
+        /// </sumario>
+        public async Task<VolumeViewDTO?> ObterVolumeViewAsync(string volumeId)
+        {
+            // O serviço ObterVolumeViewAsync já contém a lógica de AuthZ (só retorna se for 'Publicado')
+            var entity = await _artigoService.ObterVolumeViewAsync(volumeId);
+            if (entity == null)
+            {
+                return null;
+            }
+            return _mapper.Map<VolumeViewDTO>(entity);
+        }
+
+        /// <sumario>
+        /// Consulta para obter um autor no 'Autor Card Format'.
         /// Não requer autenticação.
         /// </sumario>
         public async Task<AutorCardDTO?> ObterAutorCardAsync(string autorId)
@@ -92,7 +158,7 @@ namespace Artigo.API.GraphQL.Queries
         }
 
         /// <sumario>
-        /// (NOVO) Consulta para obter um volume no 'Volume Card Format'.
+        /// Consulta para obter um volume no 'Volume Card Format'.
         /// Não requer autenticação.
         /// </sumario>
         public async Task<VolumeCardDTO?> ObterVolumeCardAsync(string volumeId)
@@ -101,13 +167,23 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<VolumeCardDTO>(entity);
         }
 
+        public async Task<IReadOnlyList<Interaction>> ObterComentariosPublicosAsync(
+            string artigoId,
+            int pagina,
+            int tamanho)
+        {
+            // O serviço não mapeia, ele retorna a entidade diretamente.
+            // O GraphQL <InteractionType> lidará com a entidade.
+            return await _artigoService.ObterComentariosPublicosAsync(artigoId, pagina, tamanho);
+        }
+
 
         // =========================================================================
         // *** QUERIES INTERNAS (Staff/Usuários Autenticados) ***
         // =========================================================================
 
         /// <sumario>
-        /// (NOVO) Consulta para obter um artigo no 'Artigo Editorial Format'.
+        /// Consulta para obter um artigo no 'Artigo Editorial Format'.
         /// Requer autenticação (Autor ou Staff).
         /// </sumario>
         public async Task<ArtigoEditorialViewDTO?> ObterArtigoEditorialViewAsync(
@@ -148,7 +224,10 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<ArtigoDTO>(entity);
         }
 
-        public async Task<IReadOnlyList<ArtigoDTO>> ObterArtigosPorStatusAsync(
+        /// <sumario>
+        /// Consulta para obter artigos por status no 'Card List Format'.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosPorStatusAsync(
             StatusArtigo status,
             int pagina,
             int tamanho,
@@ -158,15 +237,29 @@ namespace Artigo.API.GraphQL.Queries
 
             if (string.IsNullOrEmpty(currentUsuarioId))
             {
-                return new List<ArtigoDTO>();
+                return new List<ArtigoCardListDTO>();
             }
 
             var entities = await _artigoService.ObterArtigosPorStatusAsync(status, pagina, tamanho, currentUsuarioId);
-            return _mapper.Map<IReadOnlyList<ArtigoDTO>>(entities);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
 
         /// <sumario>
-        /// *** MÉTODO ATUALIZADO (PRIORIDADE 5) ***
+        /// (NOVO) Consulta para obter os artigos de um autor (formato card).
+        /// Requer autenticação.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterMeusArtigosCardListAsync(
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado para esta visualização.");
+
+            var entities = await _artigoService.ObterMeusArtigosCardListAsync(currentUsuarioId);
+            // Mapeia o resultado (que já está no formato de card, mas como entidade) para o DTO
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
         /// Consulta para obter todos os pedidos pendentes, com filtros opcionais.
         /// REGRA: Requer AuthZ (EditorChefe ou Administrador) para visualização.
         /// </sumario>
@@ -188,8 +281,6 @@ namespace Artigo.API.GraphQL.Queries
             }
 
             // Lógica de roteamento de filtro:
-            // (Os métodos de serviço já contêm a verificação de AuthZ)
-
             if (status.HasValue)
             {
                 return await _artigoService.ObterPendentesPorStatusAsync(status.Value, pagina, tamanho, currentUsuarioId);
@@ -197,46 +288,22 @@ namespace Artigo.API.GraphQL.Queries
 
             if (!string.IsNullOrEmpty(targetEntityId))
             {
-                // Busca por ID não é paginada no serviço
                 return await _artigoService.ObterPendenciasPorEntidadeIdAsync(targetEntityId, currentUsuarioId);
             }
 
             if (targetType.HasValue)
             {
-                // Busca por Tipo não é paginada no serviço
                 return await _artigoService.ObterPendenciasPorTipoDeEntidadeAsync(targetType.Value, currentUsuarioId);
             }
 
             if (!string.IsNullOrEmpty(requesterUsuarioId))
             {
-                // Busca por Requisitante não é paginada no serviço
                 return await _artigoService.ObterPendenciasPorRequisitanteIdAsync(requesterUsuarioId, currentUsuarioId);
             }
 
             // Padrão: Retorna todos os pendentes, paginados
             return await _artigoService.ObterPendentesAsync(pagina, tamanho, currentUsuarioId);
         }
-
-        /// <sumario>
-        /// *** MÉTODO REMOVIDO (PRIORIDADE 5) ***
-        /// </sumario>
-        // public async Task<IReadOnlyList<Pending>> ObterPendentesPorStatusAsync(...)
-
-        /// <sumario>
-        /// *** MÉTODO REMOVIDO (PRIORIDADE 5) ***
-        /// </sumario>
-        // public async Task<IReadOnlyList<Pending>> ObterPendenciasPorEntidadeIdAsync(...)
-
-        /// <sumario>
-        /// *** MÉTODO REMOVIDO (PRIORIDADE 5) ***
-        /// </sumario>
-        // public async Task<IReadOnlyList<Pending>> ObterPendenciasPorTipoDeEntidadeAsync(...)
-
-        /// <sumario>
-        /// *** MÉTODO REMOVIDO (PRIORIDADE 5) ***
-        /// </sumario>
-        // public async Task<IReadOnlyList<Pending>> ObterPendenciasPorRequisitanteIdAsync(...)
-
 
         /// <sumario>
         /// Consulta para obter todos os registros de Autor no sistema, com paginação.
@@ -275,11 +342,7 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterAutorPorIdAsync(idAutor, currentUsuarioId);
         }
 
-        /// <sumario>
-        /// Consulta para obter todos os Volumes (Edições), com paginação.
-        /// REGRA: Requer permissão de Staff.
-        /// </sumario>
-        public async Task<IReadOnlyList<Volume>> ObterVolumesAsync(
+        public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesAsync( // <-- TIPO DE RETORNO ALTERADO
             int pagina,
             int tamanho,
             ClaimsPrincipal claims)
@@ -291,13 +354,10 @@ namespace Artigo.API.GraphQL.Queries
                 throw new UnauthorizedAccessException("Usuário deve estar autenticado para listar volumes.");
             }
 
-            return await _artigoService.ObterVolumesAsync(pagina, tamanho, currentUsuarioId);
+            var entities = await _artigoService.ObterVolumesAsync(pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities); // <-- MAPEAMENTO ALTERADO
         }
 
-        /// <sumario>
-        /// Consulta para obter Volumes filtrados por Ano, com paginação.
-        /// REGRA: Requer permissão de Staff.
-        /// </sumario>
         public async Task<IReadOnlyList<Volume>> ObterVolumesPorAnoAsync(
             int ano,
             int pagina,
@@ -314,10 +374,19 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterVolumesPorAnoAsync(ano, pagina, tamanho, currentUsuarioId);
         }
 
-        /// <sumario>
-        /// Consulta para obter um registro de Volume específico por ID.
-        /// REGRA: Requer permissão de Staff.
-        /// </sumario>
+        public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesPorStatusAsync(
+            StatusVolume status,
+            int pagina,
+            int tamanho,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            var entities = await _artigoService.ObterVolumesPorStatusAsync(status, pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities);
+        }
+
         public async Task<Volume?> ObterVolumePorIdAsync(
             string idVolume,
             ClaimsPrincipal claims)
@@ -332,14 +401,6 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterVolumePorIdAsync(idVolume, currentUsuarioId);
         }
 
-        // =========================================================================
-        // *** MÉTODOS ADICIONADOS (PRIORIDADE 4) ***
-        // =========================================================================
-
-        /// <sumario>
-        /// (NOVO) Consulta para obter um membro da Staff por ID.
-        /// REGRA: Requer permissão de Staff.
-        /// </sumario>
         public async Task<StaffViewDTO?> ObterStaffPorIdAsync(
             string staffId,
             ClaimsPrincipal claims)
@@ -351,10 +412,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<StaffViewDTO>(entity);
         }
 
-        /// <sumario>
-        /// (NOVO) Consulta para obter uma lista paginada de membros da Staff.
-        /// REGRA: Requer permissão de Staff.
-        /// </sumario>
         public async Task<IReadOnlyList<StaffViewDTO>> ObterStaffListAsync(
             int pagina,
             int tamanho,

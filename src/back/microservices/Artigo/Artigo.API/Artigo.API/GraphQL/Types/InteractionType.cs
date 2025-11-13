@@ -21,7 +21,6 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.ArtigoId).Type<NonNullType<IdType>>().Description("ID do artigo principal ao qual esta interação se aplica.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário externo que fez a interação.");
 
-            // *** NOVO CAMPO (DENORMALIZADO) ***
             // Nome desnormalizado do usuário
             descriptor.Field(f => f.UsuarioNome)
                 .Type<NonNullType<StringType>>()

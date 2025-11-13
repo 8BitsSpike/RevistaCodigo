@@ -14,7 +14,6 @@ namespace Artigo.Intf.Entities
         // O ID do usuário no sistema externo (UsuarioApi) ao qual esta permissão se refere.
         public string UsuarioId { get; set; } = string.Empty;
 
-        // *** NOVAS PROPRIEDADES (DENORMALIZADAS) ***
         // Nome de exibição do usuário (obtido da mutação, vindo do UsuarioAPI).
         public string Nome { get; set; } = string.Empty;
 

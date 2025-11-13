@@ -30,6 +30,16 @@ namespace Artigo.DbContext.Repositories
             return (IClientSessionHandle?)sessionHandle;
         }
 
+        private readonly ProjectionDefinition<ArtigoModel> _cardProjection =
+            Builders<ArtigoModel>.Projection
+                .Include(a => a.Id)
+                .Include(a => a.Titulo)
+                .Include(a => a.Resumo)
+                .Include(a => a.Tipo)
+                .Include(a => a.DataCriacao)
+                .Include(a => a.MidiaDestaque)
+                .Include(a => a.Status); // Status foi adicionado à projeção
+
         // --- Implementação dos Métodos da Interface ---
 
         public async Task<Artigo.Intf.Entities.Artigo?> GetByIdAsync(string id, object? sessionHandle = null)
@@ -37,7 +47,6 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _artigos.Find(session, a => a.Id == objectId.ToString())
                 : _artigos.Find(a => a.Id == objectId.ToString());
@@ -52,7 +61,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, status);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _artigos.Find(session, filter)
                 : _artigos.Find(filter);
@@ -72,21 +80,34 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado);
 
-            var projection = Builders<ArtigoModel>.Projection
-                .Include(a => a.Id)
-                .Include(a => a.Titulo)
-                .Include(a => a.Resumo)
-                .Include(a => a.Tipo)
-                .Include(a => a.DataCriacao)
-                .Slice(a => a.Midias, 0, 1);
-
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _artigos.Find(session, filter)
                 : _artigos.Find(filter);
 
             var models = await find
-                .Project<ArtigoModel>(projection)
+                .Project<ArtigoModel>(_cardProjection)
+                .SortByDescending(a => a.DataCriacao)
+                .Skip(skip)
+                .Limit(tamanho)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado) &
+                         Builders<ArtigoModel>.Filter.Eq(a => a.Tipo, tipo);
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .Project<ArtigoModel>(_cardProjection)
                 .SortByDescending(a => a.DataCriacao)
                 .Skip(skip)
                 .Limit(tamanho)
@@ -100,7 +121,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<ArtigoModel>.Filter.In(a => a.Id, ids);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _artigos.Find(session, filter)
                 : _artigos.Find(filter);
@@ -165,6 +185,98 @@ namespace Artigo.DbContext.Repositories
                 : await _artigos.DeleteOneAsync(a => a.Id == objectId.ToString());
 
             return result.IsAcknowledged && result.DeletedCount == 1;
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByTitleAsync(string searchTerm, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado);
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                var searchFilter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression(searchTerm, "i"));
+                filter &= searchFilter;
+            }
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection)
+                .Skip(skip)
+                .Limit(tamanho)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByAutorIdsAsync(IReadOnlyList<string> autorIds, object? sessionHandle = null)
+        {
+            var session = GetSession(sessionHandle);
+
+            // 1. Filtro (Publicado E AutorId está na lista)
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado) &
+                         Builders<ArtigoModel>.Filter.AnyIn(a => a.AutorIds, autorIds);
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        /// <sumario>
+        /// (NOVO) Busca artigos (formato card) de um único Autor.
+        /// NÃO FILTRA POR STATUS - Retorna todos (Rascunho, Publicado, etc.)
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorAutorIdAsync(string autorId, object? sessionHandle = null)
+        {
+            var session = GetSession(sessionHandle);
+
+            // 1. Filtro (AutorId está na lista AutorIds)
+            // SEM FILTRO DE STATUS
+            var filter = Builders<ArtigoModel>.Filter.AnyIn(a => a.AutorIds, new[] { autorId });
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection) // Usa a projeção de card
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByAutorReferenceAsync(string searchTerm, object? sessionHandle = null)
+        {
+            var session = GetSession(sessionHandle);
+
+            // 1. Filtro (Publicado E Regex no AutorReference)
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado) &
+                         Builders<ArtigoModel>.Filter.Regex(a => a.AutorReference, new BsonRegularExpression(searchTerm, "i"));
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                // Ordenar ANTES de projetar
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
         }
     }
 }

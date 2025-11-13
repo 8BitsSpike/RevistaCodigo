@@ -4,7 +4,6 @@ using HotChocolate.Types;
 namespace Artigo.API.GraphQL.Types
 {
     /// <sumario>
-    /// *** NOVO TIPO ***
     /// Mapeia o StaffViewDTO para um tipo de objeto GraphQL.
     /// Representa o 'Staff View Format' (informações de um membro da equipe).
     /// </sumario>

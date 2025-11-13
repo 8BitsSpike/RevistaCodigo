@@ -31,7 +31,7 @@ namespace Artigo.DbContext.Repositories
         }
 
         /// <sumario>
-        /// (NOVO) Converte o 'sessionHandle' genérico em uma sessão do MongoDB.
+        /// Converte o 'sessionHandle' genérico em uma sessão do MongoDB.
         /// </sumario>
         private IClientSessionHandle? GetSession(object? sessionHandle)
         {
@@ -45,7 +45,7 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO: Adicionada verificação de sessão nula ***
+            // Adicionada verificação de sessão nula
             var find = (session != null)
                 ? _staff.Find(session, s => s.Id == objectId.ToString())
                 : _staff.Find(s => s.Id == objectId.ToString());
@@ -59,10 +59,10 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO: Adicionada verificação de sessão nula ***
+            // Adicionada verificação de sessão nula
             var find = (session != null)
                 ? _staff.Find(session, s => s.UsuarioId == usuarioId)
-                : _staff.Find(s => s.UsuarioId == usuarioId); // Esta é a linha 59
+                : _staff.Find(s => s.UsuarioId == usuarioId);
 
             var model = await find.FirstOrDefaultAsync();
 
@@ -73,7 +73,7 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO: Adicionada verificação de sessão nula ***
+            // Adicionada verificação de sessão nula
             var find = (session != null)
                 ? _staff.Find(session, s => s.Job == role)
                 : _staff.Find(s => s.Job == role);
@@ -86,7 +86,6 @@ namespace Artigo.DbContext.Repositories
         }
 
         /// <sumario>
-        /// *** NOVO MÉTODO IMPLEMENTADO ***
         /// Retorna todos os registros de Staff, com suporte a paginação.
         /// </sumario>
         public async Task<IReadOnlyList<Staff>> GetAllAsync(int pagina, int tamanho, object? sessionHandle = null)

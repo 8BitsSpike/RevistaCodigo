@@ -12,5 +12,10 @@ namespace Artigo.Intf.Interfaces
         Task<IReadOnlyList<Autor>> GetAllAsync(int pagina, int tamanho, object? sessionHandle = null);
         Task<Autor> UpsertAsync(Autor autor, object? sessionHandle = null);
         Task<bool> DeleteAsync(string id, object? sessionHandle = null);
+
+        /// <sumario>
+        /// Busca autores (registrados) pelo nome, usando regex.
+        /// </sumario>
+        Task<IReadOnlyList<Autor>> SearchAutoresByNameAsync(string searchTerm, object? sessionHandle = null);
     }
 }

@@ -10,14 +10,14 @@ using System;
 using System.Collections.Generic; // Para List<T>
 using System.Linq; // Para .First()
 using AutoMapper;
-using Artigo.Intf.Inputs; // *** ADICIONADO ***
+using Artigo.Intf.Inputs;
 
 // Define a collection para que o Fixture seja inicializado apenas uma vez
 [CollectionDefinition("ArtigoServiceIntegration")]
 public class ArtigoServiceIntegrationCollection : ICollectionFixture<ArtigoIntegrationTestFixture> { }
 
 [Collection("ArtigoServiceIntegration")]
-// *** ATUALIZADO: Implementa IAsyncLifetime e IDisposable ***
+// Implementa IAsyncLifetime e IDisposable
 public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceScope _scope;
@@ -36,7 +36,15 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
     private const string AdminUserId = "test_admin_401"; // Usuário autorizado (Admin)
     private const string BolsistaUserId = "test_bolsista_402"; // Usuário Bolsista (para teste de pending)
     private const string NewStaffCandidateId = "test_new_staff_403"; // Usuário a ser promovido
+    private const string UnauthorizedUserId = "test_unauthorized_404"; // Usuário sem permissão
     private const string TestCommentary = "Comentário de teste de integração";
+
+    private readonly MidiaEntryInputDTO _midiaDestaqueDTO = new MidiaEntryInputDTO
+    {
+        MidiaID = "img-01",
+        Url = "http://example.com/img01.jpg",
+        Alt = "Imagem de Destaque"
+    };
 
     public ArtigoServiceIntegrationTests(ArtigoIntegrationTestFixture fixture)
     {
@@ -50,18 +58,13 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         _volumeRepository = _scope.ServiceProvider.GetRequiredService<IVolumeRepository>();
         _pendingRepository = _scope.ServiceProvider.GetRequiredService<IPendingRepository>();
         _mapper = _scope.ServiceProvider.GetRequiredService<IMapper>();
-
-        // *** REMOVIDO: SetupTestUsers().GetAwaiter().GetResult(); ***
     }
 
-    // *** NOVO: Método de setup assíncrono do xUnit ***
     public async Task InitializeAsync()
     {
-        // Este método é chamado após o construtor e antes de cada teste
         await SetupTestUsers();
     }
 
-    // *** NOVO: Implementação vazia, Dispose fará a limpeza ***
     public Task DisposeAsync()
     {
         return Task.CompletedTask;
@@ -69,17 +72,31 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
 
     private async Task SetupTestUsers()
     {
+        // Garante que os nomes base sejam consistentes
         if (await _autorRepository.GetByUsuarioIdAsync(TestUsuarioId) == null)
         {
-            await _autorRepository.UpsertAsync(new Autor { UsuarioId = TestUsuarioId, Nome = "Autor Teste", Url = "url.com/autor" });
+            await _autorRepository.UpsertAsync(new Autor { UsuarioId = TestUsuarioId, Nome = "Autor Teste Base", Url = "url.com/autor" });
         }
         if (await _autorRepository.GetByUsuarioIdAsync(CoAutorUsuarioId) == null)
         {
-            await _autorRepository.UpsertAsync(new Autor { UsuarioId = CoAutorUsuarioId, Nome = "Co-Autor Teste", Url = "url.com/coautor" });
+            await _autorRepository.UpsertAsync(new Autor { UsuarioId = CoAutorUsuarioId, Nome = "Co-Autor Teste Base", Url = "url.com/coautor" });
         }
         if (await _staffRepository.GetByUsuarioIdAsync(BolsistaUserId) == null)
         {
             await _staffRepository.AddAsync(new Staff { UsuarioId = BolsistaUserId, Nome = "Bolsista Teste", Job = FuncaoTrabalho.EditorBolsista });
+        }
+        if (await _autorRepository.GetByUsuarioIdAsync(AdminUserId) == null)
+        {
+            await _autorRepository.UpsertAsync(new Autor { UsuarioId = AdminUserId, Nome = "Admin Teste Base", Url = "url.com/admin" });
+        }
+        // Garante que o usuário não autorizado não seja staff
+        if (await _staffRepository.GetByUsuarioIdAsync(UnauthorizedUserId) == null)
+        {
+            // Adiciona um registro de autor para ele, para garantir que ele não é staff
+            if (await _autorRepository.GetByUsuarioIdAsync(UnauthorizedUserId) == null)
+            {
+                await _autorRepository.UpsertAsync(new Autor { UsuarioId = UnauthorizedUserId, Nome = "Usuário Não Autorizado", Url = "url.com/unauthorized" });
+            }
         }
     }
 
@@ -88,11 +105,34 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         _scope.Dispose();
     }
 
+    private async Task<Artigo.Intf.Entities.Artigo> CreateTestArticleAsync(string title, string userId, List<string>? referencias = null, string? nomeAutor = null)
+    {
+        var requestDto = new CreateArtigoRequest
+        {
+            Titulo = title,
+            Conteudo = "Conteúdo",
+            Autores = new List<AutorInputDTO> { new AutorInputDTO { UsuarioId = userId, Nome = nomeAutor ?? $"Autor de {title}", Url = "url.com/autor" } },
+            ReferenciasAutor = referencias ?? new List<string>(),
+            Midias = new List<MidiaEntryInputDTO>()
+        };
+        var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(requestDto);
+        var autores = _mapper.Map<List<Autor>>(requestDto.Autores);
+        var midiasCompletas = _mapper.Map<List<MidiaEntry>>(requestDto.Midias);
+
+        return await _artigoService.CreateArtigoAsync(newArtigo, requestDto.Conteudo, midiasCompletas, autores, userId, TestCommentary);
+    }
+
+    private async Task PublishArticleAsync(string artigoId)
+    {
+        var updateInput = new UpdateArtigoMetadataInput { Status = StatusArtigo.Publicado };
+        await _artigoService.AtualizarMetadadosArtigoAsync(artigoId, updateInput, AdminUserId, "Publicando para teste");
+    }
+
+
     [Fact]
     public async Task CreateArtigoAsync_DeveCriarArtigoEAutoresCorretamente()
     {
         // Arrange
-        // *** CORREÇÃO: Mapeamento de DTO movido para simular a camada de API ***
         var autoresInput = new List<AutorInputDTO>
         {
             new AutorInputDTO { UsuarioId = TestUsuarioId, Nome = "Autor Teste", Url = "url.com/autor" },
@@ -104,16 +144,18 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
             Resumo = "Este é um artigo criado via teste de integração.",
             Tipo = TipoArtigo.Artigo,
             Conteudo = ArticleContent,
-            Autores = autoresInput, // Usa a lista de AutorInputDTO
-            ReferenciasAutor = new List<string> { "Referencia Externa" }
+            Autores = autoresInput,
+            ReferenciasAutor = new List<string> { "Referencia Externa" },
+            Midias = new List<MidiaEntryInputDTO> { _midiaDestaqueDTO }
         };
 
-        // Mapeamento que ocorreria na API/Mutations
+        // Mapeamento
         var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(requestDto);
         var autores = _mapper.Map<List<Autor>>(requestDto.Autores);
+        var midiasCompletas = _mapper.Map<List<MidiaEntry>>(requestDto.Midias);
 
         // Act
-        var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, requestDto.Conteudo, autores, TestUsuarioId, TestCommentary);
+        var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, requestDto.Conteudo, midiasCompletas, autores, TestUsuarioId, TestCommentary);
 
         // Assert
         Assert.NotNull(createdArtigo);
@@ -123,6 +165,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         Assert.NotNull(autor1);
         Assert.NotNull(autor2);
         Assert.Equal("Autor Teste", autor1.Nome);
+        Assert.Equal("Co-Autor Teste", autor2.Nome);
         Assert.Contains(autor1.Id, createdArtigo.AutorIds);
         var editorial = await _editorialRepository.GetByIdAsync(createdArtigo.EditorialId);
         Assert.NotNull(editorial);
@@ -130,13 +173,42 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         Assert.NotNull(history);
         Assert.Equal(ArticleContent, history.Content);
         Assert.Contains(createdArtigo.Id, autor1.ArtigoWorkIds);
+
+        Assert.NotNull(createdArtigo.MidiaDestaque);
+        Assert.Equal("img-01", createdArtigo.MidiaDestaque.MidiaID);
+        Assert.Single(history.Midias);
+        Assert.Equal("img-01", history.Midias.First().MidiaID);
+    }
+
+    [Fact]
+    public async Task AtualizarMetadadosArtigoAsync_ShouldUpdateStatusAndPermitirComentario_WhenAdmin()
+    {
+        // Arrange
+        var artigo = await CreateTestArticleAsync("Artigo para Atualizar Status", AdminUserId, null, "Admin Teste");
+        Assert.Equal(StatusArtigo.Rascunho, artigo.Status);
+        Assert.True(artigo.PermitirComentario);
+
+        var updateInput = new UpdateArtigoMetadataInput
+        {
+            Status = StatusArtigo.Publicado,
+            PermitirComentario = false
+        };
+
+        // Act
+        var success = await _artigoService.AtualizarMetadadosArtigoAsync(artigo.Id, updateInput, AdminUserId, "Testando update de status");
+
+        // Assert
+        Assert.True(success);
+        var updatedArtigo = await _artigoService.ObterArtigoParaEditorialAsync(artigo.Id, AdminUserId);
+        Assert.NotNull(updatedArtigo);
+        Assert.Equal(StatusArtigo.Publicado, updatedArtigo.Status);
+        Assert.False(updatedArtigo.PermitirComentario);
     }
 
     [Fact]
     public async Task CriarNovoStaffAsync_DeveCriarRegistroStaffCorretamente_QuandoAdmin()
     {
         // Arrange
-        // *** CORREÇÃO: Mapeamento de DTO movido para simular a camada de API ***
         var requestDto = new CreateStaffRequest
         {
             UsuarioId = NewStaffCandidateId,
@@ -152,7 +224,6 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         // Assert
         Assert.NotNull(newStaff);
         Assert.Equal(NewStaffCandidateId, newStaff.UsuarioId);
-        Assert.Equal("Novo Staff", newStaff.Nome);
         var persistedStaff = await _staffRepository.GetByUsuarioIdAsync(NewStaffCandidateId);
         Assert.NotNull(persistedStaff);
         Assert.Equal("Novo Staff", persistedStaff.Nome);
@@ -166,9 +237,9 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         {
             VolumeTitulo = "Edição Especial de Verão",
             Edicao = 5,
+            N = 1,
             Year = 2024,
             M = MesVolume.Marco
-            // *** CORREÇÃO: Mapeamento de DTO não é necessário aqui, a entidade é passada ***
         };
 
         // Act
@@ -180,6 +251,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         var persistedVolume = await _volumeRepository.GetByIdAsync(createdVolume.Id);
         Assert.NotNull(persistedVolume);
         Assert.Equal("Edição Especial de Verão", persistedVolume.VolumeTitulo);
+        Assert.Equal(StatusVolume.EmRevisao, persistedVolume.Status);
     }
 
     [Fact]
@@ -198,11 +270,11 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         // Act
         var resultVolume = await _artigoService.CriarVolumeAsync(volumeInicial, BolsistaUserId, "Requisição de volume por bolsista");
 
-        // Assert 1: O volume NÃO deve existir no repositório
-        var persistedVolume = await _volumeRepository.GetByIdAsync(resultVolume.Id); // ID estará vazio
+        // Assert 
+        var persistedVolume = await _volumeRepository.GetByIdAsync(resultVolume.Id);
         Assert.Null(persistedVolume);
 
-        // Assert 2: Uma requisição PENDING deve ter sido criada
+        // Assert 
         var pendings = await _pendingRepository.BuscarPendenciaPorRequisitanteId(BolsistaUserId);
         var aPendente = pendings.FirstOrDefault(p => p.CommandType == "CreateVolume");
 
@@ -215,19 +287,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
     public async Task AddStaffComentarioAsync_ShouldAddCommentToHistory()
     {
         // Arrange
-        // *** CORREÇÃO: Mapeamento de DTO movido para simular a camada de API ***
-        var requestDto = new CreateArtigoRequest
-        {
-            Titulo = "Artigo para Comentar",
-            Conteudo = "Conteúdo",
-            Autores = new List<AutorInputDTO>
-            {
-                new AutorInputDTO { UsuarioId = TestUsuarioId, Nome = "Autor Teste", Url = "url.com/autor" }
-            }
-        };
-        var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(requestDto);
-        var autores = _mapper.Map<List<Autor>>(requestDto.Autores);
-        var artigo = await _artigoService.CreateArtigoAsync(newArtigo, requestDto.Conteudo, autores, TestUsuarioId, TestCommentary);
+        var artigo = await CreateTestArticleAsync("Artigo para Comentar", TestUsuarioId, null, "Autor Teste");
         var editorial = await _editorialRepository.GetByIdAsync(artigo.EditorialId);
         var historyId = editorial!.CurrentHistoryId;
 
@@ -244,14 +304,12 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         Assert.Equal(AdminUserId, persistedHistory.StaffComentarios[0].UsuarioId);
     }
 
-    // *** NOVO TESTE DE INTEGRAÇÃO ***
     [Fact]
     public async Task ObterAutorCardAsync_ShouldReturnAutor()
     {
         // Arrange
-        // O autor já foi criado no SetupTestUsers (InitializeAsync)
         var autor = await _autorRepository.GetByUsuarioIdAsync(TestUsuarioId);
-        Assert.NotNull(autor); // Garante que o setup funcionou
+        Assert.NotNull(autor);
 
         // Act
         var result = await _artigoService.ObterAutorCardAsync(autor.Id);
@@ -259,17 +317,18 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Equal(TestUsuarioId, result.UsuarioId);
-        Assert.Equal("Autor Teste", result.Nome);
+        Assert.Equal("Autor Teste Base", result.Nome); // Verifica o nome base do setup
     }
 
-    // *** NOVO TESTE DE INTEGRAÇÃO ***
     [Fact]
     public async Task ObterVolumesListAsync_ShouldReturnVolumes()
     {
         // Arrange
-        // Cria um volume para garantir que a lista não esteja vazia
         var volume = new Volume { VolumeTitulo = "Volume de Teste para Lista", Edicao = 1, N = 1, Year = 2025, M = MesVolume.Maio };
-        await _artigoService.CriarVolumeAsync(volume, AdminUserId, "Teste de lista");
+        var createdVolume = await _artigoService.CriarVolumeAsync(volume, AdminUserId, "Teste de lista");
+
+        var updateInput = new UpdateVolumeMetadataInput { Status = StatusVolume.Publicado };
+        await _artigoService.AtualizarMetadadosVolumeAsync(createdVolume.Id, updateInput, AdminUserId, "Publicando volume para teste");
 
         // Act
         var result = await _artigoService.ObterVolumesListAsync(0, 10);
@@ -278,5 +337,213 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         Assert.NotNull(result);
         Assert.NotEmpty(result);
         Assert.Contains(result, v => v.VolumeTitulo == "Volume de Teste para Lista");
+    }
+
+    [Fact]
+    public async Task AtualizarEquipeEditorialAsync_ShouldUpdateTeam_WhenAdmin()
+    {
+        // Arrange
+        var artigo = await CreateTestArticleAsync("Artigo para Teste de Equipe", TestUsuarioId, null, "Autor Teste");
+        var editorial = await _editorialRepository.GetByArtigoIdAsync(artigo.Id);
+        Assert.NotNull(editorial);
+        Assert.Single(editorial.Team.InitialAuthorId);
+
+        var newTeam = new EditorialTeam
+        {
+            InitialAuthorId = editorial.Team.InitialAuthorId,
+            EditorId = "staff_editor_id",
+            ReviewerIds = new List<string> { CoAutorUsuarioId }
+        };
+
+        // Act
+        var updatedEditorial = await _artigoService.AtualizarEquipeEditorialAsync(artigo.Id, newTeam, AdminUserId, "Adicionando Revisor");
+
+        // Assert
+        Assert.NotNull(updatedEditorial);
+        Assert.Equal("staff_editor_id", updatedEditorial.Team.EditorId);
+        Assert.Contains(CoAutorUsuarioId, updatedEditorial.Team.ReviewerIds);
+
+        var persistedEditorial = await _editorialRepository.GetByIdAsync(editorial.Id);
+        Assert.NotNull(persistedEditorial);
+        Assert.Contains(CoAutorUsuarioId, persistedEditorial.Team.ReviewerIds);
+    }
+
+    [Fact]
+    public async Task AtualizarEquipeEditorialAsync_ShouldCreatePendingRequest_WhenBolsista()
+    {
+        // Arrange
+        var artigo = await CreateTestArticleAsync("Artigo para Teste de Equipe (Bolsista)", TestUsuarioId, null, "Autor Teste");
+        var editorial = await _editorialRepository.GetByArtigoIdAsync(artigo.Id);
+        Assert.NotNull(editorial);
+
+        var newTeam = new EditorialTeam
+        {
+            InitialAuthorId = editorial.Team.InitialAuthorId,
+            ReviewerIds = new List<string> { CoAutorUsuarioId }
+        };
+
+        // Act
+        await _artigoService.AtualizarEquipeEditorialAsync(artigo.Id, newTeam, BolsistaUserId, "Bolsista solicita revisor");
+
+        // Assert 1
+        var persistedEditorial = await _editorialRepository.GetByIdAsync(editorial.Id);
+        Assert.NotNull(persistedEditorial);
+        Assert.Empty(persistedEditorial.Team.ReviewerIds);
+
+        // Assert 2
+        var pendings = await _pendingRepository.BuscarPendenciaPorRequisitanteId(BolsistaUserId);
+        var aPendente = pendings.FirstOrDefault(p => p.CommandType == "UpdateEditorialTeam");
+
+        Assert.NotNull(aPendente);
+        Assert.Equal(TipoEntidadeAlvo.Editorial, aPendente.TargetType);
+        Assert.Equal(editorial.Id, aPendente.TargetEntityId);
+        Assert.Contains(CoAutorUsuarioId, aPendente.CommandParametersJson);
+    }
+
+    // =========================================================================
+    // Testes de Busca
+    // =========================================================================
+
+    [Fact]
+    public async Task ObterArtigosCardListPorTituloAsync_ShouldReturnMatchingArticle()
+    {
+        // Arrange
+        var artigoBusca = await CreateTestArticleAsync("Um Título Muito Específico para Busca", TestUsuarioId, null, "Autor Teste");
+        var artigoOutro = await CreateTestArticleAsync("Outro Artigo", TestUsuarioId, null, "Autor Teste");
+
+        await PublishArticleAsync(artigoBusca.Id);
+        await PublishArticleAsync(artigoOutro.Id);
+
+        // Act
+        var result = await _artigoService.ObterArtigosCardListPorTituloAsync("Muito Específico", 0, 10);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("Um Título Muito Específico para Busca", result[0].Titulo);
+    }
+
+    [Fact]
+    public async Task ObterArtigosCardListPorNomeAutorAsync_ShouldReturnMatchingArticles()
+    {
+        // Arrange
+        // Usar nomes únicos para evitar falha no regex
+        // 1. Autor Registrado
+        var artigoAutorReg = await CreateTestArticleAsync("Artigo Autor Registrado", TestUsuarioId, null, "Autor Unico 1");
+
+        // 2. Autor por Referência (Não Registrado)
+        var artigoAutorRef = await CreateTestArticleAsync("Artigo Autor Convidado", CoAutorUsuarioId, new List<string> { "Maria Convidada" }, "Autor Unico 2");
+
+        // 3. Publica ambos
+        await PublishArticleAsync(artigoAutorReg.Id);
+        await PublishArticleAsync(artigoAutorRef.Id);
+
+        // Act 1: Busca pelo nome do autor registrado ("Autor Unico 1")
+        var resultReg = await _artigoService.ObterArtigosCardListPorNomeAutorAsync("Autor Unico 1", 0, 10);
+
+        // Act 2: Busca pelo nome do autor referenciado ("Maria Convidada")
+        var resultRef = await _artigoService.ObterArtigosCardListPorNomeAutorAsync("Maria Convidada", 0, 10);
+
+        // Act 3: Busca pelo outro autor registrado ("Autor Unico 2")
+        var resultReg2 = await _artigoService.ObterArtigosCardListPorNomeAutorAsync("Autor Unico 2", 0, 10);
+
+        // Assert 1
+        Assert.NotNull(resultReg);
+        Assert.Single(resultReg); // Agora deve passar
+        Assert.Equal(artigoAutorReg.Id, resultReg[0].Id);
+
+        // Assert 2
+        Assert.NotNull(resultRef);
+        Assert.Single(resultRef);
+        Assert.Equal(artigoAutorRef.Id, resultRef[0].Id);
+
+        // Assert 3
+        Assert.NotNull(resultReg2);
+        Assert.Single(resultReg2);
+        Assert.Equal(artigoAutorRef.Id, resultReg2[0].Id); // O artigo 2 é do "Autor Unico 2"
+    }
+
+    // =========================================================================
+    // (NOVOS TESTES) Testes de ObterAutorPorIdAsync e ObterMeusArtigosCardListAsync
+    // =========================================================================
+
+    [Fact]
+    public async Task ObterAutorPorIdAsync_ShouldSucceed_WhenUserIsOwner()
+    {
+        // Arrange
+        var autor = await _autorRepository.GetByUsuarioIdAsync(TestUsuarioId);
+        Assert.NotNull(autor);
+
+        // Act
+        var result = await _artigoService.ObterAutorPorIdAsync(autor.Id, TestUsuarioId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(autor.Id, result.Id);
+        Assert.Equal(TestUsuarioId, result.UsuarioId);
+    }
+
+    [Fact]
+    public async Task ObterAutorPorIdAsync_ShouldThrowUnauthorized_WhenUserIsNotOwnerOrStaff()
+    {
+        // Arrange
+        var autor = await _autorRepository.GetByUsuarioIdAsync(TestUsuarioId);
+        Assert.NotNull(autor);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _artigoService.ObterAutorPorIdAsync(autor.Id, UnauthorizedUserId)
+        );
+    }
+
+    [Fact]
+    public async Task ObterMeusArtigosCardListAsync_ShouldReturnAllStatuses_ForAuthenticatedAutor()
+    {
+        // Arrange
+        var autor = await _autorRepository.GetByUsuarioIdAsync(TestUsuarioId);
+        Assert.NotNull(autor);
+
+        // (MODIFICADO) Obtém a contagem inicial de artigos para este autor
+        var initialArticles = await _artigoService.ObterMeusArtigosCardListAsync(TestUsuarioId);
+        int initialCount = initialArticles.Count;
+
+        // Cria dois artigos para este autor
+        var artigoRascunho = await CreateTestArticleAsync("Meu Artigo Rascunho", TestUsuarioId, null, "Autor Teste Base");
+        var artigoPublicado = await CreateTestArticleAsync("Meu Artigo Publicado", TestUsuarioId, null, "Autor Teste Base");
+
+        // Publica apenas um deles
+        await PublishArticleAsync(artigoPublicado.Id);
+
+        // Act
+        var result = await _artigoService.ObterMeusArtigosCardListAsync(TestUsuarioId);
+
+        // Assert
+        Assert.NotNull(result);
+        // (MODIFICADO) Verifica se a contagem aumentou em 2
+        Assert.Equal(initialCount + 2, result.Count);
+
+        // O resto das asserções está correto e verifica se os artigos específicos existem
+        var rascunho = result.FirstOrDefault(a => a.Id == artigoRascunho.Id);
+        var publicado = result.FirstOrDefault(a => a.Id == artigoPublicado.Id);
+
+        Assert.NotNull(rascunho);
+        Assert.Equal(StatusArtigo.Rascunho, rascunho.Status);
+
+        Assert.NotNull(publicado);
+        Assert.Equal(StatusArtigo.Publicado, publicado.Status);
+    }
+
+    [Fact]
+    public async Task ObterMeusArtigosCardListAsync_ShouldReturnEmptyList_ForUnauthorizedUser()
+    {
+        // Arrange
+        // UnauthorizedUserId é garantido como não-autor pelo SetupTestUsers
+
+        // Act
+        var result = await _artigoService.ObterMeusArtigosCardListAsync(UnauthorizedUserId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
     }
 }

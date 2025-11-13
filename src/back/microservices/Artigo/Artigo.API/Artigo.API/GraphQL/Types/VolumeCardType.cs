@@ -4,7 +4,6 @@ using HotChocolate.Types;
 namespace Artigo.API.GraphQL.Types
 {
     /// <sumario>
-    /// *** NOVO TIPO ***
     /// Mapeia o VolumeCardDTO para um tipo de objeto GraphQL.
     /// Representa o 'Volume Card' format, usado pelo ArtigoView.
     /// </sumario>

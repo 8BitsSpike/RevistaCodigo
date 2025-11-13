@@ -43,16 +43,16 @@ namespace Artigo.Intf.Entities
     /// </sumario>
     public class EditorialTeam
     {
-        // Lista de IDs dos autores do artigo (Referencia a Autor.Id)
+        // Lista de IDs dos autores do artigo (Referencia a UsuarioId)
         public List<string> InitialAuthorId { get; set; } = [];
 
         // ID do editor chefe responsavel (Referencia a Staff.Id)
         public string EditorId { get; set; } = string.Empty;
 
-        // IDs dos revisores designados (Referencia a Autor.Id)
+        // IDs dos revisores designados (Referencia a UsuarioId)
         public List<string> ReviewerIds { get; set; } = [];
 
-        // IDs dos corretores designados (Referencia a Autor.Id)
+        // IDs dos corretores designados (Referencia a UsuarioId)
         public List<string> CorrectorIds { get; set; } = [];
     }
 }

@@ -91,7 +91,6 @@ namespace Artigo.DbContext.Repositories
         }
 
         /// <sumario>
-        /// *** MÉTODO ATUALIZADO (CORREÇÃO DO BUG) ***
         /// Usa UpdateOneAsync com IsUpsert=true para uma operação de upsert atômica e segura,
         /// evitando o erro "immutable _id field".
         /// </sumario>
@@ -122,7 +121,7 @@ namespace Artigo.DbContext.Repositories
             // Busca o modelo atualizado/criado para retornar a entidade completa
             var upsertedModel = await GetByUsuarioIdAsync(autor.UsuarioId, sessionHandle);
 
-            // O '!' é seguro pois acabamos de fazer o upsert.
+            // O '!' é seguro pois acabou de fazer o upsert.
             return upsertedModel!;
         }
 
@@ -136,6 +135,27 @@ namespace Artigo.DbContext.Repositories
                 : await _autores.DeleteOneAsync(a => a.Id == objectId.ToString());
 
             return result.IsAcknowledged && result.DeletedCount == 1;
+        }
+
+        /// <sumario>
+        /// Busca autores (registrados) pelo nome, usando regex.
+        /// </sumario>
+        public async Task<IReadOnlyList<Autor>> SearchAutoresByNameAsync(string searchTerm, object? sessionHandle = null)
+        {
+            var session = GetSession(sessionHandle);
+
+            // Filtro de busca (Regex no Nome, case-insensitive)
+            var filter = Builders<AutorModel>.Filter.Regex(a => a.Nome, new BsonRegularExpression(searchTerm, "i"));
+
+            var find = (session != null)
+                ? _autores.Find(session, filter)
+                : _autores.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.Id)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Autor>>(models);
         }
     }
 }

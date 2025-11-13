@@ -43,7 +43,6 @@ namespace Artigo.Intf.Interfaces
         Task<bool> UpdateAsync(ArtigoHistory historyEntry, object? sessionHandle = null);
 
         /// <sumario>
-        /// *** NOVO MÉTODO NA INTERFACE (PRIORIDADE 5) ***
         /// Remove todos os registros de histórico associados a um ArtigoId.
         /// </sumario>
         Task<bool> DeleteByArtigoIdAsync(string artigoId, object? sessionHandle = null);

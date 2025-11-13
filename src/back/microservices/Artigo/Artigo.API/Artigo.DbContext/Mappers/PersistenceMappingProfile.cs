@@ -17,18 +17,9 @@ namespace Artigo.DbContext.Mappers
         public PersistenceMappingProfile()
         {
             // Mapeamentos de Tipos Embutidos (Embedded Types)
-
-            // ContribuicaoEditorial <-> ContribuicaoEditorialModel
             CreateMap<ContribuicaoEditorial, ContribuicaoEditorialModel>().ReverseMap();
-
-            // EditorialTeam <-> EditorialTeamModel
             CreateMap<EditorialTeam, EditorialTeamModel>().ReverseMap();
-
-            // MidiaEntry <-> MidiaEntryModel
             CreateMap<MidiaEntry, MidiaEntryModel>().ReverseMap();
-
-            // *** NOVO MAPEAMENTO ***
-            // StaffComentario <-> StaffComentarioModel
             CreateMap<StaffComentario, StaffComentarioModel>()
                 // Garante que o ID seja mapeado com a representação BSON correta
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Id) ? MongoDB.Bson.ObjectId.GenerateNewId().ToString() : src.Id))
@@ -40,18 +31,14 @@ namespace Artigo.DbContext.Mappers
             // Mapeamentos de Entidades de Colecoes (Collection Entities)
             // =================================================================================
 
-            // Artigo <-> ArtigoModel
             CreateMap<Artigo.Intf.Entities.Artigo, ArtigoModel>()
-                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario)) // NOVO
+                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))                                                                                                               
+                .ForMember(dest => dest.MidiaDestaque, opt => opt.MapFrom(src => src.MidiaDestaque))
                 .ReverseMap();
-            // Nota: O .ReverseMap() lidara com a conversão da lista Midias automaticamente.
 
-            // Autor <-> AutorModel
             CreateMap<Autor, AutorModel>()
-                // NOVOS CAMPOS
                 .ForMember(dest => dest.Nome, opt => opt.MapFrom(src => src.Nome))
                 .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
-                // FIM NOVOS CAMPOS
                 .ForMember(dest => dest.Contribuicoes, opt => opt.MapFrom(src => src.Contribuicoes.Select(c => new ContribuicaoEditorialModel
                 {
                     ArtigoId = c.ArtigoId,
@@ -66,7 +53,6 @@ namespace Artigo.DbContext.Mappers
                 })));
             // Nota: Mapeamento explicito para a lista de objetos embutidos Contribuições.
 
-            // Editorial <-> EditorialModel
             CreateMap<Editorial, EditorialModel>()
                 // Mapeamento do objeto embutido Team (já mapeado acima)
                 .ForMember(dest => dest.Team, opt => opt.MapFrom(src => src.Team));
@@ -74,21 +60,16 @@ namespace Artigo.DbContext.Mappers
             CreateMap<EditorialModel, Editorial>()
                 .ForMember(dest => dest.Team, opt => opt.MapFrom(src => src.Team));
 
-            // ArtigoHistory <-> ArtigoHistoryModel
             CreateMap<ArtigoHistory, ArtigoHistoryModel>()
-                .ForMember(dest => dest.StaffComentarios, opt => opt.MapFrom(src => src.StaffComentarios)) // NOVO
+                .ForMember(dest => dest.StaffComentarios, opt => opt.MapFrom(src => src.StaffComentarios)) 
                 .ReverseMap();
 
-            // Interaction <-> InteractionModel
             CreateMap<Artigo.Intf.Entities.Interaction, InteractionModel>()
                 // Mapeamento do novo campo de desnormalização
                 .ForMember(dest => dest.UsuarioNome, opt => opt.MapFrom(src => src.UsuarioNome))
                 .ReverseMap();
             // Nota: ReverseMap cuida do mapeamento de InteractionModel para Interaction, incluindo UsuarioNome.
 
-
-            // *** MAPEAMENTO ATUALIZADO (CORREÇÃO DO TESTE) ***
-            // Pending <-> PendingModel
             CreateMap<Pending, PendingModel>()
                 // Mapeamento explícito para todos os campos para garantir a correspondência
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -102,20 +83,16 @@ namespace Artigo.DbContext.Mappers
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
                 .ForMember(dest => dest.IdAprovador, opt => opt.MapFrom(src => src.IdAprovador))
                 .ForMember(dest => dest.DataAprovacao, opt => opt.MapFrom(src => src.DataAprovacao))
-                .ReverseMap(); // O ReverseMap() fará a correspondência de volta
-
-
-            // Staff <-> StaffModel
-            CreateMap<Staff, StaffModel>()
-                // NOVOS CAMPOS
-                .ForMember(dest => dest.Nome, opt => opt.MapFrom(src => src.Nome))
-                .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
-                // FIM NOVOS CAMPOS
                 .ReverseMap();
 
-            // Volume <-> VolumeModel
+            CreateMap<Staff, StaffModel>()
+                .ForMember(dest => dest.Nome, opt => opt.MapFrom(src => src.Nome))
+                .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
+                .ReverseMap();
+
             CreateMap<Artigo.Intf.Entities.Volume, VolumeModel>()
-                .ForMember(dest => dest.ImagemCapa, opt => opt.MapFrom(src => src.ImagemCapa)) // NOVO
+                .ForMember(dest => dest.ImagemCapa, opt => opt.MapFrom(src => src.ImagemCapa)) 
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status)) 
                 .ReverseMap();
         }
     }

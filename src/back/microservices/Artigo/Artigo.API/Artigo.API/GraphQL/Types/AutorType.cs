@@ -1,7 +1,6 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 using Artigo.Server.DTOs;
-// Removido: DataLoaders
 using HotChocolate.Types;
 using HotChocolate.Resolvers;
 using System.Threading.Tasks;
@@ -26,7 +25,7 @@ namespace Artigo.API.GraphQL.Types
 
     /// <sumario>
     /// Tipo de objeto GraphQL para as informações de perfil buscadas do UsuarioAPI.
-    /// (Este tipo é agora obsoleto, mas pode ser mantido se outras partes do schema o usarem)
+    /// ***  Este tipo é agora obsoleto, mas pode ser mantido se outras partes do schema o usarem  ***
     /// </sumario>
     public class ExternalUserType : ObjectType<ExternalUserDTO>
     {
@@ -37,9 +36,6 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.MediaUrl).Description("URL da imagem de perfil/avatar.");
         }
     }
-
-    // Resolver 'ExternalUserResolver' foi removido
-
     /// <sumario>
     /// Mapeia a entidade Autor para um tipo de objeto GraphQL.
     /// </sumario>
@@ -52,7 +48,7 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Id).Type<NonNullType<IdType>>().Description("ID local do registro do autor.");
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário no sistema externo (UsuarioApi).");
 
-            // *** NOVOS CAMPOS (DENORMALIZADOS) ***
+            // CAMPOS (DENORMALIZADOS)
             descriptor.Field(f => f.Nome)
                 .Type<NonNullType<StringType>>()
                 .Description("Nome de exibição do autor (denormalizado).");
@@ -65,8 +61,6 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Contribuicoes)
                 .Type<NonNullType<ListType<NonNullType<ContribuicaoEditorialType>>>>()
                 .Description("Lista de todas as funções editoriais e de autoria que o usuário desempenhou.");
-
-            // Campo 'usuarioInfo' foi removido
         }
     }
 }

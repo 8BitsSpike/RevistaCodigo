@@ -2,11 +2,8 @@
 using Usuario.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
 
 namespace Usuario.API.Controllers
@@ -25,138 +22,164 @@ namespace Usuario.API.Controllers
             _configuration = configuration;
         }
 
+        // --- GET ALL ---
         [HttpGet]
-        public async Task<List<Usuar>> Get() =>
+        public async Task<List<Usuario.Intf.Models.Usuario>> Get() =>
             await _usuarioService.GetAsync();
 
-        [HttpGet("{id:length(24)}")]
-        public async Task<ActionResult<Usuar>> Get(ObjectId id)
+        // --- GET BY ID ---
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Usuario.Intf.Models.Usuario>> Get(string id)
         {
-            var usuario = await _usuarioService.GetAsync(id);
+            var trimmedId = id.Trim();
 
+            if (!ObjectId.TryParse(trimmedId, out var objectId))
+                return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
+
+            var usuario = await _usuarioService.GetAsync(objectId);
             if (usuario is null)
                 return NotFound();
 
             return usuario;
         }
 
+        // --- POST /Register ---
         [AllowAnonymous]
         [HttpPost("Register")]
-        public async Task<IActionResult> Create(UsuarDto newUsuario)
+        public async Task<IActionResult> Create(UsuarioDto newUsuario)
         {
             if (newUsuario is null)
-            {
                 return BadRequest("Dados inválidos!");
-            }
 
-            var existingUsuario = await _usuarioService.AuthAsync(newUsuario.Email);
-
+            var existingUsuario = await _usuarioService.FindUser(newUsuario.Email);
             if (existingUsuario is not null)
                 return BadRequest("Email já está em uso!");
 
+            if (!string.IsNullOrEmpty(newUsuario.Password))
+            {
+                if (newUsuario.Password != newUsuario.PasswordConfirm)
+                    return BadRequest("As senhas não são iguais");
+
+                newUsuario.Password = BCrypt.Net.BCrypt.HashPassword(newUsuario.Password);
+            }
+            else
+            {
+                return BadRequest("Por favor inserir uma senha");
+            }
+
             var novo = await _usuarioService.CreateAsync(newUsuario);
-
             if (novo is null)
-                return BadRequest("Dados inválidos!");
+                return BadRequest("Erro ao criar usuário.");
 
-            return CreatedAtAction(nameof(Get), new { id = novo.Id }, novo);
+            return CreatedAtAction(nameof(Get), new { id = novo.Id.ToString() }, novo);
         }
 
-        [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(ObjectId id, UsuarDto updatedUsuario)
+        // --- PUT (ATUALIZAR) ---
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(string id, Usuario.Intf.Models.Usuario updatedUsuario)
         {
-            var existingUsuario = await _usuarioService.GetAsync(id);
+            if (!ObjectId.TryParse(id, out var objectId))
+                return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
 
+            var existingUsuario = await _usuarioService.GetAsync(objectId);
             if (existingUsuario is null)
                 return NotFound();
 
-            if (!String.IsNullOrEmpty(updatedUsuario.Name))
+            if (!string.IsNullOrEmpty(updatedUsuario.Name))
                 existingUsuario.Name = updatedUsuario.Name;
 
-            if (!String.IsNullOrEmpty(updatedUsuario.Email))
+            if (!string.IsNullOrEmpty(updatedUsuario.Sobrenome))
+                existingUsuario.Sobrenome = updatedUsuario.Sobrenome;
+
+            if (!string.IsNullOrEmpty(updatedUsuario.Email))
                 existingUsuario.Email = updatedUsuario.Email;
 
-            if (!String.IsNullOrEmpty(updatedUsuario.Password))
+            if (!string.IsNullOrEmpty(updatedUsuario.Password))
                 existingUsuario.Password = BCrypt.Net.BCrypt.HashPassword(updatedUsuario.Password);
 
-            await _usuarioService.UpdateAsync(id, existingUsuario);
+            if (!string.IsNullOrEmpty(updatedUsuario.Foto))
+                existingUsuario.Foto = updatedUsuario.Foto;
 
-            return NoContent();
+            if (!string.IsNullOrEmpty(updatedUsuario.Biografia))
+                existingUsuario.Biografia = updatedUsuario.Biografia;
+
+            if (updatedUsuario.InfoInstitucionais != null)
+            {
+                existingUsuario.InfoInstitucionais.Clear();
+                existingUsuario.InfoInstitucionais.AddRange(updatedUsuario.InfoInstitucionais);
+            }
+
+            if (updatedUsuario.Atuacoes != null)
+            {
+                existingUsuario.Atuacoes.Clear();
+                existingUsuario.Atuacoes.AddRange(updatedUsuario.Atuacoes);
+            }
+
+            await _usuarioService.UpdateAsync(objectId, existingUsuario);
+            return NoContent(); // 204 Sucesso
         }
 
-        [HttpDelete("{id:length(24)}")]
-        public async Task<IActionResult> Delete(ObjectId id)
+        // --- DELETE ---
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(string id)
         {
-            var usuario = await _usuarioService.GetAsync(id);
+            if (!ObjectId.TryParse(id, out var objectId))
+                return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
 
+            var usuario = await _usuarioService.GetAsync(objectId);
             if (usuario is null)
                 return NotFound();
 
-            await _usuarioService.DeleteAsync(id);
-
-            return NoContent();
+            await _usuarioService.DeleteAsync(objectId);
+            return NoContent(); // 204 Sucesso
         }
 
+        // --- POST /Authenticate ---
         [AllowAnonymous]
         [HttpPost("Authenticate")]
         public async Task<IActionResult> Authenticate(UserDto model)
         {
-            var usuario = await _usuarioService.AuthAsync(model.Email);
+            var usuario = await _usuarioService.FindUser(model.Email);
 
-            if (usuario is null || !BCrypt.Net.BCrypt.Verify(model.Password, usuario.Password))
-                return Unauthorized();
+            if (usuario is null)
+                return Unauthorized(new { message = "Usuário não encontrado" });
+
+            if (!BCrypt.Net.BCrypt.Verify(model.Password, usuario.Password))
+                return Unauthorized(new { message = "Senha inválida" });
 
             var jwt = _usuarioService.GenerateJwtToken(usuario);
-
-            return Ok(new { jwtToken = jwt, id = usuario.Id });
+            return Ok(new { jwtToken = jwt, id = usuario.Id.ToString() });
         }
 
+        // --- ENDPOINTS DE RECUPERAÇÃO DE SENHA ---
+
+        // Solicita o link de recuperação
         [AllowAnonymous]
-        [HttpGet("RecoverPassword")]
-        public async Task<IActionResult> RecoverPassword(string email)
+        [HttpPost("RequestPasswordReset")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] RecoverPasswordRequestDto request)
         {
-            var usuario = await _usuarioService.AuthAsync(email);
-            if (usuario is null)
-                return BadRequest("O Email não existe");
+            var result = await _usuarioService.RequestPasswordRecoveryAsync(request.Email);
 
-            var jwt = _usuarioService.GenerateJwtToken(usuario);
+            if (result.IsSuccess)
+                return Ok("Se o e-mail estiver cadastrado, um link de recuperação foi enviado.");
+            else
+                return StatusCode(result.StatusCode, result.Message);
+        }
 
-            try
-            {
-                var frontendBaseUrl = _configuration["FrontendUrl"];
-                var senderEmail = _configuration["EmailSettings:SenderEmail"];
-                var senderPassword = _configuration["EmailSettings:SenderPassword"];
+        // Redefine a senha usando o ID do usuário e o token
+        [AllowAnonymous]
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            if (!ObjectId.TryParse(request.UserId, out var objectId))
+                return BadRequest("ID de usuário inválido.");
 
-                if (string.IsNullOrEmpty(frontendBaseUrl) || string.IsNullOrEmpty(senderEmail))
-                {
-                    return StatusCode(500, "Server configuration error.");
-                }
+            var result = await _usuarioService.ResetPasswordAsync(objectId, request.Token, request.NewPassword);
 
-                string recoveryLink = $"{frontendBaseUrl}/alterandoSenha/?id={usuario.Id}&token={jwt}";
-
-                using (var smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com", 587))
-                {
-                    smtpClient.EnableSsl = true;
-                    smtpClient.Credentials = new System.Net.NetworkCredential(senderEmail, senderPassword);
-
-                    var emailMessage = new System.Net.Mail.MailMessage
-                    {
-                        From = new System.Net.Mail.MailAddress(senderEmail, "Revista Brasileira da Educação Básica"),
-                        Subject = "Redefinição de Senha de acesso à Revista Brasileira da Educação Básica",
-                        Body = $"Olá, {usuario.Name}, para redefinir sua senha, clique no link: <a href='{recoveryLink}'>Recuperar senha</a>",
-                        IsBodyHtml = true,
-                    };
-                    emailMessage.To.Add(email);
-
-                    await smtpClient.SendMailAsync(emailMessage);
-                }
-
-                return Ok("Password recovery email sent.");
-            }
-            catch (System.Exception)
-            {
-                return StatusCode(500, "An error occurred while sending the recovery email.");
-            }
+            if (result.IsSuccess)
+                return Ok(result.Message); // 200 OK
+            else
+                return StatusCode(result.StatusCode, result.Message);
         }
     }
 }

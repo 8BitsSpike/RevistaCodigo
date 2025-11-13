@@ -15,8 +15,6 @@ namespace Artigo.API.GraphQL.Inputs
 
             descriptor.Field(f => f.UsuarioId).Type<NonNullType<IdType>>().Description("ID do usuário no sistema externo.");
             descriptor.Field(f => f.Job).Type<NonNullType<EnumType<Artigo.Intf.Enums.FuncaoTrabalho>>>().Description("Função de trabalho a ser atribuída.");
-
-            // *** NOVOS CAMPOS ***
             descriptor.Field(f => f.Nome).Type<NonNullType<StringType>>().Description("Nome de exibição do usuário (para denormalização).");
             descriptor.Field(f => f.Url).Type<StringType>().Description("URL da foto de perfil do usuário (para denormalização).");
         }

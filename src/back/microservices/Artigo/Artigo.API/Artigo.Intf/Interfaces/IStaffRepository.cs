@@ -27,7 +27,6 @@ namespace Artigo.Intf.Interfaces
         Task<IReadOnlyList<Staff>> GetByRoleAsync(FuncaoTrabalho role, object? sessionHandle = null);
 
         /// <sumario>
-        /// *** NOVO MÉTODO ***
         /// Retorna todos os registros de Staff, com suporte a paginação.
         /// </sumario>
         Task<IReadOnlyList<Staff>> GetAllAsync(int pagina, int tamanho, object? sessionHandle = null);

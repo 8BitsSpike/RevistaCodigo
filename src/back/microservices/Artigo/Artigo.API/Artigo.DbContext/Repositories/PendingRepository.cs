@@ -37,7 +37,6 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, p => p.Id == objectId.ToString())
                 : _pendings.Find(p => p.Id == objectId.ToString());
@@ -51,7 +50,6 @@ namespace Artigo.DbContext.Repositories
             int skip = pagina * tamanho;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, p => p.Status == status)
                 : _pendings.Find(p => p.Status == status);
@@ -70,7 +68,6 @@ namespace Artigo.DbContext.Repositories
             int skip = pagina * tamanho;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, _ => true)
                 : _pendings.Find(_ => true);
@@ -88,7 +85,6 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, p => p.TargetEntityId == targetEntityId)
                 : _pendings.Find(p => p.TargetEntityId == targetEntityId);
@@ -104,7 +100,6 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, p => p.TargetType == targetType)
                 : _pendings.Find(p => p.TargetType == targetType);
@@ -120,7 +115,6 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _pendings.Find(session, p => p.RequesterUsuarioId == requesterUsuarioId)
                 : _pendings.Find(p => p.RequesterUsuarioId == requesterUsuarioId);

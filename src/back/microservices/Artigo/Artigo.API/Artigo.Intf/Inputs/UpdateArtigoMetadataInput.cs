@@ -20,5 +20,9 @@ namespace Artigo.Intf.Inputs
         // Autores: Permite adicionar ou remover autores/co-autores, mas como uma lista completa.
         public List<string>? IdsAutor { get; set; }
         public List<string>? ReferenciasAutor { get; set; }
+
+        // Novos campos para gerenciamento de status e comentários
+        public StatusArtigo? Status { get; set; }
+        public bool? PermitirComentario { get; set; }
     }
 }

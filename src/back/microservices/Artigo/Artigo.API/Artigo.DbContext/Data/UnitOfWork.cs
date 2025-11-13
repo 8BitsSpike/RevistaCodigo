@@ -10,16 +10,13 @@ namespace Artigo.DbContext.Data
     /// <sumario>
     /// Implementação da Unidade de Trabalho (Unit of Work) para o MongoDB.
     /// Gerencia o ciclo de vida da transação (IClientSessionHandle).
-    /// *** ATUALIZADO (v2) para capturar falhas de transação em servidores Standalone. ***
     /// </sumario>
     public class UnitOfWork : IUnitOfWork
     {
         private readonly IMongoClient _mongoClient;
         private IClientSessionHandle? _sessionHandle;
 
-        // *** NOVA PROPRIEDADE ***
         public bool IsInTransaction => _sessionHandle != null && _sessionHandle.IsInTransaction;
-
 
         public UnitOfWork(IMongoClient mongoClient)
         {

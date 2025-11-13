@@ -23,8 +23,8 @@ namespace Usuario.DbContext.Persistence
             _database = client.GetDatabase(_settings.DataBaseName);
         }
 
-        public IMongoCollection<Usuar> Usuarios =>
-            _database.GetCollection<Usuar>(_settings.UsuarioCollectionName);
+        public IMongoCollection<Usuario.Intf.Models.Usuario> Usuarios =>
+            _database.GetCollection<Usuario.Intf.Models.Usuario>(_settings.UsuarioCollectionName);
 
     }
 }

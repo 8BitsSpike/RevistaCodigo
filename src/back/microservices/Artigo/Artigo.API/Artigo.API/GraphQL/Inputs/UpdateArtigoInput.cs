@@ -1,22 +1,13 @@
 ﻿using Artigo.Intf.Enums;
 using HotChocolate.Types;
 using System.Collections.Generic;
-using Artigo.Intf.Inputs; // *** ADICIONADO ***
+using Artigo.Intf.Inputs;
 
 namespace Artigo.API.GraphQL.Inputs
 {
     /// <sumario>
     /// Data Transfer Object (DTO) de input para a atualização de metadados de um Artigo.
     /// Define os campos que podem ser modificados após a criação.
-    /// *** ATENÇÃO: Esta classe foi movida para Artigo.Intf.Inputs ***
-    /// A classe interna foi removida.
-    /// </sumario>
-    // public class UpdateArtigoMetadataInput
-    // { ... }
-
-    /// <sumario>
-    /// Define o tipo de input GraphQL para a atualização de metadados de um Artigo.
-    /// *** ATUALIZADO: Agora mapeia para a classe do Artigo.Intf.Inputs ***
     /// </sumario>
     public class UpdateArtigoInput : InputObjectType<UpdateArtigoMetadataInput>
     {
@@ -30,6 +21,10 @@ namespace Artigo.API.GraphQL.Inputs
             descriptor.Field(f => f.Tipo).Type<EnumType<TipoArtigo>>();
             descriptor.Field(f => f.IdsAutor).Type<ListType<IdType>>();
             descriptor.Field(f => f.ReferenciasAutor).Type<ListType<StringType>>();
+            descriptor.Field(f => f.Status).Type<EnumType<StatusArtigo>>()
+                .Description("Atualiza o status do ciclo de vida do artigo (ex: Publicado, Arquivado).");
+            descriptor.Field(f => f.PermitirComentario).Type<BooleanType>()
+                .Description("Habilita ou desabilita comentários públicos neste artigo.");
         }
     }
 }

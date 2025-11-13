@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Artigo.Intf.Enums; // Adicionado para TipoInteracao
+using HotChocolate; // Adicionado para [Parent] e [Service]
 
 namespace Artigo.API.GraphQL.Resolvers
 {
@@ -149,7 +151,7 @@ namespace Artigo.API.GraphQL.Resolvers
     {
         public async Task<IReadOnlyList<Interaction>> GetEditorialCommentsAsync(
             [Parent] Editorial editorial,
-            ArticleInteractionsDataLoader dataLoader, 
+            ArticleInteractionsDataLoader dataLoader,
             CancellationToken cancellationToken)
         {
             // ATENÇÃO: É necessário que a entidade Editorial tenha o ArtigoId para carregar os comentários.
@@ -184,6 +186,52 @@ namespace Artigo.API.GraphQL.Resolvers
 
             // Achatamento (Flatten) do ILookup<string, Interaction> para uma lista única.
             return lookup.SelectMany(g => g!).ToList().AsReadOnly();
+        }
+    }
+
+    /// <sumario>
+    /// Lógica centralizada para resolver a conexão de interações (pública/editorial)
+    /// para ArtigoViewType e ArtigoEditorialViewType.
+    /// </sumario>
+    public class ArtigoInteractionsResolver
+    {
+        public async Task<InteractionConnectionDTO> GetInteractionsAsync(
+            [Parent] ArtigoViewDTO dto, // Usa ArtigoViewDTO como base (é compatível)
+            int page,
+            int pageSize,
+            ArticleInteractionsDataLoader dataLoader,
+            CancellationToken cancellationToken)
+        {
+            var interacoes = await dataLoader.LoadAsync(dto.Id, cancellationToken);
+
+            if (interacoes == null || !interacoes.Any())
+            {
+                return new InteractionConnectionDTO
+                {
+                    ComentariosEditoriais = new List<Interaction>(),
+                    ComentariosPublicos = new List<Interaction>(),
+                    TotalComentariosPublicos = 0
+                };
+            }
+
+            var editoriais = interacoes
+                .Where(i => i.Type == TipoInteracao.ComentarioEditorial)
+                .ToList();
+
+            var publicos = interacoes
+                .Where(i => i.Type == TipoInteracao.ComentarioPublico);
+
+            var publicosPaginados = publicos
+                .Skip(page * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new InteractionConnectionDTO
+            {
+                ComentariosEditoriais = editoriais,
+                ComentariosPublicos = publicosPaginados,
+                TotalComentariosPublicos = publicos.Count()
+            };
         }
     }
 }

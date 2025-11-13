@@ -3,12 +3,12 @@ using Artigo.Intf.Interfaces;
 using Artigo.Intf.Entities;
 using Artigo.Server.DTOs;
 using Artigo.API.GraphQL.Inputs;
-using Artigo.Intf.Inputs; // *** ADICIONADO ***
+using Artigo.Intf.Inputs; 
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
-using System.Linq; // *** ADICIONADO ***
+using System.Linq;
 
 namespace Artigo.API.GraphQL.Mutations
 {
@@ -29,7 +29,7 @@ namespace Artigo.API.GraphQL.Mutations
 
         public async Task<ArtigoDTO> CreateArtigoAsync(
             CreateArtigoRequest input,
-            string commentary, // *** NOVO ***
+            string commentary,
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -38,14 +38,17 @@ namespace Artigo.API.GraphQL.Mutations
             var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(input);
             var autores = _mapper.Map<List<Autor>>(input.Autores);
 
-            var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, input.Conteudo, autores, currentUsuarioId, commentary);
+            // Mapeia a lista completa de DTOs de mídia para entidades de mídia
+            var midiasCompletas = _mapper.Map<List<MidiaEntry>>(input.Midias);
+
+            var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, input.Conteudo, midiasCompletas, autores, currentUsuarioId, commentary);
             return _mapper.Map<ArtigoDTO>(createdArtigo);
         }
 
         public async Task<ArtigoDTO> UpdateArtigoMetadataAsync(
             string id,
             UpdateArtigoMetadataInput input,
-            string commentary, // *** NOVO ***
+            string commentary,
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -64,10 +67,53 @@ namespace Artigo.API.GraphQL.Mutations
             throw new InvalidOperationException("Falha ao atualizar metadados do artigo. Verifique a ID ou permissões.");
         }
 
+        /// <summary>
+        /// Atualiza o conteúdo e a lista de mídias de um artigo.
+        /// </summary>
+        public async Task<bool> AtualizarConteudoArtigoAsync(
+            string artigoId,
+            string newContent,
+            List<MidiaEntryInputDTO> midias, // Recebe DTOs de input
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            // Mapeia os DTOs de input para entidades
+            var midiasEntidades = _mapper.Map<List<MidiaEntry>>(midias);
+
+            return await _artigoService.AtualizarConteudoArtigoAsync(
+                artigoId,
+                newContent,
+                midiasEntidades, // Passa a lista de entidades
+                currentUsuarioId,
+                commentary
+            );
+        }
+
+        /// <summary>
+        /// Atualiza a equipe editorial (revisores, corretores) de um artigo.
+        /// </summary>
+        public async Task<Editorial> AtualizarEquipeEditorialAsync(
+            string artigoId,
+            EditorialTeam teamInput, // Recebe a entidade EditorialTeam mapeada do InputType
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            return await _artigoService.AtualizarEquipeEditorialAsync(
+                artigoId,
+                teamInput,
+                currentUsuarioId,
+                commentary
+            );
+        }
+
         public async Task<Interaction> CreatePublicCommentAsync(
             string artigoId,
             string content,
-            string usuarioNome, // *** ATUALIZADO ***
+            string usuarioNome,
             string? parentCommentId,
             ClaimsPrincipal claims)
         {
@@ -76,7 +122,7 @@ namespace Artigo.API.GraphQL.Mutations
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
-                UsuarioNome = usuarioNome, // *** ATUALIZADO ***
+                UsuarioNome = usuarioNome,
                 Content = content,
                 Type = TipoInteracao.ComentarioPublico,
                 ParentCommentId = parentCommentId
@@ -88,7 +134,7 @@ namespace Artigo.API.GraphQL.Mutations
         public async Task<Interaction> CreateEditorialCommentAsync(
             string artigoId,
             string content,
-            string usuarioNome, // *** ATUALIZADO ***
+            string usuarioNome, 
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -96,7 +142,7 @@ namespace Artigo.API.GraphQL.Mutations
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
-                UsuarioNome = usuarioNome, // *** ATUALIZADO ***
+                UsuarioNome = usuarioNome,
                 Content = content,
                 Type = TipoInteracao.ComentarioEditorial,
                 ParentCommentId = null
@@ -106,7 +152,6 @@ namespace Artigo.API.GraphQL.Mutations
         }
 
         /// <summary>
-        /// *** NOVO MÉTODO ***
         /// Atualiza o conteúdo de uma interação (comentário).
         /// </summary>
         public async Task<Interaction> AtualizarInteracaoAsync(
@@ -120,7 +165,6 @@ namespace Artigo.API.GraphQL.Mutations
         }
 
         /// <summary>
-        /// *** NOVO MÉTODO ***
         /// Deleta uma interação (comentário).
         /// </summary>
         public async Task<bool> DeletarInteracaoAsync(
@@ -137,7 +181,7 @@ namespace Artigo.API.GraphQL.Mutations
         /// </summary>
         public async Task<Staff> CriarNovoStaffAsync(
             CreateStaffRequest input,
-            string commentary, // *** NOVO ***
+            string commentary,
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -157,7 +201,7 @@ namespace Artigo.API.GraphQL.Mutations
         /// </summary>
         public async Task<Volume> CriarVolumeAsync(
             CreateVolumeRequest input,
-            string commentary, // *** NOVO ***
+            string commentary,
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -171,8 +215,27 @@ namespace Artigo.API.GraphQL.Mutations
             );
         }
 
+        /// <summary>
+        /// Metodo para atualizar os metadados de um Volume (Edição de revista).
+        /// </summary>
+        public async Task<bool> AtualizarMetadadosVolumeAsync(
+            string volumeId,
+            UpdateVolumeMetadataInput input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            return await _artigoService.AtualizarMetadadosVolumeAsync(
+                volumeId,
+                input,
+                currentUsuarioId,
+                commentary
+            );
+        }
+
         // =========================================================================
-        // *** NOVAS MUTAÇÕES (StaffComentario) ***
+        // *** MUTAÇÕES (StaffComentario) ***
         // =========================================================================
 
         public async Task<ArtigoHistory> AddStaffComentarioAsync(
@@ -205,7 +268,7 @@ namespace Artigo.API.GraphQL.Mutations
         }
 
         // =========================================================================
-        // *** NOVO MÉTODO (Manual Pending) ***
+        // *** MÉTODO (Manual Pending) ***
         // =========================================================================
 
         /// <summary>

@@ -42,8 +42,7 @@ namespace Artigo.API.GraphQL.DataLoaders
                 .Distinct()
                 .ToList();
 
-            // 3. *** OTIMIZAÇÃO ***
-            // Busca todos os ArtigoHistory.Content em um único lote
+            // 3. Busca todos os ArtigoHistory.Content em um único lote
             var historyContents = await _historyRepository.GetContentsByIdsAsync(historyIds);
 
             var result = new Dictionary<string, string>();

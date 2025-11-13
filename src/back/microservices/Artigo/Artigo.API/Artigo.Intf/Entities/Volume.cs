@@ -17,11 +17,13 @@ namespace Artigo.Intf.Entities
         public int Edicao { get; set; } // O número sequencial desta edição da revista.
         public string VolumeTitulo { get; set; } = string.Empty; // Titulo desta edicao
         public string VolumeResumo { get; set; } = string.Empty; // Resumo do conteúdo desta edicao
-        public MesVolume M { get; set; } // MesVolume (O mes de publicacao (Enum).)
+        public MesVolume M { get; set; } // MesVolume, mes de publicação (Enum).
         public int N { get; set; } // O número do volume (mantido por compatibilidade histórica).
         public int Year { get; set; } // O ano da publicação.
 
-        // *** NOVA PROPRIEDADE ***
+        // Status do ciclo de vida do volume
+        public StatusVolume Status { get; set; } = StatusVolume.EmRevisao;
+
         // Mídia de capa para esta edição.
         public MidiaEntry? ImagemCapa { get; set; }
 

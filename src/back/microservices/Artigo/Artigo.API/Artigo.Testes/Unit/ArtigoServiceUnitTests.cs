@@ -8,7 +8,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using System;
-using Artigo.Intf.Inputs; // *** ADICIONADO ***
+using Artigo.Intf.Inputs;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Encodings.Web;
 
 namespace Artigo.Testes.Unit
 {
@@ -34,9 +37,17 @@ namespace Artigo.Testes.Unit
         private const string EditorBolsistaUserId = "user_bolsista_01";
         private const string NewStaffUserId = "user_novo_104";
         private const string TestAutorId = "autor_local_001";
+        private const string TestAutorUsuarioId = "user_autor_001"; // ID externo do TestAutorId
         private const string TestVolumeId = "volume_local_002";
         private const string TestHistoryId = "history_001";
         private const string TestCommentary = "Teste de comentário";
+
+        private readonly object _sessionHandle = new Mock<MongoDB.Driver.IClientSessionHandle>().Object;
+
+        private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
 
         public ArtigoServiceUnitTests()
@@ -53,20 +64,21 @@ namespace Artigo.Testes.Unit
             _mockMapper = new Mock<IMapper>();
 
             // Configurações Comuns de Mocks de Staff para Testes de Permissão
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(NewStaffUserId, null)).ReturnsAsync((Staff?)null);
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null)).ReturnsAsync(new Staff { UsuarioId = AdminUserId, Job = FuncaoTrabalho.Administrador });
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorChefeUserId, null)).ReturnsAsync(new Staff { UsuarioId = EditorChefeUserId, Job = FuncaoTrabalho.EditorChefe });
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, null)).ReturnsAsync(new Staff { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorBolsista });
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null)).ReturnsAsync((Staff?)null);
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AuthorizedStaffId, null)).ReturnsAsync(new Staff { UsuarioId = AuthorizedStaffId, Job = FuncaoTrabalho.EditorChefe }); // Usado para sucesso
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(NewStaffUserId, It.IsAny<object>())).ReturnsAsync((Staff?)null);
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = AdminUserId, Job = FuncaoTrabalho.Administrador, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorChefeUserId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = EditorChefeUserId, Job = FuncaoTrabalho.EditorChefe, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorBolsista, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, It.IsAny<object>())).ReturnsAsync((Staff?)null);
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AuthorizedStaffId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = AuthorizedStaffId, Job = FuncaoTrabalho.EditorChefe, IsActive = true }); // Usado para sucesso
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(TestAutorUsuarioId, It.IsAny<object>())).ReturnsAsync((Staff?)null); // Garante que o autor não é staff
 
             // Configurações Comuns de Busca Pontual
-            _mockAutorRepo.Setup(r => r.GetByIdAsync(TestAutorId, null)).ReturnsAsync(new Autor { Id = TestAutorId, UsuarioId = "user_autor" });
-            _mockVolumeRepo.Setup(r => r.GetByIdAsync(TestVolumeId, null)).ReturnsAsync(new Volume { Id = TestVolumeId });
-            _mockHistoryRepo.Setup(r => r.GetByIdAsync(TestHistoryId, null)).ReturnsAsync(new ArtigoHistory { Id = TestHistoryId });
+            _mockAutorRepo.Setup(r => r.GetByIdAsync(TestAutorId, It.IsAny<object>())).ReturnsAsync(new Autor { Id = TestAutorId, UsuarioId = TestAutorUsuarioId });
+            _mockVolumeRepo.Setup(r => r.GetByIdAsync(TestVolumeId, It.IsAny<object>())).ReturnsAsync(new Volume { Id = TestVolumeId });
+            _mockHistoryRepo.Setup(r => r.GetByIdAsync(TestHistoryId, It.IsAny<object>())).ReturnsAsync(new ArtigoHistory { Id = TestHistoryId });
 
             // Configuração do Unit of Work
-            _mockUow.Setup(u => u.GetSessionHandle()).Returns(new Mock<MongoDB.Driver.IClientSessionHandle>().Object);
+            _mockUow.Setup(u => u.GetSessionHandle()).Returns(_sessionHandle);
 
 
             // Instancia o ArtigoService injetando os mocks
@@ -98,15 +110,13 @@ namespace Artigo.Testes.Unit
             var editorialRecord = new Editorial
             {
                 Id = "editorial_1",
-                Team = new EditorialTeam { InitialAuthorId = new List<string> { "autor_real_123" } }
+                Team = new EditorialTeam { InitialAuthorId = new List<string> { "user_autor_real_123" } }
             };
 
             _mockArtigoRepo.Setup(r => r.GetByIdAsync(TestArtigoId, null)).ReturnsAsync(draftArtigo);
             _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null)).ReturnsAsync((Staff?)null); // Não é staff
-            _mockAutorRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null)).ReturnsAsync(new Autor { Id = "autor_fake_456" }); // É um autor, mas não o da equipe
             _mockEditorialRepo.Setup(r => r.GetByIdAsync("editorial_1", null)).ReturnsAsync(editorialRecord);
 
-            // *** CORREÇÃO: Alterado de Artigo para UpdateArtigoMetadataInput ***
             var unauthorizedArtigoUpdate = new Artigo.Intf.Inputs.UpdateArtigoMetadataInput { Titulo = "Novo Titulo" };
 
             // Act & Assert
@@ -124,21 +134,22 @@ namespace Artigo.Testes.Unit
                 Id = TestArtigoId,
                 Status = StatusArtigo.Rascunho,
                 EditorialId = "editorial_1",
-                Titulo = "Titulo Antigo"
+                Titulo = "Titulo Antigo",
+                PermitirComentario = true
             };
 
-            // *** CORREÇÃO: Alterado de Artigo para UpdateArtigoMetadataInput ***
             var authorizedArtigoUpdate = new Artigo.Intf.Inputs.UpdateArtigoMetadataInput
             {
-                Titulo = "Titulo Atualizado"
+                Titulo = "Titulo Atualizado",
+                Status = StatusArtigo.Arquivado,
+                PermitirComentario = false
             };
 
             var autorRecord = new Autor { Id = "autor_real_123", UsuarioId = AuthorizedStaffId };
-
             var editorialRecord = new Editorial
             {
                 Id = "editorial_1",
-                Team = new EditorialTeam { InitialAuthorId = new List<string> { "autor_real_123" } }
+                Team = new EditorialTeam { InitialAuthorId = new List<string> { AuthorizedStaffId } } // Espera o UsuarioId
             };
 
             _mockArtigoRepo.Setup(r => r.GetByIdAsync(TestArtigoId, null)).ReturnsAsync(draftArtigo);
@@ -152,15 +163,16 @@ namespace Artigo.Testes.Unit
 
             // Assert
             Assert.True(result);
-            // Verifica se o UpdateAsync foi chamado com a entidade 'draftArtigo'
-            // que foi modificada internamente pelo serviço (ApplyMetadataUpdates)
+
             _mockArtigoRepo.Verify(r => r.UpdateAsync(It.Is<Artigo.Intf.Entities.Artigo>(
-                a => a.Titulo == "Titulo Atualizado"
+                a => a.Titulo == "Titulo Atualizado" &&
+                     a.Status == StatusArtigo.Arquivado &&
+                     a.PermitirComentario == false
             ), null), Times.Once);
         }
 
         // =========================================================================
-        // NOVOS TESTES (Pending Request Logic)
+        // Testes de Pending Request Logic
         // =========================================================================
 
         [Fact]
@@ -170,7 +182,6 @@ namespace Artigo.Testes.Unit
             _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, null))
                 .ReturnsAsync(new Staff { Job = FuncaoTrabalho.EditorBolsista });
 
-            // *** CORREÇÃO: Alterado de Artigo para UpdateArtigoMetadataInput ***
             var updateInput = new Artigo.Intf.Inputs.UpdateArtigoMetadataInput { Titulo = "Titulo Pendente" };
 
             // Act
@@ -178,14 +189,12 @@ namespace Artigo.Testes.Unit
 
             // Assert
             Assert.True(result);
-            // Verifica se o repositório de Pending foi chamado
             _mockPendingRepo.Verify(r => r.AddAsync(It.Is<Pending>(
                 p => p.TargetEntityId == TestArtigoId &&
                      p.CommandType == "UpdateArtigoMetadata" &&
                      p.RequesterUsuarioId == EditorBolsistaUserId
             ), null), Times.Once);
 
-            // Verifica que o repositório de Artigo NÃO foi chamado
             _mockArtigoRepo.Verify(r => r.UpdateAsync(It.IsAny<Artigo.Intf.Entities.Artigo>(), null), Times.Never);
         }
 
@@ -204,9 +213,7 @@ namespace Artigo.Testes.Unit
 
             // Assert
             Assert.True(result);
-            // Verifica que o repositório de Pending NÃO foi chamado
             _mockPendingRepo.Verify(r => r.AddAsync(It.IsAny<Pending>(), null), Times.Never);
-            // Verifica que o repositório de Artigo FOI chamado
             _mockArtigoRepo.Verify(r => r.UpdateAsync(It.Is<Artigo.Intf.Entities.Artigo>(
                 a => a.Id == TestArtigoId && a.Status == StatusArtigo.EmRevisao
             ), null), Times.Once);
@@ -214,7 +221,7 @@ namespace Artigo.Testes.Unit
 
 
         // =========================================================================
-        // TESTES DE STAFF MANAGEMENT
+        // Testes de Staff
         // =========================================================================
 
         [Fact]
@@ -240,16 +247,9 @@ namespace Artigo.Testes.Unit
             // Arrange
             var novoStaff = new Staff { UsuarioId = NewStaffUserId, Job = FuncaoTrabalho.EditorBolsista, Nome = "Novo Staff", Url = "url.com" };
 
-            // *** CORREÇÃO: Definir a variável de sessão e atualizar mocks ***
-            var sessionHandle = _mockUow.Object.GetSessionHandle();
-
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null)) // Chamada inicial (fora da tx)
-                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador });
-
-            // Mocks para chamadas DENTRO da transação
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, sessionHandle))
-                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador });
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(NewStaffUserId, sessionHandle))
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, _sessionHandle))
+                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(NewStaffUserId, _sessionHandle))
                 .ReturnsAsync((Staff?)null);
 
             // Act
@@ -259,10 +259,9 @@ namespace Artigo.Testes.Unit
             Assert.NotNull(result);
             _mockPendingRepo.Verify(r => r.AddAsync(It.IsAny<Pending>(), null), Times.Never);
 
-            // *** CORREÇÃO: Verificar a chamada com o sessionHandle ***
             _mockStaffRepo.Verify(r => r.AddAsync(It.Is<Staff>(
                 s => s.UsuarioId == NewStaffUserId && s.Nome == "Novo Staff"
-            ), sessionHandle), Times.Once);
+            ), _sessionHandle), Times.Once);
         }
 
         [Fact]
@@ -271,16 +270,9 @@ namespace Artigo.Testes.Unit
             // Arrange
             var existingStaff = new Staff { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorBolsista };
 
-            // *** CORREÇÃO: Definir a variável de sessão e atualizar mocks ***
-            var sessionHandle = _mockUow.Object.GetSessionHandle();
-
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null)) // Chamada inicial
-                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador });
-
-            // Mocks para chamadas DENTRO da transação
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, sessionHandle))
-                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador });
-            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, sessionHandle))
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, _sessionHandle))
+                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, _sessionHandle))
                 .ReturnsAsync(existingStaff);
 
 
@@ -289,12 +281,11 @@ namespace Artigo.Testes.Unit
                 () => _artigoService.CriarNovoStaffAsync(existingStaff, AdminUserId, TestCommentary)
             );
 
-            // *** CORREÇÃO: Verificar que AddAsync nunca foi chamado COM SESSÃO ***
-            _mockStaffRepo.Verify(r => r.AddAsync(It.IsAny<Staff>(), sessionHandle), Times.Never);
+            _mockStaffRepo.Verify(r => r.AddAsync(It.IsAny<Staff>(), _sessionHandle), Times.Never);
         }
 
         // =========================================================================
-        // NOVOS TESTES (Formatos de Query)
+        // Testes de Formatos de Query
         // =========================================================================
 
         [Fact]
@@ -314,7 +305,6 @@ namespace Artigo.Testes.Unit
             _mockMapper.Verify(m => m.Map<IReadOnlyList<Artigo.Server.DTOs.ArtigoCardListDTO>>(It.IsAny<object>()), Times.Never);
         }
 
-        // *** TESTE ATUALIZADO (PRIORIDADE 3) ***
         [Fact]
         public async Task ObterAutorCardAsync_ShouldCallRepositoryAndReturnEntity()
         {
@@ -333,16 +323,19 @@ namespace Artigo.Testes.Unit
         }
 
         // =========================================================================
-        // NOVOS TESTES (StaffComentario)
+        // Testes de StaffComentario
         // =========================================================================
 
         [Fact]
         public async Task AddStaffComentarioAsync_ShouldAddCommentToHistory()
         {
             // Arrange
-            var history = new ArtigoHistory { Id = TestHistoryId, StaffComentarios = new List<StaffComentario>() };
+            var history = new ArtigoHistory { Id = TestHistoryId, StaffComentarios = new List<StaffComentario>(), ArtigoId = TestArtigoId };
             _mockHistoryRepo.Setup(r => r.GetByIdAsync(TestHistoryId, null)).ReturnsAsync(history);
             _mockHistoryRepo.Setup(r => r.UpdateAsync(It.IsAny<ArtigoHistory>(), null)).ReturnsAsync(true);
+
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null)).ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador, IsActive = true });
+
 
             // Act
             var result = await _artigoService.AddStaffComentarioAsync(TestHistoryId, AdminUserId, "Novo comentário", null);
@@ -353,6 +346,261 @@ namespace Artigo.Testes.Unit
             Assert.Equal("Novo comentário", result.StaffComentarios[0].Comment);
             Assert.Equal(AdminUserId, result.StaffComentarios[0].UsuarioId);
             _mockHistoryRepo.Verify(r => r.UpdateAsync(history, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task AtualizarEquipeEditorialAsync_ShouldCreatePendingRequest_WhenUserIsEditorBolsista()
+        {
+            // Arrange
+            var newTeam = new EditorialTeam { EditorId = "new_editor_id" };
+            _mockEditorialRepo.Setup(r => r.GetByArtigoIdAsync(TestArtigoId, null)).ReturnsAsync(new Editorial { Id = "editorial_123" });
+
+            // Act
+            await _artigoService.AtualizarEquipeEditorialAsync(TestArtigoId, newTeam, EditorBolsistaUserId, "Teste Bolsista Team");
+
+            // Assert
+            _mockPendingRepo.Verify(r => r.AddAsync(It.Is<Pending>(
+                p => p.TargetType == TipoEntidadeAlvo.Editorial &&
+                     p.CommandType == "UpdateEditorialTeam" &&
+                     p.RequesterUsuarioId == EditorBolsistaUserId
+            ), null), Times.Once);
+            _mockEditorialRepo.Verify(r => r.UpdateTeamAsync(It.IsAny<string>(), It.IsAny<EditorialTeam>(), null), Times.Never);
+        }
+
+        [Fact]
+        public async Task AtualizarEquipeEditorialAsync_ShouldExecuteDirectly_WhenAdmin()
+        {
+            // Arrange
+            var newTeam = new EditorialTeam { EditorId = "new_editor_id" };
+            var editorial = new Editorial { Id = "editorial_123", ArtigoId = TestArtigoId };
+            _mockEditorialRepo.Setup(r => r.GetByArtigoIdAsync(TestArtigoId, null)).ReturnsAsync(editorial);
+            _mockEditorialRepo.Setup(r => r.UpdateTeamAsync("editorial_123", newTeam, null)).ReturnsAsync(true);
+
+            // Act
+            var result = await _artigoService.AtualizarEquipeEditorialAsync(TestArtigoId, newTeam, AdminUserId, "Teste Admin Team");
+
+            // Assert
+            Assert.Equal(newTeam, result.Team);
+            _mockPendingRepo.Verify(r => r.AddAsync(It.IsAny<Pending>(), null), Times.Never);
+            _mockEditorialRepo.Verify(r => r.UpdateTeamAsync("editorial_123", newTeam, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ResolverRequisicaoPendenteAsync_ShouldUpdateEditorialTeam_WhenCommandIsValid()
+        {
+            // Arrange
+            var team = new EditorialTeam { EditorId = "new_editor_id" };
+            var editorial = new Editorial { Id = "editorial_123" };
+            var pendingReq = new Pending
+            {
+                Id = "pending_123",
+                CommandType = "UpdateEditorialTeam",
+                TargetEntityId = "editorial_123", // O alvo é o Editorial
+                CommandParametersJson = JsonSerializer.Serialize(team, _jsonSerializerOptions)
+            };
+
+            _mockPendingRepo.Setup(r => r.GetByIdAsync("pending_123", _sessionHandle)).ReturnsAsync(pendingReq);
+            _mockEditorialRepo.Setup(r => r.GetByIdAsync("editorial_123", _sessionHandle)).ReturnsAsync(editorial);
+            _mockEditorialRepo.Setup(r => r.UpdateTeamAsync("editorial_123", It.IsAny<EditorialTeam>(), _sessionHandle)).ReturnsAsync(true);
+            _mockPendingRepo.Setup(r => r.UpdateAsync(It.IsAny<Pending>(), _sessionHandle)).ReturnsAsync(true);
+
+            // Act
+            var result = await _artigoService.ResolverRequisicaoPendenteAsync("pending_123", true, AdminUserId);
+
+            // Assert
+            Assert.True(result);
+            _mockEditorialRepo.Verify(r => r.UpdateTeamAsync("editorial_123", It.Is<EditorialTeam>(t => t.EditorId == "new_editor_id"), _sessionHandle), Times.Once);
+            _mockPendingRepo.Verify(r => r.UpdateAsync(It.Is<Pending>(p => p.Status == StatusPendente.Aprovado), _sessionHandle), Times.Once);
+        }
+
+        // =========================================================================
+        // Testes de Busca
+        // =========================================================================
+
+        [Fact]
+        public async Task ObterArtigosCardListPorTituloAsync_ShouldCallRepository()
+        {
+            // Arrange
+            string searchTerm = "teste";
+            int pagina = 0;
+            int tamanho = 10;
+            var expectedList = new List<Artigo.Intf.Entities.Artigo> { new Artigo.Intf.Entities.Artigo { Id = "artigo_1" } };
+            _mockArtigoRepo.Setup(r => r.SearchArtigosCardListByTitleAsync(searchTerm, pagina, tamanho, null)).ReturnsAsync(expectedList);
+
+            // Act
+            var result = await _artigoService.ObterArtigosCardListPorTituloAsync(searchTerm, pagina, tamanho);
+
+            // Assert
+            Assert.Equal(expectedList, result);
+            _mockArtigoRepo.Verify(r => r.SearchArtigosCardListByTitleAsync(searchTerm, pagina, tamanho, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ObterArtigosCardListPorNomeAutorAsync_ShouldCallBothRepositories()
+        {
+            // Arrange
+            string searchTerm = "autor";
+            int pagina = 0;
+            int tamanho = 10;
+
+            // Simula autor registrado
+            var autoresRegistrados = new List<Autor> { new Autor { Id = "autor_123" } };
+            _mockAutorRepo.Setup(r => r.SearchAutoresByNameAsync(searchTerm, null)).ReturnsAsync(autoresRegistrados);
+
+            // Simula artigos encontrados por ID
+            var artigosPorId = new List<Artigo.Intf.Entities.Artigo> { new Artigo.Intf.Entities.Artigo { Id = "artigo_1" } };
+            _mockArtigoRepo.Setup(r => r.SearchArtigosCardListByAutorIdsAsync(It.Is<IReadOnlyList<string>>(ids => ids.Contains("autor_123")), null)).ReturnsAsync(artigosPorId);
+
+            // Simula artigos encontrados por referência
+            var artigosPorRef = new List<Artigo.Intf.Entities.Artigo> { new Artigo.Intf.Entities.Artigo { Id = "artigo_2" } };
+            _mockArtigoRepo.Setup(r => r.SearchArtigosCardListByAutorReferenceAsync(searchTerm, null)).ReturnsAsync(artigosPorRef);
+
+            // Act
+            var result = await _artigoService.ObterArtigosCardListPorNomeAutorAsync(searchTerm, pagina, tamanho);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(result, a => a.Id == "artigo_1");
+            Assert.Contains(result, a => a.Id == "artigo_2");
+            _mockAutorRepo.Verify(r => r.SearchAutoresByNameAsync(searchTerm, null), Times.Once);
+            _mockArtigoRepo.Verify(r => r.SearchArtigosCardListByAutorIdsAsync(It.IsAny<IReadOnlyList<string>>(), null), Times.Once);
+            _mockArtigoRepo.Verify(r => r.SearchArtigosCardListByAutorReferenceAsync(searchTerm, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ObterArtigosCardListPorNomeAutorAsync_ShouldCombineAndPaginateResults()
+        {
+            // Arrange
+            string searchTerm = "autor";
+            var dataAntiga = DateTime.UtcNow.AddDays(-1);
+            var dataNova = DateTime.UtcNow;
+
+            // Artigo duplicado (mesmo ID, será encontrado em ambas as buscas)
+            var artigo1 = new Artigo.Intf.Entities.Artigo { Id = "artigo_1", Titulo = "Duplicado", DataCriacao = dataAntiga };
+            // Artigo único por ID
+            var artigo2 = new Artigo.Intf.Entities.Artigo { Id = "artigo_2", Titulo = "Unico ID", DataCriacao = dataNova };
+            // Artigo único por Referência
+            var artigo3 = new Artigo.Intf.Entities.Artigo { Id = "artigo_3", Titulo = "Unico Ref", DataCriacao = dataAntiga };
+
+            _mockAutorRepo.Setup(r => r.SearchAutoresByNameAsync(searchTerm, null)).ReturnsAsync(new List<Autor> { new Autor { Id = "autor_123" } });
+            _mockArtigoRepo.Setup(r => r.SearchArtigosCardListByAutorIdsAsync(It.IsAny<IReadOnlyList<string>>(), null)).ReturnsAsync(new List<Artigo.Intf.Entities.Artigo> { artigo1, artigo2 });
+            _mockArtigoRepo.Setup(r => r.SearchArtigosCardListByAutorReferenceAsync(searchTerm, null)).ReturnsAsync(new List<Artigo.Intf.Entities.Artigo> { artigo3, artigo1 }); // artigo1 está duplicado
+
+            // Act
+            // Busca Página 0, Tamanho 2
+            var resultPagina1 = await _artigoService.ObterArtigosCardListPorNomeAutorAsync(searchTerm, 0, 2);
+
+            // Busca Página 1, Tamanho 2
+            var resultPagina2 = await _artigoService.ObterArtigosCardListPorNomeAutorAsync(searchTerm, 1, 2);
+
+            // Assert
+            // Deve haver 3 resultados únicos no total (artigo2, artigo3, artigo1 - ordenados por data)
+            Assert.Equal(2, resultPagina1.Count);
+            Assert.Equal("Unico ID", resultPagina1[0].Titulo); // artigo2 (DataNova)
+            Assert.Equal("Duplicado", resultPagina1[1].Titulo); // artigo1 (DataAntiga) - A ordem entre 1 e 3 pode variar
+
+            Assert.Single(resultPagina2);
+            Assert.Contains(resultPagina2, a => a.Id == "artigo_3" || a.Id == "artigo_1"); // O resultado restante
+        }
+
+        // =========================================================================
+        // (NOVOS TESTES) Testes para ObterAutorPorIdAsync
+        // =========================================================================
+
+        [Fact]
+        public async Task ObterAutorPorIdAsync_ShouldSucceed_WhenUserIsStaff()
+        {
+            // Arrange
+            // TestAutorId está configurado para retornar um Autor com UsuarioId = TestAutorUsuarioId
+            // AdminUserId está configurado para retornar um Staff Admin
+
+            // Act
+            var result = await _artigoService.ObterAutorPorIdAsync(TestAutorId, AdminUserId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(TestAutorId, result.Id);
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(AdminUserId, null), Times.Once);
+            _mockAutorRepo.Verify(r => r.GetByIdAsync(TestAutorId, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ObterAutorPorIdAsync_ShouldSucceed_WhenUserIsOwner()
+        {
+            // Arrange
+            // TestAutorId está configurado para retornar um Autor com UsuarioId = TestAutorUsuarioId
+            // TestAutorUsuarioId está configurado para NÃO retornar um Staff
+
+            // Act
+            var result = await _artigoService.ObterAutorPorIdAsync(TestAutorId, TestAutorUsuarioId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(TestAutorId, result.Id);
+            Assert.Equal(TestAutorUsuarioId, result.UsuarioId);
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(TestAutorUsuarioId, null), Times.Once);
+            _mockAutorRepo.Verify(r => r.GetByIdAsync(TestAutorId, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ObterAutorPorIdAsync_ShouldThrowUnauthorized_WhenUserIsNotStaffOrOwner()
+        {
+            // Arrange
+            // TestAutorId está configurado para retornar um Autor com UsuarioId = TestAutorUsuarioId
+            // UnauthorizedUserId está configurado para NÃO retornar um Staff
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                () => _artigoService.ObterAutorPorIdAsync(TestAutorId, UnauthorizedUserId)
+            );
+
+            // Verificações
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null), Times.Once);
+            _mockAutorRepo.Verify(r => r.GetByIdAsync(TestAutorId, null), Times.Once); // Busca o autor para checar o dono
+        }
+
+        // =========================================================================
+        // (NOVOS TESTES) Testes para ObterMeusArtigosCardListAsync
+        // =========================================================================
+
+        [Fact]
+        public async Task ObterMeusArtigosCardListAsync_ShouldReturnArticles_WhenUserIsAutor()
+        {
+            // Arrange
+            var autor = new Autor { Id = TestAutorId, UsuarioId = TestAutorUsuarioId, ArtigoWorkIds = new List<string> { "art_1", "art_2" } };
+            var articles = new List<Artigo.Intf.Entities.Artigo>
+            {
+                new Artigo.Intf.Entities.Artigo { Id = "art_1", Status = StatusArtigo.Rascunho },
+                new Artigo.Intf.Entities.Artigo { Id = "art_2", Status = StatusArtigo.Publicado }
+            };
+
+            _mockAutorRepo.Setup(r => r.GetByUsuarioIdAsync(TestAutorUsuarioId, null)).ReturnsAsync(autor);
+            _mockArtigoRepo.Setup(r => r.ObterArtigosCardListPorAutorIdAsync(TestAutorId, null)).ReturnsAsync(articles);
+
+            // Act
+            var result = await _artigoService.ObterMeusArtigosCardListAsync(TestAutorUsuarioId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+            _mockAutorRepo.Verify(r => r.GetByUsuarioIdAsync(TestAutorUsuarioId, null), Times.Once);
+            _mockArtigoRepo.Verify(r => r.ObterArtigosCardListPorAutorIdAsync(TestAutorId, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ObterMeusArtigosCardListAsync_ShouldReturnEmptyList_WhenUserIsNotAutor()
+        {
+            // Arrange
+            _mockAutorRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null)).ReturnsAsync((Autor?)null);
+
+            // Act
+            var result = await _artigoService.ObterMeusArtigosCardListAsync(UnauthorizedUserId);
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+            _mockAutorRepo.Verify(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null), Times.Once);
+            // NÃO DEVE chamar o repositório de artigo
+            _mockArtigoRepo.Verify(r => r.ObterArtigosCardListPorAutorIdAsync(It.IsAny<string>(), null), Times.Never);
         }
     }
 }

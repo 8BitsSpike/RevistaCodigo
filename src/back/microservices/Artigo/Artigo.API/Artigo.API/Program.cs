@@ -109,7 +109,7 @@ var graphQLServer = builder.Services.AddGraphQLServer()
 
     // *** NOVOS TIPOS (Formatos e StaffComentario) ***
     .AddType<ArtigoCardListType>()
-    .AddType<VolumeListType>()
+    // Removido: .AddType<VolumeListType>() // Obsoleto
     .AddType<AutorViewType>()
     .AddType<ArtigoViewType>()
     .AddType<StaffComentarioType>()
@@ -119,13 +119,20 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddType<ArtigoEditorialViewType>()
     .AddType<EditorialViewType>()
     .AddType<ArtigoHistoryEditorialViewType>()
-    .AddType<InteractionConnectionDTOType>() // Dependência do ArtigoViewType
-    .AddType<ArtigoHistoryViewType>()     // Dependência do ArtigoViewType
+    .AddType<InteractionConnectionDTOType>()
+    .AddType<ArtigoHistoryViewType>()
+    .AddType<StaffViewDTOType>() // Adicionado na Prioridade 4
+    .AddType<VolumeViewType>() // Adicionado na Prioridade 2
 
 
     // *** NOVOS TIPOS DE INPUT ***
     .AddType<AutorInputType>()
     .AddType<CreateStaffInput>()
+    .AddType<MidiaEntryInputType>() // Adicionado na Prioridade 2
+    .AddType<UpdateVolumeMetadataInputType>() // Adicionado na Prioridade 5
+    .AddType<MidiaEntryEntityInputType>() // Adicionado na Prioridade 5
+    .AddType<CreateVolumeInputType>() // *** ADICIONADO (CORREÇÃO) ***
+    .AddType<EditorialTeamInputType>() // *** ADICIONADO (Plano B) ***
 
     // Mapeia Enums
     .BindRuntimeType<StatusArtigo, EnumType<StatusArtigo>>()
@@ -137,6 +144,7 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .BindRuntimeType<TipoEntidadeAlvo, EnumType<TipoEntidadeAlvo>>()
     .BindRuntimeType<FuncaoTrabalho, EnumType<FuncaoTrabalho>>()
     .BindRuntimeType<MesVolume, EnumType<MesVolume>>()
+    .BindRuntimeType<StatusVolume, EnumType<StatusVolume>>() // Adicionado na Prioridade 1
 
     // Configura DataLoaders (registro simplificado)
     .AddDataLoader<EditorialDataLoader>()
@@ -147,7 +155,7 @@ var graphQLServer = builder.Services.AddGraphQLServer()
     .AddDataLoader<ArtigoHistoryGroupedDataLoader>()
     .AddDataLoader<InteractionRepliesDataLoader>()
     // Removido: ExternalUserDataLoader
-    .AddDataLoader<Artigo.API.GraphQL.DataLoaders.ArticleInteractionsDataLoader>() // Corrigido para o nome da classe
+    .AddDataLoader<Artigo.API.GraphQL.DataLoaders.ArticleInteractionsDataLoader>()
     .AddDataLoader<Artigo.API.GraphQL.DataLoaders.ArtigoGroupedDataLoader>()
 
     // Configuração para uso com MongoDB

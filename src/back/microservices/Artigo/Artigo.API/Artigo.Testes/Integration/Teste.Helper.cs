@@ -4,7 +4,6 @@ using Artigo.DbContext.Repositories;
 using Artigo.Intf.Interfaces;
 using Artigo.Server.Mappers;
 using Artigo.Server.Services;
-// Removido: using Artigo.Server.Interfaces;
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
@@ -61,7 +60,6 @@ namespace Artigo.Testes.Integration
 
             // 3. REGISTRO DE REPOSITORIES E SERVICES
 
-            // *** NOVO (Unit of Work) ***
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IArtigoRepository, ArtigoRepository>();
@@ -72,10 +70,7 @@ namespace Artigo.Testes.Integration
             services.AddScoped<IPendingRepository, PendingRepository>();
             services.AddScoped<IStaffRepository, StaffRepository>();
             services.AddScoped<IVolumeRepository, VolumeRepository>();
-
             services.AddScoped<IArtigoService, ArtigoService>();
-            // Removido: IExternalUserService
-
 
             ServiceProvider = services.BuildServiceProvider();
 
@@ -102,7 +97,6 @@ namespace Artigo.Testes.Integration
                     UsuarioId = AdminTestUsuarioId,
                     Job = FuncaoTrabalho.Administrador,
                     IsActive = true,
-                    // *** NOVOS CAMPOS ***
                     Nome = "Admin Teste",
                     Url = "http://avatar.com/admin.jpg"
                 };

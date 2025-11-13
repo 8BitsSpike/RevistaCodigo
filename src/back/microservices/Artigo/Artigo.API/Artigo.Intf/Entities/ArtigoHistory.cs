@@ -25,7 +25,6 @@ namespace Artigo.Intf.Entities
         // Lista de Midias associadas nesta versão do histórico.
         public List<MidiaEntry> Midias { get; set; } = [];
 
-        // *** NOVA PROPRIEDADE ***
         // Lista de comentários internos da equipe editorial sobre esta versão.
         public List<StaffComentario> StaffComentarios { get; set; } = [];
 
@@ -34,7 +33,6 @@ namespace Artigo.Intf.Entities
     }
 
     /// <sumario>
-    /// *** NOVA CLASSE ***
     /// Objeto embutido para rastrear os comentários internos da equipe editorial
     /// sobre uma versão específica do ArtigoHistory.
     /// </sumario>

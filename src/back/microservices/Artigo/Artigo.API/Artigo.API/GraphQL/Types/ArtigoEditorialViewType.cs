@@ -9,11 +9,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Artigo.API.GraphQL.Resolvers; // *** ADICIONADO PARA O RESOLVER CENTRAL ***
 
 namespace Artigo.API.GraphQL.Types
 {
     /// <sumario>
-    /// *** NOVO TIPO ***
     /// DTO aninhado para os dados do Editorial (para ArtigoEditorialView).
     /// </sumario>
     public class EditorialViewType : ObjectType<EditorialViewDTO>
@@ -28,7 +28,6 @@ namespace Artigo.API.GraphQL.Types
     }
 
     /// <sumario>
-    /// *** NOVO TIPO ***
     /// DTO aninhado para o conteúdo do ArtigoHistory (para ArtigoEditorialView).
     /// </sumario>
     public class ArtigoHistoryEditorialViewType : ObjectType<ArtigoHistoryEditorialViewDTO>
@@ -43,7 +42,6 @@ namespace Artigo.API.GraphQL.Types
     }
 
     /// <sumario>
-    /// *** NOVO TIPO ***
     /// Mapeia o ArtigoEditorialViewDTO para um tipo de objeto GraphQL.
     /// Representa o 'Artigo Editorial Format'.
     /// </sumario>
@@ -166,50 +164,12 @@ namespace Artigo.API.GraphQL.Types
                 });
 
             // 4. Resolver para Interações (Comentários)
-            descriptor.Field(f => f.Interacoes)
+            descriptor.Field<ArtigoInteractionsResolver>(r => r.GetInteractionsAsync(default!, default!, default!, default!, default!))
                 .Name("interacoes")
                 .Argument("page", a => a.Type<IntType>().DefaultValue(0))
                 .Argument("pageSize", a => a.Type<IntType>().DefaultValue(10))
                 .Type<InteractionConnectionDTOType>() // Reutiliza o tipo de ArtigoViewType.cs
-                .Description("Comentários editoriais e uma lista paginada de comentários públicos.")
-                .Resolve(async (ctx, ct) =>
-                {
-                    var dto = ctx.Parent<ArtigoEditorialViewDTO>();
-                    var page = ctx.ArgumentValue<int>("page");
-                    var pageSize = ctx.ArgumentValue<int>("pageSize");
-
-                    var dataLoader = ctx.DataLoader<ArticleInteractionsDataLoader>();
-                    var interacoes = await dataLoader.LoadAsync(dto.Id, ct);
-
-                    if (interacoes == null || !interacoes.Any())
-                    {
-                        return new InteractionConnectionDTO
-                        {
-                            ComentariosEditoriais = new List<Interaction>(),
-                            ComentariosPublicos = new List<Interaction>(),
-                            TotalComentariosPublicos = 0
-                        };
-                    }
-
-                    var editoriais = interacoes
-                        .Where(i => i.Type == TipoInteracao.ComentarioEditorial)
-                        .ToList();
-
-                    var publicos = interacoes
-                        .Where(i => i.Type == TipoInteracao.ComentarioPublico);
-
-                    var publicosPaginados = publicos
-                        .Skip(page * pageSize)
-                        .Take(pageSize)
-                        .ToList();
-
-                    return new InteractionConnectionDTO
-                    {
-                        ComentariosEditoriais = editoriais,
-                        ComentariosPublicos = publicosPaginados,
-                        TotalComentariosPublicos = publicos.Count()
-                    };
-                });
+                .Description("Comentários editoriais e uma lista paginada de comentários públicos.");
         }
     }
 }

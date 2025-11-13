@@ -1,7 +1,0 @@
-@Media.API_HostAddress = http://localhost:5166
-
-GET {{Media.API_HostAddress}}/Media
-/
-Accept: application/json
-
-###

@@ -38,7 +38,6 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _interactions.Find(session, i => i.Id == objectId.ToString())
                 : _interactions.Find(i => i.Id == objectId.ToString());
@@ -51,7 +50,6 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _interactions.Find(session, i => i.ArtigoId == artigoId)
                 : _interactions.Find(i => i.ArtigoId == artigoId);
@@ -68,7 +66,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<InteractionModel>.Filter.In(i => i.ParentCommentId, parentIds);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _interactions.Find(session, filter)
                 : _interactions.Find(filter);
@@ -84,7 +81,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<InteractionModel>.Filter.In(i => i.ArtigoId, artigoIds);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _interactions.Find(session, filter)
                 : _interactions.Find(filter);
@@ -101,7 +97,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<InteractionModel>.Filter.In(i => i.Id, ids);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _interactions.Find(session, filter)
                 : _interactions.Find(filter);
@@ -170,6 +165,31 @@ namespace Artigo.DbContext.Repositories
                 : await _interactions.DeleteManyAsync(i => i.ArtigoId == artigoId);
 
             return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
+        /// <sumario>
+        /// Retorna uma lista paginada de comentários públicos para um artigo específico.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Interaction>> GetPublicCommentsAsync(string artigoId, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            // Filtro combinado para ArtigoId E TipoInteracao
+            var filter = Builders<InteractionModel>.Filter.Eq(i => i.ArtigoId, artigoId) &
+                         Builders<InteractionModel>.Filter.Eq(i => i.Type, TipoInteracao.ComentarioPublico);
+
+            var find = (session != null)
+                ? _interactions.Find(session, filter)
+                : _interactions.Find(filter);
+
+            var models = await find
+                .SortByDescending(i => i.DataCriacao) // Ordena pelos mais recentes
+                .Skip(skip)
+                .Limit(tamanho)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Interaction>>(models);
         }
     }
 }

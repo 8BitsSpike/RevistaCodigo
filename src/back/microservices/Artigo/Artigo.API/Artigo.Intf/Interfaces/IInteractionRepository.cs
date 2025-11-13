@@ -51,9 +51,13 @@ namespace Artigo.Intf.Interfaces
         Task<bool> DeleteAsync(string id, object? sessionHandle = null);
 
         /// <sumario>
-        /// *** NOVO MÉTODO NA INTERFACE (PRIORIDADE 5) ***
         /// Remove todos os comentários associados a um ArtigoId.
         /// </sumario>
         Task<bool> DeleteByArtigoIdAsync(string artigoId, object? sessionHandle = null);
+
+        /// <sumario>
+        /// Retorna uma lista paginada de comentários públicos para um artigo específico.
+        /// </sumario>
+        Task<IReadOnlyList<Interaction>> GetPublicCommentsAsync(string artigoId, int pagina, int tamanho, object? sessionHandle = null);
     }
 }

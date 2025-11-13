@@ -36,8 +36,6 @@ namespace Artigo.Server.DTOs
         // Metricas Denormalizadas (Subset Pattern)
         public int TotalInteracoes { get; set; } = 0;
         public int TotalComentarios { get; set; } = 0;
-
-        // *** NOVO CAMPO ***
         public bool PermitirComentario { get; set; }
 
         // Datas

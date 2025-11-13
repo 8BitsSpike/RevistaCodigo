@@ -25,14 +25,13 @@ namespace Artigo.Server.DTOs
         // Tipo de artigo (Enum)
         public TipoArtigo Tipo { get; set; } = TipoArtigo.Artigo;
 
-        // *** CAMPO ATUALIZADO ***
         // Autores: O cliente envia a lista de DTOs de Autor, contendo ID, Nome e URL.
         public List<AutorInputDTO> Autores { get; set; } = [];
 
         // Campo 'AutorReference' mantido para autores não cadastrados.
         public List<string> ReferenciasAutor { get; set; } = [];
 
-        // *** CAMPO REMOVIDO ***
-        // public List<string> IdsAutor { get; set; } = [];
+        // Mídias associadas ao artigo (imagem de destaque, etc.)
+        public List<MidiaEntryInputDTO> Midias { get; set; } = [];
     }
 }

@@ -5,12 +5,13 @@ using Artigo.API.GraphQL.Resolvers;
 using HotChocolate.Types;
 using System.Collections.Generic;
 using Artigo.Intf.Entities;
+using System.Linq; // Adicionado para .Select()
+using HotChocolate; // Adicionado para [Parent]
 
 namespace Artigo.API.GraphQL.Types
 {
     /// <sumario>
     /// Mapeia o DTO da entrada de Mídia para um tipo de objeto GraphQL.
-    /// *** ATUALIZADO (PRIORIDADE 5) ***
     /// </sumario>
     public class MidiaEntryType : ObjectType<MidiaEntryDTO>
     {
@@ -22,7 +23,7 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.IdMidia).Type<NonNullType<IdType>>().Description("ID de referência da mídia.");
             descriptor.Field(f => f.Url).Type<NonNullType<StringType>>().Description("URL de acesso à mídia.");
 
-            // *** CORREÇÃO (PRIORIDADE 5): Alterado para StringType (nullable) ***
+            // Alterado para StringType (nullable)
             descriptor.Field(f => f.TextoAlternativo)
                 .Type<StringType>() // Removido NonNullType
                 .Description("Texto alternativo para SEO e acessibilidade.");
@@ -44,8 +45,6 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.Resumo).Description("Resumo/Abstract do conteúdo.");
             descriptor.Field(f => f.Status).Type<NonNullType<EnumType<StatusArtigo>>>().Description("Status do ciclo de vida editorial.");
             descriptor.Field(f => f.Tipo).Type<NonNullType<EnumType<TipoArtigo>>>().Description("Classificação do tipo de artigo.");
-
-            // *** CAMPO ADICIONADO (AGORA MAPEADO DO DTO) ***
             descriptor.Field(f => f.PermitirComentario)
                 .Type<NonNullType<BooleanType>>()
                 .Description("Indica se os comentários públicos estão habilitados para este artigo.");
@@ -54,10 +53,34 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.TotalComentarios).Description("Contagem total de comentários públicos (Denormalizado).");
             descriptor.Field(f => f.TotalInteracoes).Description("Contagem total de interações (Denormalizado).");
 
-            // Mídias Associadas (direto do DTO)
+            // Mídias Associadas (agora é um resolver)
             descriptor.Field(f => f.Midias)
                 .Type<NonNullType<ListType<NonNullType<MidiaEntryType>>>>()
-                .Description("Lista das mídias (imagem de destaque, vídeos, etc.) associadas ao artigo.");
+                .Description("Lista das mídias (imagem de destaque, vídeos, etc.) associadas ao artigo.")
+                .Resolve(async ctx =>
+                {
+                    var dto = ctx.Parent<ArtigoDTO>();
+                    var editorialLoader = ctx.DataLoader<EditorialDataLoader>();
+
+                    // 1. Busca o Editorial
+                    var editorial = await editorialLoader.LoadAsync(dto.IdEditorial);
+                    if (editorial == null) return new List<MidiaEntryDTO>();
+
+                    // 2. Busca o History
+                    var historyDataLoader = ctx.DataLoader<ArtigoHistoryGroupedDataLoader>();
+                    var historyLookup = await historyDataLoader.LoadAsync(editorial.CurrentHistoryId);
+                    var history = historyLookup?.FirstOrDefault();
+                    if (history == null) return new List<MidiaEntryDTO>();
+
+                    // 3. Mapeia as Mídias do History para DTOs
+                    return history.Midias.Select(m => new MidiaEntryDTO
+                    {
+                        IdMidia = m.MidiaID,
+                        Url = m.Url,
+                        TextoAlternativo = m.Alt
+                    }).ToList();
+                });
+
 
             // Relacionamentos Resolvidos (Resolvers)
 

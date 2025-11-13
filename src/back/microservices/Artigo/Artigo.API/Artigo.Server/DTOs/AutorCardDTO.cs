@@ -13,7 +13,6 @@ namespace Artigo.Server.DTOs
         public string Nome { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
 
-        // *** NOVO CAMPO (ADICIONADO) ***
         // IDs dos trabalhos (para o resolver buscar os títulos)
         public List<string> ArtigoWorkIds { get; set; } = [];
 

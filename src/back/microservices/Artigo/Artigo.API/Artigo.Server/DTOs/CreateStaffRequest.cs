@@ -22,7 +22,6 @@ namespace Artigo.Server.DTOs
         public FuncaoTrabalho Job { get; set; } = FuncaoTrabalho.EditorBolsista;
 
         /// <sumario>
-        /// *** NOVO CAMPO ***
         /// Nome de exibição do usuário (para denormalização).
         /// </sumario>
         [Required(ErrorMessage = "O nome do usuário é obrigatório.")]
@@ -30,7 +29,6 @@ namespace Artigo.Server.DTOs
         public string Nome { get; set; } = string.Empty;
 
         /// <sumario>
-        /// *** NOVO CAMPO ***
         /// URL da foto de perfil do usuário (para denormalização).
         /// </sumario>
         [MaxLength(500, ErrorMessage = "A URL não pode exceder 500 caracteres.")]

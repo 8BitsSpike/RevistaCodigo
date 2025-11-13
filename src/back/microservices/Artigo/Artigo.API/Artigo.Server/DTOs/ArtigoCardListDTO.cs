@@ -13,9 +13,7 @@ namespace Artigo.Server.DTOs
         public string Id { get; set; } = string.Empty;
         public string Titulo { get; set; } = string.Empty;
         public string Resumo { get; set; } = string.Empty;
-
-        // O campo 'Tipo' foi removido, conforme a nova especificação.
-        // public TipoArtigo Tipo { get; set; } 
+        public StatusArtigo Status { get; set; }
 
         // Mapeia a primeira mídia da lista (imagem de destaque)
         public MidiaEntryDTO? MidiaDestaque { get; set; }

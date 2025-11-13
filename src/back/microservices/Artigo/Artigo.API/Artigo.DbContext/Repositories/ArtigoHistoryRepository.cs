@@ -36,7 +36,6 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _history.Find(session, h => h.Id == objectId.ToString())
                 : _history.Find(h => h.Id == objectId.ToString());
@@ -54,7 +53,6 @@ namespace Artigo.DbContext.Repositories
                 .Include(h => h.Id)
                 .Include(h => h.Content);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _history.Find(session, filter)
                 : _history.Find(filter);
@@ -77,7 +75,6 @@ namespace Artigo.DbContext.Repositories
             var filter = Builders<ArtigoHistoryModel>.Filter.Eq(h => h.ArtigoId, artigoId) &
                          Builders<ArtigoHistoryModel>.Filter.Eq(h => h.Version, version);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _history.Find(session, filter)
                 : _history.Find(filter);
@@ -94,7 +91,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<ArtigoHistoryModel>.Filter.In(h => h.Id, ids);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _history.Find(session, filter)
                 : _history.Find(filter);

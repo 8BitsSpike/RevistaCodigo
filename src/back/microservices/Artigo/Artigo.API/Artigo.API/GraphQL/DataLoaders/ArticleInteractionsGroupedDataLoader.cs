@@ -38,13 +38,8 @@ namespace Artigo.API.GraphQL.DataLoaders
             IReadOnlyList<string> keys,
             CancellationToken cancellationToken)
         {
-            // 1. Otimização: Chama o repositório UMA ÚNICA VEZ para todos os IDs.
-            // O repositório deve buscar todos os comentários onde ArtigoId está na lista 'keys'.
             var interacoes = await _interactionRepository.GetByArtigoIdsAsync(keys);
 
-            // 2. Mapeamento: Converte a lista de volta para um ILookup.
-            // O ILookup é essencial para o GroupedDataLoader, pois mapeia uma única chave (ArtigoId)
-            // para MÚLTIPLOS valores (a lista de Interacoes/Comentarios).
             return interacoes.ToLookup(i => i.ArtigoId);
         }
     }

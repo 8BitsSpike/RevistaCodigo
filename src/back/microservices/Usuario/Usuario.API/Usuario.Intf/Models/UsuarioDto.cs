@@ -1,21 +1,24 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Usuario.Intf.Models
 {
-    public class UsuarDto
+    public class UsuarioDto
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public ObjectId Id { get; set; }
+      
+        public string? Id { get; set; }
 
-        [BsonElement("name")]
+        [Required]
         public string? Name { get; set; }
 
-        [BsonElement("email")]
-        public string? Email { get; set; }
+        [Required]
+        public string? Sobrenome { get; set; }
 
-        [BsonElement("password")]
+        [Required]
+        [EmailAddress]
+        public string? Email { get; set; }
+        [Required]
         public string? Password { get; set; }
+        [Required]
+        public string? PasswordConfirm { get; set; }
     }
 }

@@ -37,7 +37,6 @@ namespace Artigo.DbContext.Repositories
             if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _editoriais.Find(session, e => e.Id == objectId.ToString())
                 : _editoriais.Find(e => e.Id == objectId.ToString());
@@ -50,7 +49,6 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _editoriais.Find(session, e => e.ArtigoId == artigoId)
                 : _editoriais.Find(e => e.ArtigoId == artigoId);
@@ -64,7 +62,6 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
             var filter = Builders<EditorialModel>.Filter.In(e => e.Id, ids);
 
-            // *** CORREÇÃO ***
             var find = (session != null)
                 ? _editoriais.Find(session, filter)
                 : _editoriais.Find(filter);

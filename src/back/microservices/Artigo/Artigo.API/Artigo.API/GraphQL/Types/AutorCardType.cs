@@ -1,9 +1,9 @@
-﻿using Artigo.API.GraphQL.DataLoaders; // *** ADICIONADO ***
+﻿using Artigo.API.GraphQL.DataLoaders; 
 using Artigo.Server.DTOs;
-using HotChocolate; // *** ADICIONADO ***
+using HotChocolate; 
 using HotChocolate.Types;
-using System.Linq; // *** ADICIONADO ***
-using System.Threading.Tasks; // *** ADICIONADO ***
+using System.Linq; 
+using System.Threading.Tasks; 
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -24,7 +24,6 @@ namespace Artigo.API.GraphQL.Types
     /// <sumario>
     /// Mapeia o AutorCardDTO para um tipo de objeto GraphQL.
     /// Representa o 'Autor Card' format.
-    /// *** ATUALIZADO com Resolver para 'trabalhos' ***
     /// </sumario>
     public class AutorCardType : ObjectType<AutorCardDTO>
     {
@@ -39,8 +38,6 @@ namespace Artigo.API.GraphQL.Types
 
             // Campo de IDs (ignorado, usado apenas pelo resolver)
             descriptor.Field(f => f.ArtigoWorkIds).Ignore();
-
-            // *** RESOLVER ADICIONADO ***
             descriptor.Field(f => f.Trabalhos)
                 .Type<NonNullType<ListType<NonNullType<AutorTrabalhoDTOType>>>>()
                 .Description("Lista de títulos de artigos em que este autor trabalhou.")
@@ -54,7 +51,7 @@ namespace Artigo.API.GraphQL.Types
 
                     // 2. Filtra nulos e mapeia para o DTO de Trabalho
                     // O ArtigoGroupedDataLoader retorna ILookup<string, ArtigoDTO>
-                    // Nós achatamos (Flatten) o lookup e filtramos nulos.
+                    // Achata(Flatten) o lookup e filtra os nulos.
                     return artigos
                         .SelectMany(group => group!) // Achatamento
                         .Where(artigo => artigo != null)

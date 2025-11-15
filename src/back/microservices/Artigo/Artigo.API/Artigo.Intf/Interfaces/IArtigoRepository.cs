@@ -12,7 +12,7 @@ namespace Artigo.Intf.Interfaces
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListAsync(int pagina, int tamanho, object? sessionHandle = null);
 
         /// <sumario>
-        /// Retorna artigos para o 'Card List Format' filtrados por TipoArtigo.
+        /// (PÚBLICO) Retorna artigos (card) filtrados por TipoArtigo e Status PUBLICADO.
         /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, object? sessionHandle = null);
 
@@ -22,24 +22,41 @@ namespace Artigo.Intf.Interfaces
         Task<bool> UpdateMetricsAsync(string id, int totalComentarios, int totalInteracoes, object? sessionHandle = null);
         Task<bool> DeleteAsync(string id, object? sessionHandle = null);
 
+        /// <sumario>
+        /// (PÚBLICO) Busca artigos (card) por Título, filtrado por Status PUBLICADO.
+        /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByTitleAsync(string searchTerm, int pagina, int tamanho, object? sessionHandle = null);
 
         /// <sumario>
-        /// Busca artigos (formato card) que correspondem a uma lista de IDs de Autores (registrados).
-        /// FILTRA APENAS StatusArtigo.Publicado.
+        /// (PÚBLICO) Busca artigos (card) por IDs de Autor, filtrado por Status PUBLICADO.
         /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByAutorIdsAsync(IReadOnlyList<string> autorIds, object? sessionHandle = null);
 
         /// <sumario>
-        /// (NOVO) Busca artigos (formato card) de um único Autor.
-        /// NÃO FILTRA POR STATUS - Retorna todos (Rascunho, Publicado, etc.)
+        /// (STAFF) Busca artigos (card) de um único Autor. NÃO FILTRA POR STATUS.
         /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorAutorIdAsync(string autorId, object? sessionHandle = null);
 
-
         /// <sumario>
-        /// Busca artigos (formato card) que correspondem a um termo de busca no campo AutorReference (não registrados).
+        /// (PÚBLICO) Busca artigos (card) por Referência de Autor, filtrado por Status PUBLICADO.
         /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByAutorReferenceAsync(string searchTerm, object? sessionHandle = null);
+
+        // --- (NOVOS MÉTODOS PARA STAFF) ---
+
+        /// <sumario>
+        /// (STAFF) Retorna artigos (card) filtrados por TipoArtigo, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, object? sessionHandle = null);
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por Título, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, object? sessionHandle = null);
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por IDs de Autor, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, object? sessionHandle = null);
     }
 }

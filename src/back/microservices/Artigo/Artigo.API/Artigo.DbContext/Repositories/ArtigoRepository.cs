@@ -30,15 +30,17 @@ namespace Artigo.DbContext.Repositories
             return (IClientSessionHandle?)sessionHandle;
         }
 
+        // Projeção atualizada para incluir os novos campos
         private readonly ProjectionDefinition<ArtigoModel> _cardProjection =
             Builders<ArtigoModel>.Projection
                 .Include(a => a.Id)
                 .Include(a => a.Titulo)
                 .Include(a => a.Resumo)
-                .Include(a => a.Tipo)
                 .Include(a => a.DataCriacao)
                 .Include(a => a.MidiaDestaque)
-                .Include(a => a.Status); // Status foi adicionado à projeção
+                .Include(a => a.Status) 
+                .Include(a => a.Tipo)  
+                .Include(a => a.PermitirComentario); 
 
         // --- Implementação dos Métodos da Interface ---
 
@@ -235,7 +237,7 @@ namespace Artigo.DbContext.Repositories
         }
 
         /// <sumario>
-        /// (NOVO) Busca artigos (formato card) de um único Autor.
+        /// (STAFF) Busca artigos (formato card) de um único Autor.
         /// NÃO FILTRA POR STATUS - Retorna todos (Rascunho, Publicado, etc.)
         /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorAutorIdAsync(string autorId, object? sessionHandle = null)
@@ -274,6 +276,83 @@ namespace Artigo.DbContext.Repositories
                 // Ordenar ANTES de projetar
                 .SortByDescending(a => a.DataCriacao)
                 .Project<ArtigoModel>(_cardProjection)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        // --- (MÉTODOS PARA STAFF) ---
+
+        /// <sumario>
+        /// (STAFF) Retorna artigos (card) filtrados por TipoArtigo, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            // Apenas filtra por Tipo
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Tipo, tipo);
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .Project<ArtigoModel>(_cardProjection)
+                .SortByDescending(a => a.DataCriacao)
+                .Skip(skip)
+                .Limit(tamanho)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por Título, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            // Apenas filtra por Título
+            var filter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression(searchTerm, "i"));
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection)
+                .Skip(skip)
+                .Limit(tamanho)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);
+        }
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por IDs de Autor, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, object? sessionHandle = null)
+        {
+            int skip = pagina * tamanho;
+            var session = GetSession(sessionHandle);
+
+            // Apenas filtra por AutorIds
+            var filter = Builders<ArtigoModel>.Filter.AnyIn(a => a.AutorIds, autorIds);
+
+            var find = (session != null)
+                ? _artigos.Find(session, filter)
+                : _artigos.Find(filter);
+
+            var models = await find
+                .SortByDescending(a => a.DataCriacao)
+                .Project<ArtigoModel>(_cardProjection)
+                .Skip(skip)
+                .Limit(tamanho)
                 .ToListAsync();
 
             return _mapper.Map<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(models);

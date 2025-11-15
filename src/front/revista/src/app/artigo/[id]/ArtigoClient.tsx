@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client/react';
+import { useQuery, useLazyQuery } from '@apollo/client/react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-    GET_ARTIGO_VIEW,
-    GET_COMENTARIOS_PUBLICOS,
-    ATUALIZAR_INTERACAO,
-    DELETAR_INTERACAO
-} from '@/graphql/queries';
+import { GET_ARTIGO_VIEW, GET_COMENTARIOS_PUBLICOS, ATUALIZAR_INTERACAO, DELETAR_INTERACAO } from '@/graphql/queries';
 import Layout from '@/components/Layout';
 import AuthorCard from '@/components/AuthorCard';
 import CommentCard, { Comment } from '@/components/CommentCard';
@@ -17,9 +12,11 @@ import { Printer, MessageSquare, BookOpen, Layers } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import useAuth from '@/hooks/useAuth';
+import toast from 'react-hot-toast';
 
-const COMENTARIOS_PAGE_SIZE = 10;
+const COMENTARIOS_PAGE_SIZE = 10; // Carrega 10 por vez no "Carregar mais"
 
+// --- Tipos de Dados ---
 interface ArtigoView {
     id: string;
     titulo: string;
@@ -47,7 +44,7 @@ interface ArtigoView {
         volumeTitulo: string;
         volumeResumo: string;
     };
-    interacoes: {
+    interacoes: { // Vem da GET_ARTIGO_VIEW
         comentariosEditoriais: Comment[];
     };
 }
@@ -64,52 +61,69 @@ interface ComentariosPublicosQueryData {
 export default function ArtigoClient() {
     const params = useParams();
     const artigoId = params.id as string;
-    const { user } = useAuth(); // Para o nome do usuário nos comentários
+    const { user } = useAuth();
 
-    const [nomeUsuario, setNomeUsuario] = useState("Leitor"); // Nome do usuário logado
+    const [nomeUsuario, setNomeUsuario] = useState("Leitor");
 
     useEffect(() => {
-        // TODO: Substituir por uma busca real do nome na UsuarioAPI
-        const storedName = localStorage.getItem('userName'); // Assumindo que você salve isso no login
+        // (MODIFICADO) Busca o nome do usuário do localStorage (do hook useAuth)
+        const storedName = localStorage.getItem('userName');
         if (storedName) {
             setNomeUsuario(storedName);
         }
     }, [user]);
 
+    // --- Query 1: Dados Principais do Artigo ---
     const {
         data: artigoData,
         loading: loadingArtigo,
-        error: errorArtigo
+        error: errorArtigo,
+        refetch: refetchArtigoView // (NOVO) Função para recarregar a query principal
     } = useQuery<ArtigoViewQueryData>(GET_ARTIGO_VIEW, {
         variables: { artigoId },
         skip: !artigoId,
+        onError: (err) => {
+            toast.error(`Erro ao carregar artigo: ${err.message}`);
+        }
     });
 
     const artigo = artigoData?.obterArtigoView;
 
+    // --- Query 2: Comentários Públicos Paginados ---
     const {
         data: comentariosData,
         loading: loadingComentarios,
         error: errorComentarios,
-        fetchMore
+        fetchMore,
+        refetch: refetchComentarios // (NOVO) Função para recarregar comentários
     } = useQuery<ComentariosPublicosQueryData>(GET_COMENTARIOS_PUBLICOS, {
-        variables: { artigoId, page: 0, pageSize: 20 },
+        variables: { artigoId, page: 0, pageSize: 20 }, // Carga inicial de 20
         skip: !artigoId,
+        onError: (err) => {
+            toast.error(`Erro ao carregar comentários: ${err.message}`);
+        }
     });
 
     const comentariosPublicos = comentariosData?.obterComentariosPublicos ?? [];
     const comentariosEditoriais = artigo?.interacoes.comentariosEditoriais ?? [];
 
+    // Função para carregar mais comentários
     const handleLoadMoreComments = () => {
         if (!comentariosData) return;
 
+        toast.loading('Carregando mais...', { id: 'load-comments' });
         fetchMore({
             variables: {
+                // Calcula a próxima página
                 page: Math.ceil(comentariosPublicos.length / COMENTARIOS_PAGE_SIZE),
                 pageSize: COMENTARIOS_PAGE_SIZE,
             },
             updateQuery: (prev, { fetchMoreResult }) => {
-                if (!fetchMoreResult) return prev;
+                toast.dismiss('load-comments');
+                if (!fetchMoreResult || fetchMoreResult.obterComentariosPublicos.length === 0) {
+                    toast.success('Não há mais comentários.');
+                    return prev;
+                }
                 return {
                     obterComentariosPublicos: [
                         ...prev.obterComentariosPublicos,
@@ -117,7 +131,7 @@ export default function ArtigoClient() {
                     ],
                 };
             },
-        });
+        }).catch(err => toast.error(`Erro ao carregar: ${err.message}`));
     };
 
     // --- Renderização ---
@@ -126,15 +140,15 @@ export default function ArtigoClient() {
         return <Layout><p className="text-center mt-20">Carregando artigo...</p></Layout>;
     }
 
-    if (errorArtigo) {
-        return <Layout><p className="text-center mt-20 text-red-600">Erro: {errorArtigo.message}</p></Layout>;
+    // (MODIFICADO) O erro agora é tratado pelo toast
+    if (errorArtigo && !artigo) {
+        return <Layout><p className="text-center mt-20 text-red-600">Artigo não pôde ser carregado.</p></Layout>;
     }
 
     if (!artigo) {
         return <Layout><p className="text-center mt-20">Artigo não encontrado.</p></Layout>;
     }
 
-    // 'Administrativo' (Apenas Título e Conteúdo)
     if (artigo.tipo === 'Administrativo') {
         return (
             <Layout>
@@ -149,40 +163,24 @@ export default function ArtigoClient() {
         );
     }
 
-    // 'Artigo' ou outros tipos (Layout completo)
     const showPrintButton = artigo.tipo === 'Artigo';
     const totalPublicComments = artigo.totalComentarios || 0;
     const hasMoreComments = comentariosPublicos.length < totalPublicComments;
 
-    // Função de Impressão
     const handlePrint = () => {
         window.print();
     };
 
-    // Função para recarregar comentários (após deletar ou postar)
-    const refetchComments = () => {
-        fetchMore({
-            variables: {
-                artigoId,
-                page: 0,
-                pageSize: Math.max(20, comentariosPublicos.length) // Recarrega tudo
-            },
-            updateQuery: (prev, { fetchMoreResult }) => {
-                if (!fetchMoreResult) return prev;
-                return { obterComentariosPublicos: fetchMoreResult.obterComentariosPublicos };
-            },
-        });
+    // (NOVO) Função unificada para recarregar tudo
+    const refetchAll = () => {
+        refetchArtigoView();
+        refetchComentarios();
     };
 
     return (
         <Layout>
-            {/* A folha de estilo print-container aplica visibility: hidden no @media print,
-        e o print-container-content força a visibilidade dos filhos.
-      */}
             <div className="print-container">
-                {/* --- ÁREA NÃO IMPRIMÍVEL (Wrapper para esconder no print) --- */}
                 <div className="print-hide">
-                    {/* Imagem Destaque Topo */}
                     {artigo.midiaDestaque && (
                         <div className="w-[90%] mx-auto relative h-[400px]">
                             <Image
@@ -196,14 +194,11 @@ export default function ArtigoClient() {
                     )}
                 </div>
 
-                {/* --- ÁREA IMPRIMÍVEL E VISÍVEL --- */}
                 <article className="print-container-content w-[90%] mx-auto">
-                    {/* Título */}
                     <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mt-8 mb-8 print-title">
                         {artigo.titulo}
                     </h1>
 
-                    {/* Autores */}
                     <div className="print-authors">
                         {artigo.autores.map(autor => (
                             <AuthorCard
@@ -215,12 +210,11 @@ export default function ArtigoClient() {
                         ))}
                     </div>
 
-                    {/* Imagem Destaque e Conteúdo */}
                     <div
                         className="prose prose-lg max-w-none mt-4 mx-auto"
                         style={{
                             margin: '1% auto 2% auto',
-                            width: '96%' // 100% - 2% margin left - 2% margin right
+                            width: '96%'
                         }}
                     >
                         {artigo.midiaDestaque && (
@@ -235,14 +229,12 @@ export default function ArtigoClient() {
                             </div>
                         )}
 
-                        {/* Conteúdo (perigoso, mas necessário para HTML) */}
                         <div
                             className="print-content"
                             dangerouslySetInnerHTML={{ __html: artigo.conteudoAtual.content }}
                         />
                     </div>
 
-                    {/* Card do Volume */}
                     {artigo.volume && (
                         <div className="print-volume w-[90%] my-10 mx-auto p-6 bg-gray-50 rounded-lg shadow-sm border">
                             <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -259,7 +251,6 @@ export default function ArtigoClient() {
                         </div>
                     )}
 
-                    {/* Botão de Imprimir */}
                     {showPrintButton && (
                         <div className="w-[90%] mx-auto text-center my-10 print-hide">
                             <button
@@ -274,9 +265,6 @@ export default function ArtigoClient() {
                 </article>
             </div>
 
-            {/* --- FIM DA ÁREA DE IMPRESSÃO --- */}
-
-            {/* --- SEÇÃO DE COMENTÁRIOS (Sempre oculta no print) --- */}
             <div className="w-[90%] mx-auto mt-12 print-hide">
 
                 {/* Comentários Editoriais */}
@@ -292,9 +280,10 @@ export default function ArtigoClient() {
                                     key={comment.id}
                                     comment={comment}
                                     artigoId={artigoId}
-                                    isPublic={false} // Não é público
-                                    permitirRespostas={false} // Não pode responder
-                                    onCommentDeleted={refetchComments} // Recarrega os dados do artigo
+                                    isPublic={false}
+                                    permitirRespostas={false}
+                                    // Prop 'onCommentDeleted' alterada para 'onCommentAction'
+                                    onCommentAction={refetchAll}
                                 />
                             ))}
                         </div>
@@ -306,12 +295,17 @@ export default function ArtigoClient() {
                     <section className="mb-10">
                         <CreateCommentCard
                             artigoId={artigoId}
-                            onCommentPosted={refetchComments} // Recarrega os comentários públicos
+                            onCommentPosted={refetchAll} // Recarrega tudo
                         />
                     </section>
                 )}
 
                 {/* Comentários Públicos (se houver) */}
+                {/* Adiciona verificação de erro */}
+                {errorComentarios && (
+                    <p className="text-center text-red-600">Não foi possível carregar os comentários públicos.</p>
+                )}
+
                 {comentariosPublicos.length > 0 && (
                     <section className="mb-10">
                         <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-2">
@@ -326,7 +320,8 @@ export default function ArtigoClient() {
                                     artigoId={artigoId}
                                     isPublic={true}
                                     permitirRespostas={artigo.permitirComentario}
-                                    onCommentDeleted={refetchComments} // Recarrega os comentários públicos
+                                    // Prop 'onCommentDeleted' alterada para 'onCommentAction'
+                                    onCommentAction={refetchAll}
                                 />
                             ))}
                         </div>

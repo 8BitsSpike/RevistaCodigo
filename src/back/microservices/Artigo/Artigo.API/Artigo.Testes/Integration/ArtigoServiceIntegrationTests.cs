@@ -37,6 +37,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
     private const string BolsistaUserId = "test_bolsista_402"; // Usuário Bolsista (para teste de pending)
     private const string NewStaffCandidateId = "test_new_staff_403"; // Usuário a ser promovido
     private const string UnauthorizedUserId = "test_unauthorized_404"; // Usuário sem permissão
+    private const string InactiveStaffId = "test_inactive_405"; // (NOVO) Staff Inativo
     private const string TestCommentary = "Comentário de teste de integração";
 
     private readonly MidiaEntryInputDTO _midiaDestaqueDTO = new MidiaEntryInputDTO
@@ -83,7 +84,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         }
         if (await _staffRepository.GetByUsuarioIdAsync(BolsistaUserId) == null)
         {
-            await _staffRepository.AddAsync(new Staff { UsuarioId = BolsistaUserId, Nome = "Bolsista Teste", Job = FuncaoTrabalho.EditorBolsista });
+            await _staffRepository.AddAsync(new Staff { UsuarioId = BolsistaUserId, Nome = "Bolsista Teste", Job = FuncaoTrabalho.EditorBolsista, IsActive = true });
         }
         if (await _autorRepository.GetByUsuarioIdAsync(AdminUserId) == null)
         {
@@ -97,6 +98,11 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
             {
                 await _autorRepository.UpsertAsync(new Autor { UsuarioId = UnauthorizedUserId, Nome = "Usuário Não Autorizado", Url = "url.com/unauthorized" });
             }
+        }
+        // Garante que o staff inativo exista
+        if (await _staffRepository.GetByUsuarioIdAsync(InactiveStaffId) == null)
+        {
+            await _staffRepository.AddAsync(new Staff { UsuarioId = InactiveStaffId, Nome = "Staff Inativo", Job = FuncaoTrabalho.Aposentado, IsActive = false });
         }
     }
 
@@ -230,31 +236,6 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task CriarVolumeAsync_DeveCriarVolumeCorretamente_QuandoAdmin()
-    {
-        // Arrange
-        var volumeInicial = new Volume
-        {
-            VolumeTitulo = "Edição Especial de Verão",
-            Edicao = 5,
-            N = 1,
-            Year = 2024,
-            M = MesVolume.Marco
-        };
-
-        // Act
-        var createdVolume = await _artigoService.CriarVolumeAsync(volumeInicial, AdminUserId, TestCommentary);
-
-        // Assert
-        Assert.NotNull(createdVolume);
-        Assert.NotEmpty(createdVolume.Id);
-        var persistedVolume = await _volumeRepository.GetByIdAsync(createdVolume.Id);
-        Assert.NotNull(persistedVolume);
-        Assert.Equal("Edição Especial de Verão", persistedVolume.VolumeTitulo);
-        Assert.Equal(StatusVolume.EmRevisao, persistedVolume.Status);
-    }
-
-    [Fact]
     public async Task CriarVolumeAsync_ShouldCreatePendingRequest_WhenUserIsEditorBolsista()
     {
         // Arrange
@@ -281,6 +262,31 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         Assert.NotNull(aPendente);
         Assert.Equal(TipoEntidadeAlvo.Volume, aPendente.TargetType);
         Assert.Contains("Edição Pendente de Bolsista", aPendente.CommandParametersJson);
+    }
+
+    [Fact]
+    public async Task CriarVolumeAsync_DeveCriarVolumeCorretamente_QuandoAdmin()
+    {
+        // Arrange
+        var volumeInicial = new Volume
+        {
+            VolumeTitulo = "Edição Especial de Verão",
+            Edicao = 5,
+            N = 1,
+            Year = 2024,
+            M = MesVolume.Marco
+        };
+
+        // Act
+        var createdVolume = await _artigoService.CriarVolumeAsync(volumeInicial, AdminUserId, TestCommentary);
+
+        // Assert
+        Assert.NotNull(createdVolume);
+        Assert.NotEmpty(createdVolume.Id);
+        var persistedVolume = await _volumeRepository.GetByIdAsync(createdVolume.Id);
+        Assert.NotNull(persistedVolume);
+        Assert.Equal("Edição Especial de Verão", persistedVolume.VolumeTitulo);
+        Assert.Equal(StatusVolume.EmRevisao, persistedVolume.Status);
     }
 
     [Fact]
@@ -545,5 +551,128 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Empty(result);
+    }
+
+    // =========================================================================
+    // (NOVOS TESTES) Testes para VerificarStaffAsync
+    // =========================================================================
+
+    [Fact]
+    public async Task VerificarStaffAsync_ShouldReturnTrue_WhenUserIsActiveStaff()
+    {
+        // Arrange (AdminUserId é configurado no fixture e em SetupTestUsers)
+
+        // Act
+        var result = await _artigoService.VerificarStaffAsync(AdminUserId);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task VerificarStaffAsync_ShouldReturnFalse_WhenUserIsNotStaff()
+    {
+        // Arrange (UnauthorizedUserId é configurado para não ser staff)
+
+        // Act
+        var result = await _artigoService.VerificarStaffAsync(UnauthorizedUserId);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task VerificarStaffAsync_ShouldReturnFalse_WhenUserIsInactiveStaff()
+    {
+        // Arrange (InactiveStaffId é configurado em SetupTestUsers como inativo)
+
+        // Act
+        var result = await _artigoService.VerificarStaffAsync(InactiveStaffId);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    // =========================================================================
+    // (NOVOS TESTES) Testes para AtualizarStaffAsync e ResolverPendente
+    // =========================================================================
+
+    [Fact]
+    public async Task AtualizarStaffAsync_ShouldExecuteDirectly_WhenAdminUpdatesBolsista()
+    {
+        // Arrange
+        var updateInput = new UpdateStaffInput { UsuarioId = BolsistaUserId, Job = FuncaoTrabalho.EditorChefe };
+
+        // Act
+        var result = await _artigoService.AtualizarStaffAsync(updateInput, AdminUserId, "Promoção por Admin");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(FuncaoTrabalho.EditorChefe, result.Job);
+
+        var persistedStaff = await _staffRepository.GetByUsuarioIdAsync(BolsistaUserId);
+        Assert.NotNull(persistedStaff);
+        Assert.Equal(FuncaoTrabalho.EditorChefe, persistedStaff.Job);
+    }
+
+    [Fact]
+    public async Task AtualizarStaffAsync_ShouldCreatePendingRequest_WhenBolsistaUpdatesAdmin()
+    {
+        // Arrange
+        var updateInput = new UpdateStaffInput { UsuarioId = AdminUserId, IsActive = false }; // Tenta aposentar o Admin
+
+        // Act
+        var result = await _artigoService.AtualizarStaffAsync(updateInput, BolsistaUserId, "Bolsista tentando aposentar Admin");
+
+        // Assert
+        // 1. O resultado é o staff original (Admin, Ativo)
+        Assert.NotNull(result);
+        Assert.Equal(FuncaoTrabalho.Administrador, result.Job);
+        Assert.True(result.IsActive);
+
+        // 2. O staff no DB NÃO foi alterado
+        var persistedStaff = await _staffRepository.GetByUsuarioIdAsync(AdminUserId);
+        Assert.NotNull(persistedStaff);
+        Assert.True(persistedStaff.IsActive);
+
+        // 3. Uma pendência foi criada
+        var pendings = await _pendingRepository.BuscarPendenciaPorRequisitanteId(BolsistaUserId);
+        var aPendente = pendings.FirstOrDefault(p => p.CommandType == "UpdateStaff");
+
+        Assert.NotNull(aPendente);
+        Assert.Equal(AdminUserId, aPendente.TargetEntityId);
+        Assert.Contains("\"IsActive\":false", aPendente.CommandParametersJson);
+    }
+
+    [Fact]
+    public async Task ResolverRequisicaoPendenteAsync_ShouldUpdateStaff_WhenApprovingUpdateStaffCommand()
+    {
+        // Arrange
+        // 1. Bolsista (BolsistaUserId) cria uma pendência para Aposentar (IsActive=false) o Staff Inativo (InactiveStaffId)
+        // (Nota: o fato de estar inativo é irrelevante, estamos apenas testando a mudança de 'false' para 'false')
+        var updateInput = new UpdateStaffInput { UsuarioId = InactiveStaffId, IsActive = false };
+        var staffOriginal = await _artigoService.AtualizarStaffAsync(updateInput, BolsistaUserId, "Bolsista solicita aposentadoria");
+
+        var pendings = await _pendingRepository.BuscarPendenciaPorRequisitanteId(BolsistaUserId);
+        var pendingRequest = pendings.FirstOrDefault(p => p.CommandType == "UpdateStaff");
+        Assert.NotNull(pendingRequest); // Garante que a pendência foi criada
+
+        // 2. Admin (AdminUserId) aprova a requisição
+
+        // Act
+        var success = await _artigoService.ResolverRequisicaoPendenteAsync(pendingRequest.Id, true, AdminUserId);
+
+        // Assert
+        Assert.True(success);
+
+        // 3. Verifica se o Staff foi realmente atualizado (aposentado)
+        var updatedStaff = await _staffRepository.GetByUsuarioIdAsync(InactiveStaffId);
+        Assert.NotNull(updatedStaff);
+        Assert.False(updatedStaff.IsActive); // Confirmando que o status é 'false'
+
+        // 4. Verifica se a pendência foi marcada como Aprovada
+        var resolvedPending = await _pendingRepository.GetByIdAsync(pendingRequest.Id);
+        Assert.NotNull(resolvedPending);
+        Assert.Equal(StatusPendente.Aprovado, resolvedPending.Status);
     }
 }

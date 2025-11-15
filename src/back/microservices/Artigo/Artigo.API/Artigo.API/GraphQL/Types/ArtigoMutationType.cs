@@ -82,7 +82,15 @@ namespace Artigo.API.GraphQL.Types
                 .Argument("commentary", a => a.Type<NonNullType<StringType>>().Description("Comentário ou justificativa para a mutação."))
                 .Description("Cria um novo registro de Staff para um usuário (Requer AuthZ de Admin/EditorChefe).");
 
-            // 8. CriarVolumeAsync -> criarVolume
+            // (NOVO) 8. AtualizarStaffAsync -> atualizarStaff
+            descriptor.Field(f => f.AtualizarStaffAsync(default!, default!, default!))
+                .Name("atualizarStaff")
+                .Type<NonNullType<StaffViewDTOType>>() // Retorna o DTO de visualização
+                .Argument("input", a => a.Type<NonNullType<UpdateStaffInputType>>().Description("Dados de atualização (UsuarioId, Job, IsActive)."))
+                .Argument("commentary", a => a.Type<NonNullType<StringType>>().Description("Comentário ou justificativa para a mutação."))
+                .Description("Atualiza um registro de Staff (Requer AuthZ de Staff).");
+
+            // 9. CriarVolumeAsync -> criarVolume
             descriptor.Field(f => f.CriarVolumeAsync(default!, default!, default!))
                 .Name("criarVolume")
                 .Type<NonNullType<VolumeType>>()
@@ -90,7 +98,7 @@ namespace Artigo.API.GraphQL.Types
                 .Argument("commentary", a => a.Type<NonNullType<StringType>>().Description("Comentário ou justificativa para a mutação."))
                 .Description("Cria um novo Volume/Edição da revista (Requer AuthZ de Staff).");
 
-            // 9. AtualizarMetadadosVolumeAsync -> atualizarMetadadosVolume
+            // 10. AtualizarMetadadosVolumeAsync -> atualizarMetadadosVolume
             descriptor.Field(f => f.AtualizarMetadadosVolumeAsync(default!, default!, default!, default!))
                 .Name("atualizarMetadadosVolume")
                 .Type<NonNullType<BooleanType>>()
@@ -153,6 +161,14 @@ namespace Artigo.API.GraphQL.Types
                 .Type<NonNullType<PendingType>>()
                 .Argument("input", a => a.Type<NonNullType<InputObjectType<Pending>>>().Description("O objeto Pending a ser criado."))
                 .Description("Cria manualmente uma requisição pendente. (Requer Admin).");
+
+            // (NOVO) 18. ResolverRequisicaoPendenteAsync -> resolverRequisicaoPendente
+            descriptor.Field(f => f.ResolverRequisicaoPendenteAsync(default!, default!, default!))
+                .Name("resolverRequisicaoPendente")
+                .Type<NonNullType<BooleanType>>()
+                .Argument("pendingId", a => a.Type<NonNullType<IdType>>().Description("ID da requisição pendente a ser resolvida."))
+                .Argument("isApproved", a => a.Type<NonNullType<BooleanType>>().Description("True para aprovar, false para rejeitar."))
+                .Description("Aprova ou rejeita uma requisição pendente. (Requer AuthZ de Admin/EditorChefe).");
         }
     }
 }

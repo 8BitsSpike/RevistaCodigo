@@ -23,6 +23,7 @@
         Entrevista,
         Indicacao,
         Opniao,
+        Video,
         Administrativo
     }
 

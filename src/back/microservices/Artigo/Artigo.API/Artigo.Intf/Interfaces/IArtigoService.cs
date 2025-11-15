@@ -42,20 +42,14 @@ namespace Artigo.Intf.Interfaces
 
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho);
 
-        /// <sumario>
-        /// Busca artigos (formato card) pelo título.
-        /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTituloAsync(string searchTerm, int pagina, int tamanho);
 
-        /// <sumario>
-        /// Busca artigos (formato card) pelo nome do autor (registrado ou não).
-        /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorNomeAutorAsync(string searchTerm, int pagina, int tamanho);
 
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorListaIdsAsync(IReadOnlyList<string> ids);
 
         /// <sumario>
-        /// Busca artigos (formato card) de um autor específico usando seu UsuarioId.
+        /// Busca artigos (card) de um autor específico usando seu UsuarioId.
         /// Retorna todos os status (rascunho, publicado, etc.)
         /// </sumario>
         Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterMeusArtigosCardListAsync(string currentUsuarioId);
@@ -73,6 +67,22 @@ namespace Artigo.Intf.Interfaces
 
         Task<IReadOnlyList<Volume>> ObterVolumesListAsync(int pagina, int tamanho);
 
+        // --- (NOVOS MÉTODOS PARA STAFF) ---
+
+        /// <sumario>
+        /// (STAFF) Retorna artigos (card) filtrados por TipoArtigo, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, string currentUsuarioId);
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por Título, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, string currentUsuarioId);
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por IDs de Autor, SEM filtro de status.
+        /// </sumario>
+        Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, string currentUsuarioId);
 
         // =========================================================================
         // INTERACTION (COMENTARIOS) MANAGEMENT
@@ -128,11 +138,22 @@ namespace Artigo.Intf.Interfaces
         // =========================================================================
 
         Task<Staff> CriarNovoStaffAsync(Staff novoStaff, string currentUsuarioId, string commentary);
+
+        /// <sumario>
+        /// Atualiza o registro de um membro da Staff (Job ou IsActive).
+        /// </sumario>
+        Task<Staff> AtualizarStaffAsync(UpdateStaffInput input, string currentUsuarioId, string commentary);
+
         Task<IReadOnlyList<Autor>> ObterAutoresAsync(int pagina, int tamanho, string currentUsuarioId);
         Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId);
 
         Task<Staff?> ObterStaffPorIdAsync(string staffId, string currentUsuarioId);
 
         Task<IReadOnlyList<Staff>> ObterStaffListAsync(int pagina, int tamanho, string currentUsuarioId);
+
+        /// <sumario>
+        /// Verifica se o usuário autenticado é um membro ativo da equipe Staff.
+        /// </sumario>
+        Task<bool> VerificarStaffAsync(string currentUsuarioId);
     }
 }

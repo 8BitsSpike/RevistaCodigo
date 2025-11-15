@@ -178,7 +178,11 @@ namespace Artigo.DbContext.PersistenceModels
         public string UsuarioId { get; set; } = string.Empty;
         public string Nome { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
+
+        [BsonRepresentation(BsonType.String)]
         public FuncaoTrabalho Job { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 
     /// <sumario>

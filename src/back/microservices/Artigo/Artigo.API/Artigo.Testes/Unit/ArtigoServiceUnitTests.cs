@@ -41,6 +41,7 @@ namespace Artigo.Testes.Unit
         private const string TestVolumeId = "volume_local_002";
         private const string TestHistoryId = "history_001";
         private const string TestCommentary = "Teste de comentário";
+        private const string InactiveStaffId = "user_inactive_02";
 
         private readonly object _sessionHandle = new Mock<MongoDB.Driver.IClientSessionHandle>().Object;
 
@@ -71,6 +72,7 @@ namespace Artigo.Testes.Unit
             _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, It.IsAny<object>())).ReturnsAsync((Staff?)null);
             _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AuthorizedStaffId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = AuthorizedStaffId, Job = FuncaoTrabalho.EditorChefe, IsActive = true }); // Usado para sucesso
             _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(TestAutorUsuarioId, It.IsAny<object>())).ReturnsAsync((Staff?)null); // Garante que o autor não é staff
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(InactiveStaffId, It.IsAny<object>())).ReturnsAsync(new Staff { UsuarioId = InactiveStaffId, Job = FuncaoTrabalho.Aposentado, IsActive = false });
 
             // Configurações Comuns de Busca Pontual
             _mockAutorRepo.Setup(r => r.GetByIdAsync(TestAutorId, It.IsAny<object>())).ReturnsAsync(new Autor { Id = TestAutorId, UsuarioId = TestAutorUsuarioId });
@@ -219,7 +221,6 @@ namespace Artigo.Testes.Unit
             ), null), Times.Once);
         }
 
-
         // =========================================================================
         // Testes de Staff
         // =========================================================================
@@ -282,6 +283,87 @@ namespace Artigo.Testes.Unit
             );
 
             _mockStaffRepo.Verify(r => r.AddAsync(It.IsAny<Staff>(), _sessionHandle), Times.Never);
+        }
+
+        // (NOVO) Testes para AtualizarStaffAsync
+        [Fact]
+        public async Task AtualizarStaffAsync_ShouldCreatePendingRequest_WhenUserIsEditorBolsista()
+        {
+            // Arrange
+            var updateInput = new UpdateStaffInput { UsuarioId = AdminUserId, Job = FuncaoTrabalho.Aposentado };
+            // Configura o Bolsista para ser encontrado
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, null))
+                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.EditorBolsista, IsActive = true });
+            // Configura o alvo para ser encontrado (para retornar a entidade original)
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null))
+                .ReturnsAsync(new Staff { UsuarioId = AdminUserId, Job = FuncaoTrabalho.Administrador, IsActive = true });
+
+            // Act
+            var result = await _artigoService.AtualizarStaffAsync(updateInput, EditorBolsistaUserId, "Pedido de aposentadoria");
+
+            // Assert
+            // 1. Verifica se a pendência foi criada
+            _mockPendingRepo.Verify(r => r.AddAsync(It.Is<Pending>(
+                p => p.TargetEntityId == AdminUserId &&
+                     p.CommandType == "UpdateStaff" &&
+                     p.RequesterUsuarioId == EditorBolsistaUserId
+            ), null), Times.Once);
+
+            // 2. Verifica se a atualização NÃO foi executada diretamente
+            _mockStaffRepo.Verify(r => r.UpdateAsync(It.IsAny<Staff>(), null), Times.Never);
+
+            // 3. Verifica se o resultado é o staff *original*
+            Assert.NotNull(result);
+            Assert.Equal(FuncaoTrabalho.Administrador, result.Job);
+        }
+
+        [Fact]
+        public async Task AtualizarStaffAsync_ShouldExecuteDirectly_WhenUserIsAdmin()
+        {
+            // Arrange
+            var updateInput = new UpdateStaffInput { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorChefe };
+            var bolsistaStaff = new Staff { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorBolsista, IsActive = true };
+
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null))
+                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador, IsActive = true });
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, null))
+                .ReturnsAsync(bolsistaStaff);
+            _mockStaffRepo.Setup(r => r.UpdateAsync(It.IsAny<Staff>(), null)).ReturnsAsync(true);
+
+            // Act
+            var result = await _artigoService.AtualizarStaffAsync(updateInput, AdminUserId, "Promoção por Admin");
+
+            // Assert
+            // 1. Verifica se NENHUMA pendência foi criada
+            _mockPendingRepo.Verify(r => r.AddAsync(It.IsAny<Pending>(), null), Times.Never);
+
+            // 2. Verifica se a atualização FOI executada
+            _mockStaffRepo.Verify(r => r.UpdateAsync(It.Is<Staff>(
+                s => s.UsuarioId == EditorBolsistaUserId &&
+                     s.Job == FuncaoTrabalho.EditorChefe
+            ), null), Times.Once);
+
+            // 3. Verifica se o resultado é o staff *atualizado*
+            Assert.NotNull(result);
+            Assert.Equal(FuncaoTrabalho.EditorChefe, result.Job);
+        }
+
+        [Fact]
+        public async Task AtualizarStaffAsync_ShouldThrowKeyNotFound_WhenTargetNotFound()
+        {
+            // Arrange
+            var updateInput = new UpdateStaffInput { UsuarioId = "id_inexistente", Job = FuncaoTrabalho.EditorChefe };
+
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(AdminUserId, null))
+                .ReturnsAsync(new Staff { Job = FuncaoTrabalho.Administrador, IsActive = true });
+            // Configura a busca do alvo para retornar nulo
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync("id_inexistente", null))
+                .ReturnsAsync((Staff?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _artigoService.AtualizarStaffAsync(updateInput, AdminUserId, "Teste de falha")
+            );
         }
 
         // =========================================================================
@@ -383,6 +465,37 @@ namespace Artigo.Testes.Unit
             Assert.Equal(newTeam, result.Team);
             _mockPendingRepo.Verify(r => r.AddAsync(It.IsAny<Pending>(), null), Times.Never);
             _mockEditorialRepo.Verify(r => r.UpdateTeamAsync("editorial_123", newTeam, null), Times.Once);
+        }
+
+        // (MODIFICADO) Teste de ResolverRequisicaoPendenteAsync
+        [Fact]
+        public async Task ResolverRequisicaoPendenteAsync_ShouldUpdateStaff_WhenCommandIsValid()
+        {
+            // Arrange
+            var updateInput = new UpdateStaffInput { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorChefe };
+            var pendingReq = new Pending
+            {
+                Id = "pending_123",
+                CommandType = "UpdateStaff",
+                TargetEntityId = EditorBolsistaUserId, // O alvo é o UsuarioId
+                CommandParametersJson = JsonSerializer.Serialize(updateInput, _jsonSerializerOptions)
+            };
+            var bolsistaStaff = new Staff { UsuarioId = EditorBolsistaUserId, Job = FuncaoTrabalho.EditorBolsista, IsActive = true };
+
+            _mockPendingRepo.Setup(r => r.GetByIdAsync("pending_123", _sessionHandle)).ReturnsAsync(pendingReq);
+            _mockStaffRepo.Setup(r => r.GetByUsuarioIdAsync(EditorBolsistaUserId, _sessionHandle)).ReturnsAsync(bolsistaStaff);
+            _mockStaffRepo.Setup(r => r.UpdateAsync(It.IsAny<Staff>(), _sessionHandle)).ReturnsAsync(true);
+            _mockPendingRepo.Setup(r => r.UpdateAsync(It.IsAny<Pending>(), _sessionHandle)).ReturnsAsync(true);
+
+            // Act
+            var result = await _artigoService.ResolverRequisicaoPendenteAsync("pending_123", true, AdminUserId);
+
+            // Assert
+            Assert.True(result);
+            _mockStaffRepo.Verify(r => r.UpdateAsync(It.Is<Staff>(
+                s => s.UsuarioId == EditorBolsistaUserId && s.Job == FuncaoTrabalho.EditorChefe
+            ), _sessionHandle), Times.Once);
+            _mockPendingRepo.Verify(r => r.UpdateAsync(It.Is<Pending>(p => p.Status == StatusPendente.Aprovado), _sessionHandle), Times.Once);
         }
 
         [Fact]
@@ -595,12 +708,56 @@ namespace Artigo.Testes.Unit
 
             // Act
             var result = await _artigoService.ObterMeusArtigosCardListAsync(UnauthorizedUserId);
+
             // Assert
             Assert.NotNull(result);
             Assert.Empty(result);
             _mockAutorRepo.Verify(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null), Times.Once);
             // NÃO DEVE chamar o repositório de artigo
             _mockArtigoRepo.Verify(r => r.ObterArtigosCardListPorAutorIdAsync(It.IsAny<string>(), null), Times.Never);
+        }
+
+        // =========================================================================
+        // (NOVOS TESTES) Testes para VerificarStaffAsync
+        // =========================================================================
+
+        [Fact]
+        public async Task VerificarStaffAsync_ShouldReturnTrue_WhenUserIsActiveStaff()
+        {
+            // Arrange (AdminUserId já está configurado como Staff ativo)
+
+            // Act
+            var result = await _artigoService.VerificarStaffAsync(AdminUserId);
+
+            // Assert
+            Assert.True(result);
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(AdminUserId, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task VerificarStaffAsync_ShouldReturnFalse_WhenUserIsNotStaff()
+        {
+            // Arrange (UnauthorizedUserId já está configurado para retornar null)
+
+            // Act
+            var result = await _artigoService.VerificarStaffAsync(UnauthorizedUserId);
+
+            // Assert
+            Assert.False(result);
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(UnauthorizedUserId, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task VerificarStaffAsync_ShouldReturnFalse_WhenUserIsInactiveStaff()
+        {
+            // Arrange (InactiveStaffId está configurado como IsActive = false)
+
+            // Act
+            var result = await _artigoService.VerificarStaffAsync(InactiveStaffId);
+
+            // Assert
+            Assert.False(result);
+            _mockStaffRepo.Verify(r => r.GetByUsuarioIdAsync(InactiveStaffId, null), Times.Once);
         }
     }
 }

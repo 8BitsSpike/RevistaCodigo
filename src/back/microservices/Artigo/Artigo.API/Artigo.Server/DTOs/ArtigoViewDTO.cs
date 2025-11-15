@@ -1,5 +1,6 @@
 ﻿using Artigo.Intf.Entities;
 using System.Collections.Generic;
+using Artigo.Intf.Enums;
 
 namespace Artigo.Server.DTOs
 {
@@ -16,6 +17,8 @@ namespace Artigo.Server.DTOs
         public List<string> AutorReferencias { get; set; } = []; // Nomes de autores não-cadastrados
         public string? VolumeId { get; set; } // ID para o resolver de Volume
         public bool PermitirComentario { get; set; }
+
+        public TipoArtigo Tipo { get; set; }
 
         // Campo do Editorial (para o resolver de History)
         public string EditorialId { get; set; } = string.Empty;

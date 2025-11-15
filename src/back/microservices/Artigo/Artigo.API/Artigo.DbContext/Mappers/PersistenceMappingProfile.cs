@@ -32,7 +32,7 @@ namespace Artigo.DbContext.Mappers
             // =================================================================================
 
             CreateMap<Artigo.Intf.Entities.Artigo, ArtigoModel>()
-                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))                                                                                                               
+                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))
                 .ForMember(dest => dest.MidiaDestaque, opt => opt.MapFrom(src => src.MidiaDestaque))
                 .ReverseMap();
 
@@ -61,7 +61,7 @@ namespace Artigo.DbContext.Mappers
                 .ForMember(dest => dest.Team, opt => opt.MapFrom(src => src.Team));
 
             CreateMap<ArtigoHistory, ArtigoHistoryModel>()
-                .ForMember(dest => dest.StaffComentarios, opt => opt.MapFrom(src => src.StaffComentarios)) 
+                .ForMember(dest => dest.StaffComentarios, opt => opt.MapFrom(src => src.StaffComentarios))
                 .ReverseMap();
 
             CreateMap<Artigo.Intf.Entities.Interaction, InteractionModel>()
@@ -88,11 +88,13 @@ namespace Artigo.DbContext.Mappers
             CreateMap<Staff, StaffModel>()
                 .ForMember(dest => dest.Nome, opt => opt.MapFrom(src => src.Nome))
                 .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
+                .ForMember(dest => dest.Job, opt => opt.MapFrom(src => src.Job))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive)) 
                 .ReverseMap();
 
             CreateMap<Artigo.Intf.Entities.Volume, VolumeModel>()
-                .ForMember(dest => dest.ImagemCapa, opt => opt.MapFrom(src => src.ImagemCapa)) 
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status)) 
+                .ForMember(dest => dest.ImagemCapa, opt => opt.MapFrom(src => src.ImagemCapa))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
                 .ReverseMap();
         }
     }

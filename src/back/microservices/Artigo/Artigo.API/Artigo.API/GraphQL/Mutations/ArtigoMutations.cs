@@ -3,7 +3,7 @@ using Artigo.Intf.Interfaces;
 using Artigo.Intf.Entities;
 using Artigo.Server.DTOs;
 using Artigo.API.GraphQL.Inputs;
-using Artigo.Intf.Inputs; 
+using Artigo.Intf.Inputs;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System;
@@ -14,7 +14,7 @@ namespace Artigo.API.GraphQL.Mutations
 {
     /// <summary>
     /// Define os métodos de modificação de dados (Mutations), utilizando Constructor Injection.
-    /// Esta classe é mapeada manualmente em ArtigoMutationType.cs para evitar erros.
+    /// Esta classe é mapeada manually em ArtigoMutationType.cs para evitar erros.
     /// </summary>
     public class ArtigoMutation
     {
@@ -134,7 +134,7 @@ namespace Artigo.API.GraphQL.Mutations
         public async Task<Interaction> CreateEditorialCommentAsync(
             string artigoId,
             string content,
-            string usuarioNome, 
+            string usuarioNome,
             ClaimsPrincipal claims)
         {
             var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
@@ -194,6 +194,26 @@ namespace Artigo.API.GraphQL.Mutations
                 currentUsuarioId,
                 commentary
             );
+        }
+
+        /// <summary>
+        /// (NOVO) Metodo para atualizar o registro de um Staff (promover, demover, aposentar).
+        /// </summary>
+        public async Task<StaffViewDTO> AtualizarStaffAsync(
+            UpdateStaffInput input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            var updatedStaffEntity = await _artigoService.AtualizarStaffAsync(
+                input,
+                currentUsuarioId,
+                commentary
+            );
+
+            // Mapeia a entidade Staff (retornada pelo serviço) para o DTO de visualização
+            return _mapper.Map<StaffViewDTO>(updatedStaffEntity);
         }
 
         /// <summary>
@@ -272,7 +292,7 @@ namespace Artigo.API.GraphQL.Mutations
         // =========================================================================
 
         /// <summary>
-        /// Cria manualmente uma nova requisição pendente (Admin).
+        /// Cria manually uma nova requisição pendente (Admin).
         /// </summary>
         public async Task<Pending> CriarRequisicaoPendenteAsync(
             Pending input,
@@ -282,6 +302,18 @@ namespace Artigo.API.GraphQL.Mutations
 
             // O input já é a entidade 'Pending'
             return await _artigoService.CriarRequisicaoPendenteAsync(input, currentUsuarioId);
+        }
+
+        /// <summary>
+        /// (NOVO) Resolve uma requisição pendente (Aprova ou Rejeita).
+        /// </summary>
+        public async Task<bool> ResolverRequisicaoPendenteAsync(
+            string pendingId,
+            bool isApproved,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            return await _artigoService.ResolverRequisicaoPendenteAsync(pendingId, isApproved, currentUsuarioId);
         }
     }
 }

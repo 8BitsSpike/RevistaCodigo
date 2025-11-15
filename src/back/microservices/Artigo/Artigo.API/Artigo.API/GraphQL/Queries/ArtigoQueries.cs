@@ -183,6 +183,17 @@ namespace Artigo.API.GraphQL.Queries
         // =========================================================================
 
         /// <sumario>
+        /// (NOVO) Verifica se o usuário autenticado é um membro Staff ativo.
+        /// </sumario>
+        public async Task<bool> VerificarStaffAsync(ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado para esta verificação.");
+
+            return await _artigoService.VerificarStaffAsync(currentUsuarioId);
+        }
+
+        /// <sumario>
         /// Consulta para obter um artigo no 'Artigo Editorial Format'.
         /// Requer autenticação (Autor ou Staff).
         /// </sumario>
@@ -237,6 +248,7 @@ namespace Artigo.API.GraphQL.Queries
 
             if (string.IsNullOrEmpty(currentUsuarioId))
             {
+                // Retorna lista vazia se não autenticado, em vez de lançar erro
                 return new List<ArtigoCardListDTO>();
             }
 
@@ -422,6 +434,57 @@ namespace Artigo.API.GraphQL.Queries
 
             var entities = await _artigoService.ObterStaffListAsync(pagina, tamanho, currentUsuarioId);
             return _mapper.Map<IReadOnlyList<StaffViewDTO>>(entities);
+        }
+
+        // --- (NOVOS MÉTODOS PARA STAFF) ---
+
+        /// <sumario>
+        /// (STAFF) Consulta para obter artigos (card) por tipo, sem filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosEditorialPorTipoAsync(
+            TipoArtigo tipo,
+            int pagina,
+            int tamanho,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            var entities = await _artigoService.ObterArtigosEditorialPorTipoAsync(tipo, pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// (STAFF) Consulta para obter artigos (card) por título, sem filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> SearchArtigosEditorialByTitleAsync(
+            string searchTerm,
+            int pagina,
+            int tamanho,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            var entities = await _artigoService.SearchArtigosEditorialByTitleAsync(searchTerm, pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
+        }
+
+        /// <sumario>
+        /// (STAFF) Consulta para obter artigos (card) por IDs de autor, sem filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<ArtigoCardListDTO>> SearchArtigosEditorialByAutorIdsAsync(
+            string[] idsAutor, // Recebe como array de string
+            int pagina,
+            int tamanho,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+
+            var idList = idsAutor.ToList().AsReadOnly();
+            var entities = await _artigoService.SearchArtigosEditorialByAutorIdsAsync(idList, pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
     }
 }

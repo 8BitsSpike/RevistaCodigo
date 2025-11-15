@@ -6,6 +6,7 @@ import useAuth from '@/hooks/useAuth';
 import { AuthResponseSuccess, UserCredentials } from '@/types';
 import client from '@/lib/apolloClient';
 import { VERIFICAR_STAFF } from '@/graphql/queries';
+import toast from 'react-hot-toast';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -26,16 +27,15 @@ const EyeOffIcon = (props: IconProps) => (
 );
 
 const AUTH_API_URL = 'https://localhost:44387/api/Usuario/Authenticate';
-// Base URL para buscar o perfil do usuário
 const USER_API_URL = 'https://localhost:44387/api/Usuario';
 
 interface VerificarStaffData {
   verificarStaff: boolean;
 }
 
-// Interface para os dados do perfil (para 'foto')
 interface UserProfileData {
   foto?: string;
+  // ...outros campos do perfil
 }
 
 export default function LoginPage() {
@@ -46,21 +46,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // (MODIFICADO) O setError agora também chamará o toast
   const [error, setError] = useState('');
 
   const redirectToHome = () => router.push('/');
 
   const toggleShowPassword = () => setShowPassword(prev => !prev);
 
+  // (NOVO) Função helper para mostrar o toast de erro
+  const setAndToastError = (message: string) => {
+    setError(message);
+    toast.error(message);
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    // (NOVO) Toast de carregamento
+    const loginToast = toast.loading('Autenticando...');
 
     const credentials: UserCredentials = { email, password };
 
     try {
-      // --- Autenticar na UsuarioAPI (/Authenticate) ---
+      // --- ETAPA 1: Autenticar na UsuarioAPI (/Authenticate) ---
       const response = await fetch(AUTH_API_URL, {
         method: 'POST',
         headers: {
@@ -80,11 +89,10 @@ export default function LoginPage() {
           sobrenome: data.sobrenome,
         };
 
-        // Salva o token temporariamente para a próxima requisição
         localStorage.setItem('userToken', userData.jwtToken);
         localStorage.setItem('userId', userData.id);
 
-        // --- Buscar a foto do perfil ---
+        // --- ETAPA 2: Buscar a foto do perfil ---
         let userFoto: string | null = null;
         try {
           const profileResponse = await fetch(`${USER_API_URL}/${userData.id}`, {
@@ -100,9 +108,10 @@ export default function LoginPage() {
           console.error('Falha ao buscar foto do perfil:', profileError);
         }
 
-        // Verificar o status de Staff na ArtigoAPI ---
+        // --- ETAPA 3: Verificar o status de Staff na ArtigoAPI ---
         let isStaff = false;
         try {
+          toast.loading('Verificando permissões...', { id: loginToast });
           const { data: staffData } = await client.query<VerificarStaffData>({
             query: VERIFICAR_STAFF,
           });
@@ -113,6 +122,7 @@ export default function LoginPage() {
 
         localStorage.setItem('isStaff', isStaff.toString());
 
+        // --- ETAPA 4: Chamar o hook 'login' com todos os dados ---
         login({
           id: userData.id,
           jwtToken: userData.jwtToken,
@@ -121,9 +131,13 @@ export default function LoginPage() {
           foto: userFoto,
         });
 
+        // (NOVO) Toast de Sucesso
+        toast.success(`Bem-vindo(a), ${userData.name}!`, { id: loginToast });
         redirectToHome();
 
       } else {
+        // (MODIFICADO) Lógica de erro agora usa 'setAndToastError'
+        toast.dismiss(loginToast); // Fecha o toast de loading
         let errorMessage = '';
         try {
           const errorData = await response.json();
@@ -149,11 +163,12 @@ export default function LoginPage() {
             errorMessage = `Falha no login (Status: ${response.status}).`;
           }
         }
-        setError(errorMessage);
+        setAndToastError(errorMessage); // Define o erro e mostra o toast
       }
     } catch (err) {
+      toast.dismiss(loginToast);
       console.error('Erro de rede ou autenticação:', err);
-      setError('Não foi possível conectar ao servidor. Verifique a URL e o backend.');
+      setAndToastError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -228,11 +243,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error && (
+          {/* O erro agora é exibido apenas pelo toast, mas mantemos o 'error' para referência futura se necessário */}
+          {/* {error && (
             <div className="p-4 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-lg animate-fade-in" role="alert">
               {error}
             </div>
           )}
+          */}
 
           <div>
             <button

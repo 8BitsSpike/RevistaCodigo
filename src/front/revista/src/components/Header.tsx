@@ -4,14 +4,18 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, FormEvent, useRef, useEffect } from 'react';
-import { Menu, X, Search, User, LogOut, ListFilter, Check } from 'lucide-react';
+import { Menu, X, Search, User, LogOut, ListFilter, Check, FileCheck, FileCog, Presentation } from 'lucide-react'; // (NOVO) Ícones editoriais
 import useAuth from '@/hooks/useAuth';
 
 export type HeaderProps = {
     siteTitle?: string;
+    pageType?: 'default' | 'editorial';
 };
 
-export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
+export default function Header({
+    siteTitle = 'RBEB',
+    pageType = 'default'
+}: HeaderProps) {
     const { user, logout } = useAuth();
     const pathname = usePathname() || '/';
     const [open, setOpen] = useState(false);
@@ -33,6 +37,7 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
         }
     }, [user]);
 
+    // Menu de Navegação Padrão
     const secondary = [
         { label: 'Edições Especiais', href: '/volume' },
         { label: 'Artigos', href: '/artigo/tipos?tipo=Artigo' },
@@ -42,6 +47,13 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
         { label: 'Vídeos', href: '/artigo/tipos?tipo=Videos' },
         { label: 'Blog da Editoria', href: '/artigo/tipos?tipo=Blog' },
         { label: 'Sala dos Professores', href: '/professores' }
+    ];
+
+    // Menu de Navegação Editorial
+    const editorialNavLinks = [
+        { label: 'Controle de pendências', href: '/editorial/pendencias', icon: <FileCheck size={14} /> },
+        { label: 'Controle de artigos', href: '/editorial/artigos', icon: <FileCog size={14} /> },
+        { label: 'Sala de imprensa', href: '/editorial/imprensa', icon: <Presentation size={14} /> },
     ];
 
     const topLinks = [
@@ -72,7 +84,7 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
     const handleProfile = () => router.push('/profile');
 
     const handleLogout = () => {
-        logout();
+        logout(); // O hook useAuth agora limpa tudo
         setIsStaff(false);
         router.push('/');
     };
@@ -97,6 +109,9 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
             hintTimerRef.current = null;
         }
     };
+
+    // Determina qual menu exibir
+    const navLinks = pageType === 'editorial' ? editorialNavLinks : secondary;
 
     return (
         <header id="site-header" className="w-full bg-white sticky top-0 z-40 shadow-sm">
@@ -171,7 +186,7 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
                 <div className="md:hidden">
                     <button
                         aria-label="Abrir menu"
-                        aria-expanded={open} // (MODIFICADO) Revertido para boolean
+                        aria-expanded={open}
                         onClick={() => setOpen((s) => !s)}
                         className="p-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#F69A73]"
                     >
@@ -191,170 +206,128 @@ export default function Header({ siteTitle = 'RBEB' }: HeaderProps) {
                 </div>
             )}
 
+            {/* Barra de Navegação Principal (agora condicional) */}
             <div className="border-t border-gray-200">
                 <nav className="max-w-7xl mx-auto px-4 py-6 hidden md:block">
                     <ul className="flex gap-6 items-center text-sm">
-                        {secondary.map((item) => {
+
+                        {/* Renderiza o menu correto (editorial ou padrão) */}
+                        {navLinks.map((item) => {
                             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-
-                            if (item.label === 'RBEB') {
-                                return (
-                                    <li
-                                        key={item.href}
-                                        className="relative"
-                                        onMouseEnter={() => { clearCloseTimeout(); setSubmenuOpen(true); }}
-                                        onMouseLeave={() => scheduleClose()}
-                                    >
-                                        <Link
-                                            href="/"
-                                            aria-haspopup="true"
-                                            aria-expanded={submenuOpen} // (MODIFICADO) Revertido para boolean
-                                            className={`inline-block py-1 ${isActive
-                                                ? 'text-[#F69A73] border-b-2 border-[#F69A73]'
-                                                : 'text-gray-700 hover:text-[#F69A73]'
-                                                } transition focus:outline-none`}
-                                        >
-                                            {item.label}
-                                        </Link>
-
-                                        {submenuOpen && (
-                                            <div
-                                                className="absolute left-1/2 mt-2 w-56 bg-white shadow-lg rounded-md p-2 z-50"
-                                                style={{ transform: 'translateX(-50%)', overflow: 'visible' }}
-                                                onMouseEnter={() => clearCloseTimeout()}
-                                                onMouseLeave={() => scheduleClose()}
-                                            >
-                                                <ul className="flex flex-col text-sm">
-                                                    <li>
-                                                        <Link href="/rbeb/apresentacao" className="block px-3 py-2 hover:bg-gray-50 rounded">Apresentação</Link>
-                                                    </li>
-                                                    <li>
-                                                        <Link href="/rbeb/autoras-e-autores" className="block px-3 py-2 hover:bg-gray-50 rounded">Autoras e autores</Link>
-                                                    </li>
-                                                    <li>
-                                                        <Link href="/rbeb/corpo-editorial" className="block px-3 py-2 hover:bg-gray-50 rounded">Corpo Editorial</Link>
-                                                    </li>
-                                                    <li>
-                                                        <Link href="/rbeb/editoria-executiva" className="block px-3 py-2 hover:bg-gray-50 rounded">Editoria Executiva</Link>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </li>
-                                );
-                            }
 
                             return (
                                 <li key={item.href}>
                                     <Link
                                         href={item.href}
-                                        className={`inline-block py-1 ${isActive
+                                        className={`inline-flex items-center gap-1.5 py-1 ${isActive
                                             ? 'text-[#F69A73] border-b-2 border-[#F69A73]'
                                             : 'text-gray-700 hover:text-[#F69A73]'
                                             } transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#F69A73]`}
                                     >
+                                        {(item as any).icon} {/* Adiciona o ícone se ele existir */}
                                         {item.label}
                                     </Link>
                                 </li>
                             );
                         })}
 
-                        <li className="ml-4 relative">
-                            <form onSubmit={handleSearch} className="flex items-center">
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchMenuOpen(o => !o)}
-                                    className="p-2 h-full border border-gray-200 rounded-l-md bg-gray-50 hover:bg-gray-100"
-                                    aria-label="Abrir filtros de busca"
-                                    aria-expanded={searchMenuOpen} // (MODIFICADO) Revertido para boolean
-                                >
-                                    <ListFilter size={16} className="text-gray-600" />
-                                </button>
+                        {/* A Busca só aparece no menu padrão */}
+                        {pageType === 'default' && (
+                            <li className="ml-4 relative">
+                                <form onSubmit={handleSearch} className="flex items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchMenuOpen(o => !o)}
+                                        className="p-2 h-full border border-gray-200 rounded-l-md bg-gray-50 hover:bg-gray-100"
+                                        aria-label="Abrir filtros de busca"
+                                        aria-expanded={searchMenuOpen}
+                                    >
+                                        <ListFilter size={16} className="text-gray-600" />
+                                    </button>
 
-                                <div className="relative flex-grow">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"><Search /></span>
-                                    <input
-                                        aria-label="Pesquisar"
-                                        value={query}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        onFocus={handleSearchFocus}
-                                        onMouseLeave={handleSearchMouseLeave}
-                                        onMouseEnter={handleSearchMouseEnter}
-                                        placeholder={`Buscar por ${searchType}...`}
-                                        className="w-40 md:w-64 pl-8 px-3 py-1 border-y border-r border-gray-200 rounded-r-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F69A73]"
-                                    />
-
-                                    {showHint && (
-                                        <div
-                                            className="absolute top-full left-0 mt-2 p-2 bg-white border border-gray-200 rounded-md shadow-lg text-xs text-gray-700 z-50 transition-all duration-300"
-                                            onMouseEnter={handleSearchMouseEnter}
+                                    <div className="relative flex-grow">
+                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"><Search /></span>
+                                        <input
+                                            aria-label="Pesquisar"
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            onFocus={handleSearchFocus}
                                             onMouseLeave={handleSearchMouseLeave}
-                                        >
-                                            Clique na caixa ao lado para definir o filtro de busca.
-                                        </div>
-                                    )}
-                                </div>
-                            </form>
+                                            onMouseEnter={handleSearchMouseEnter}
+                                            placeholder={`Buscar por ${searchType}...`}
+                                            className="w-40 md:w-64 pl-8 px-3 py-1 border-y border-r border-gray-200 rounded-r-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F69A73]"
+                                        />
 
-                            {searchMenuOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-1000 animate-fade-in">
-                                    <ul>
-                                        <li>
-                                            <button
-                                                onClick={() => { setSearchType('titulo'); setSearchMenuOpen(false); }}
-                                                className="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-100"
+                                        {showHint && (
+                                            <div
+                                                className="absolute top-full left-0 mt-2 p-2 bg-white border border-gray-200 rounded-md shadow-lg text-xs text-gray-700 z-50 transition-all duration-300"
+                                                onMouseEnter={handleSearchMouseEnter}
+                                                onMouseLeave={handleSearchMouseLeave}
                                             >
-                                                Busca por título
-                                                {searchType === 'titulo' && <Check size={16} className="text-emerald-600" />}
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button
-                                                onClick={() => { setSearchType('autor'); setSearchMenuOpen(false); }}
-                                                className="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-100"
-                                            >
-                                                Nome do autor
-                                                {searchType === 'autor' && <Check size={16} className="text-emerald-600" />}
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </div>
-                            )}
-                        </li>
+                                                Clique na caixa ao lado para definir o filtro de busca.
+                                            </div>
+                                        )}
+                                    </div>
+                                </form>
+
+                                {searchMenuOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-1000 animate-fade-in">
+                                        <ul>
+                                            <li>
+                                                <button
+                                                    onClick={() => { setSearchType('titulo'); setSearchMenuOpen(false); }}
+                                                    className="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-100"
+                                                >
+                                                    Busca por título
+                                                    {searchType === 'titulo' && <Check size={16} className="text-emerald-600" />}
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button
+                                                    onClick={() => { setSearchType('autor'); setSearchMenuOpen(false); }}
+                                                    className="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-100"
+                                                >
+                                                    Nome do autor
+                                                    {searchType === 'autor' && <Check size={16} className="text-emerald-600" />}
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                )}
+                            </li>
+                        )}
                     </ul>
                 </nav>
 
+                {/*  Menu Mobile Condicional */}
                 {open && (
                     <div className="md:hidden border-t bg-white">
                         <div className="px-4 py-3">
                             <div className="flex flex-col gap-3">
-                                {secondary.map((s) => (
+
+                                {navLinks.map((s) => (
                                     <div key={s.href}>
                                         <Link href={s.href} className="text-gray-800 font-medium py-2 block" onClick={() => setOpen(false)}>
                                             {s.label}
                                         </Link>
-                                        {s.label === 'RBEB' && (
-                                            <div className="pl-4">
-                                                <Link href="/rbeb/apresentacao" className="block py-1">Apresentação</Link>
-                                                <Link href="/rbeb/autoras-e-autores" className="block py-1">Autoras e autores</Link>
-                                                <Link href="/rbeb/corpo-editorial" className="block py-1">Corpo Editorial</Link>
-                                                <Link href="/rbeb/editoria-executiva" className="block py-1">Editoria Executiva</Link>
-                                            </div>
-                                        )}
                                     </div>
                                 ))}
 
-                                <form onSubmit={handleSearch} className="pt-2 relative">
-                                    <span className="absolute left-3 top-3 text-gray-400"><Search /></span>
-                                    <input
-                                        aria-label="Pesquisar"
-                                        value={query}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        placeholder="Pesquisar"
-                                        className="w-full pl-10 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F69A73]"
-                                    />
-                                </form>
+                                {/* Busca Mobile (apenas no modo 'default') */}
+                                {pageType === 'default' && (
+                                    <form onSubmit={handleSearch} className="pt-2 relative">
+                                        <span className="absolute left-3 top-3 text-gray-400"><Search /></span>
+                                        <input
+                                            aria-label="Pesquisar"
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            placeholder="Pesquisar"
+                                            className="w-full pl-10 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F69A73]"
+                                        />
+                                    </form>
+                                )}
 
+                                {/* Mobile login/logout/staff */}
                                 <div className="pt-4 space-y-3">
                                     {isStaff && (
                                         <button

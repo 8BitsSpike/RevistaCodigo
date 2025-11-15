@@ -4,17 +4,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useMutation } from '@apollo/client/react';
-import { CRIAR_ARTIGO } from '@/graphql/queries';
+import { CRIAR_ARTIGO, GET_MEUS_ARTIGOS } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import ImageAltModal from '@/components/ImageAltModal';
 import { Check, X, Trash2, Plus, UploadCloud } from 'lucide-react';
 import 'quill/dist/quill.snow.css';
 import type Quill from 'quill';
+import toast from 'react-hot-toast'; // (NOVO) Importa o toast
 
-
+// --- Interfaces ---
 interface UsuarioBusca {
-    id: string;
+    id: string; // Do UsuarioAPI
     name: string;
     sobrenome?: string;
     foto?: string;
@@ -26,7 +27,6 @@ interface MidiaEntry {
     alt: string;
 }
 
-// (NOVO) Interface para o retorno da mutação CriarArtigo
 interface CriarArtigoData {
     criarArtigo: {
         id: string;
@@ -49,35 +49,46 @@ export default function SubmitArtigoClient() {
     const [resumo, setResumo] = useState('');
     const [quillContent, setQuillContent] = useState('');
 
-    // Autores (Co-autores da RBEB)
     const [selectedAuthors, setSelectedAuthors] = useState<UsuarioBusca[]>([]);
     const [authorSearchQuery, setAuthorSearchQuery] = useState('');
     const [authorSearchResults, setAuthorSearchResults] = useState<UsuarioBusca[]>([]);
 
-    // Referências Externas
     const [externalRefs, setExternalRefs] = useState<string[]>([]);
     const [newRef, setNewRef] = useState('');
 
-    // Mídias
     const [midias, setMidias] = useState<MidiaEntry[]>([]);
-    // Imagem de Capa (MidiaDestaque - a primeira da lista)
     const [capaPreview, setCapaPreview] = useState<string | null>(null);
 
-    // Controle do Modal de Alt Text
     const [isAltModalOpen, setIsAltModalOpen] = useState(false);
     const [pendingImage, setPendingImage] = useState<{ id: string; url: string } | null>(null);
 
-    // Status
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
-    // Quill Refs
     const quillRef = useRef<HTMLDivElement>(null);
     const quillInstance = useRef<Quill | null>(null);
     const initializedRef = useRef(false);
 
-    // (MODIFICADO) Mutation tipada
-    const [criarArtigo] = useMutation<CriarArtigoData>(CRIAR_ARTIGO);
+    // (MODIFICADO) Mutation com handlers de toast
+    const [criarArtigo] = useMutation<CriarArtigoData>(CRIAR_ARTIGO, {
+        onCompleted: (data) => {
+            if (data?.criarArtigo?.id) {
+                toast.success('Artigo enviado com sucesso!');
+                router.push('/sessoes-especiais');
+            } else {
+                toast.error('Falha ao enviar artigo. Resposta inesperada.');
+            }
+        },
+        onError: (err) => {
+            console.error("Erro ao criar artigo", err);
+            setErrorMsg(err.message || "Erro ao enviar artigo.");
+            toast.error(`Erro ao enviar: ${err.message}`);
+        },
+        // (NOVO) Atualiza a query de "meus artigos" no cache
+        refetchQueries: [
+            { query: GET_MEUS_ARTIGOS }
+        ]
+    });
 
     // --- 1. Busca de Usuários (Co-autores) ---
     useEffect(() => {
@@ -91,13 +102,11 @@ export default function SubmitArtigoClient() {
             if (!token) return;
 
             try {
-                // Ajuste a rota conforme sua UsuarioAPI (ex: /GetByName ou ?name=)
                 const res = await fetch(`${API_USUARIO_BASE}/Search?name=${authorSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // Filtra usuários já selecionados e o próprio usuário logado
                     const filtered = data.filter((u: any) =>
                         u.id !== user?.id &&
                         !selectedAuthors.some(sel => sel.id === u.id)
@@ -122,7 +131,7 @@ export default function SubmitArtigoClient() {
         setSelectedAuthors(selectedAuthors.filter(a => a.id !== id));
     };
 
-    // --- Referências Notáveis ---
+    // --- 2. Referências Notáveis ---
     const addExternalRef = () => {
         if (newRef.trim()) {
             setExternalRefs([...externalRefs, newRef.trim()]);
@@ -134,7 +143,7 @@ export default function SubmitArtigoClient() {
         setExternalRefs(externalRefs.filter((_, i) => i !== index));
     };
 
-    // --- Configuração do Quill e Manipulação de Imagem ---
+    // --- 3. Configuração do Quill e Manipulação de Imagem ---
 
     const imageHandler = () => {
         const input = document.createElement('input');
@@ -145,30 +154,32 @@ export default function SubmitArtigoClient() {
         input.onchange = () => {
             const file = input.files ? input.files[0] : null;
             if (file) {
-                // Implementação usando FileReader
                 const reader = new FileReader();
+                reader.onloadstart = () => {
+                    toast.loading('Processando imagem...', { id: 'image-upload' });
+                }
                 reader.onloadend = () => {
                     const base64 = reader.result as string;
-
-                    // Gera um ID temporário para a mídia
                     const tempId = `img-${Date.now()}`;
 
                     setPendingImage({
                         id: tempId,
                         url: base64
                     });
+                    toast.dismiss('image-upload');
                     setIsAltModalOpen(true);
                 };
+                reader.onerror = () => {
+                    toast.error('Falha ao ler imagem.', { id: 'image-upload' });
+                }
                 reader.readAsDataURL(file);
             }
         };
     };
 
-    // Callback quando o modal de Alt Text confirma
     const handleAltTextConfirm = (altText: string) => {
         if (!pendingImage || !quillInstance.current) return;
 
-        // Adiciona à lista de mídias para a mutação
         const newMedia: MidiaEntry = {
             midiaID: pendingImage.id,
             url: pendingImage.url,
@@ -176,19 +187,17 @@ export default function SubmitArtigoClient() {
         };
         setMidias(prev => [...prev, newMedia]);
 
-        // Se for a primeira imagem, define como capa (preview)
         if (midias.length === 0) {
             setCapaPreview(pendingImage.url);
         }
 
-        // Insere no editor
         const range = quillInstance.current.getSelection(true);
         quillInstance.current.insertEmbed(range.index, 'image', pendingImage.url);
-
         quillInstance.current.setSelection(range.index + 1);
 
         setIsAltModalOpen(false);
         setPendingImage(null);
+        toast.success('Imagem adicionada com acessibilidade!');
     };
 
     useEffect(() => {
@@ -234,70 +243,65 @@ export default function SubmitArtigoClient() {
     }, []);
 
 
-    // --- Submissão e Deleção ---
+    // --- 4. Submissão e Deleção ---
 
     const handleSubmit = async () => {
         if (!titulo.trim() || !resumo.trim() || quillContent === '<p><br></p>' || !quillContent.trim()) {
-            setErrorMsg("Por favor, preencha o título, resumo e conteúdo do artigo.");
+            const msg = "Por favor, preencha o título, resumo e conteúdo do artigo.";
+            setErrorMsg(msg);
+            toast.error(msg);
             return;
         }
 
         setIsSubmitting(true);
         setErrorMsg('');
+        toast.loading('Enviando seu artigo...', { id: 'submit-artigo' }); // (NOVO)
 
-        // Prepara autores:
         const autoresInput = selectedAuthors.map(a => ({
             usuarioId: a.id,
             nome: `${a.name} ${a.sobrenome || ''}`.trim(),
             url: a.foto || ''
         }));
 
-        // Prepara mídias:
         const midiasInput = midias.map(m => ({
             midiaID: m.midiaID,
             url: m.url,
             alt: m.alt
         }));
 
-        try {
-            const { data } = await criarArtigo({
-                variables: {
-                    input: {
-                        titulo,
-                        resumo,
-                        conteudo: quillContent,
-                        tipo: 'Artigo', // Default
-                        autores: autoresInput,
-                        referenciasAutor: externalRefs,
-                        midias: midiasInput
-                    },
-                    commentary: "Submissão inicial pelo autor"
-                }
-            });
-
-            if (data?.criarArtigo?.id) {
-                // Redireciona para a Sala dos Professores após sucesso
-                router.push('/sessoes-especiais');
+        // (MODIFICADO) Lógica de try/catch não é mais necessária aqui
+        // pois é tratada pelos handlers do 'useMutation'
+        await criarArtigo({
+            variables: {
+                input: {
+                    titulo,
+                    resumo,
+                    conteudo: quillContent,
+                    tipo: 'Artigo',
+                    autores: autoresInput,
+                    referenciasAutor: externalRefs,
+                    midias: midiasInput
+                },
+                commentary: "Submissão inicial pelo autor"
             }
-        } catch (err: any) {
-            console.error("Erro ao criar artigo", err);
-            setErrorMsg(err.message || "Erro ao enviar artigo.");
-        } finally {
-            setIsSubmitting(false);
-        }
+        });
+
+        toast.dismiss('submit-artigo'); // Limpa o toast de loading
+        setIsSubmitting(false); // O 'finally' foi removido
     };
 
     const handleDelete = () => {
-        if (confirm("Tem certeza? Isso apagará todo o progresso e as imagens enviadas.")) {
-            router.push('/professores');
+        if (confirm("Tem certeza? Isso apagará todo o progresso.")) {
+            // TODO: Chamar API para deletar as imagens Base64 (se necessário)
+            toast.success('Rascunho deletado.');
+            router.push('/sessoes-especiais');
         }
     };
 
-    if (!user) return null; // Layout lida com redirect se necessário
+    if (!user) return null;
 
     return (
         <Layout>
-            {/* Modal de Alt Text (Fora do fluxo normal) */}
             <ImageAltModal
                 isOpen={isAltModalOpen}
                 onConfirm={handleAltTextConfirm}
@@ -308,6 +312,7 @@ export default function SubmitArtigoClient() {
                     Submeter Novo Artigo
                 </h1>
 
+                {/* O 'errorMsg' agora é primariamente tratado pelo toast */}
                 {errorMsg && (
                     <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md border border-red-300">
                         {errorMsg}
@@ -352,7 +357,6 @@ export default function SubmitArtigoClient() {
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                                 placeholder="Buscar autor por nome..."
                             />
-                            {/* Dropdown de Resultados */}
                             {authorSearchResults.length > 0 && (
                                 <ul className="absolute top-full left-0 right-0 bg-white border border-gray-200 shadow-lg rounded-md mt-1 z-10 max-h-60 overflow-y-auto">
                                     {authorSearchResults.map(u => (
@@ -375,9 +379,7 @@ export default function SubmitArtigoClient() {
                             )}
                         </div>
 
-                        {/* Lista de Autores Selecionados */}
                         <div className="flex flex-wrap gap-3 mt-4">
-                            {/* Card do próprio usuário (Fixo) */}
                             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-full">
                                 <div className="w-8 h-8 relative rounded-full overflow-hidden bg-gray-200">
                                     {user?.foto && <Image src={user.foto} alt="Eu" fill className="object-cover" />}
@@ -385,7 +387,6 @@ export default function SubmitArtigoClient() {
                                 <span className="text-sm font-medium text-emerald-800">Você (Autor Principal)</span>
                             </div>
 
-                            {/* Cards dos Co-autores */}
                             {selectedAuthors.map(author => (
                                 <div
                                     key={author.id}
@@ -395,7 +396,6 @@ export default function SubmitArtigoClient() {
                                     <span className="text-sm font-medium text-gray-700">{author.name} {author.sobrenome}</span>
                                     <Check size={16} className="text-emerald-600" />
 
-                                    {/* Tooltip "Click para remover" */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max bg-black/80 text-white text-xs px-2 py-1 rounded">
                                         Click para remover
                                     </div>
@@ -424,7 +424,6 @@ export default function SubmitArtigoClient() {
                             </button>
                         </div>
 
-                        {/* Lista de Referências */}
                         <ul className="mt-3 space-y-2">
                             {externalRefs.map((ref, idx) => (
                                 <li key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
@@ -441,7 +440,6 @@ export default function SubmitArtigoClient() {
                     <div>
                         <label className="block text-lg font-semibold text-gray-700 mb-2">Conteúdo do Artigo</label>
                         <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
-                            {/* O container do Quill precisa ter altura definida para edição confortável */}
                             <div ref={quillRef} style={{ minHeight: '400px', backgroundColor: 'white' }} />
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
@@ -449,10 +447,9 @@ export default function SubmitArtigoClient() {
                         </p>
                     </div>
 
-                    {/* Preview da Capa (Opcional, visual feedback) */}
                     {capaPreview && (
                         <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-4">
-                            <div className="w-20 h-20 relative rounded overflow-hidden bg-gray-200">
+                            <div className="w-20 h-20 relative rounded-full overflow-hidden bg-gray-200">
                                 <Image src={capaPreview} alt="Capa" fill className="object-cover" />
                             </div>
                             <div>

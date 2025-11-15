@@ -103,7 +103,9 @@ namespace Artigo.Server.Mappers
 
             // Entidade Artigo -> ArtigoCardListDTO (Formato Card List)
             CreateMap<Artigo.Intf.Entities.Artigo, ArtigoCardListDTO>()
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status)) // Mapeamento de Status adicionado
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.Tipo, opt => opt.MapFrom(src => src.Tipo))
+                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))
                 .ForMember(dest => dest.MidiaDestaque, opt => opt.MapFrom(src => src.MidiaDestaque));
 
             // Entidade Volume -> VolumeCardDTO (Formato Volume Card)
@@ -117,6 +119,8 @@ namespace Artigo.Server.Mappers
             // Entidade Artigo -> ArtigoViewDTO (Formato Artigo View)
             CreateMap<Artigo.Intf.Entities.Artigo, ArtigoViewDTO>()
                 .ForMember(dest => dest.AutorReferencias, opt => opt.MapFrom(src => src.AutorReference))
+                .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))
+                .ForMember(dest => dest.Tipo, opt => opt.MapFrom(src => src.Tipo)) // (CAMPO ADICIONADO)
                 .ForMember(dest => dest.Autores, opt => opt.Ignore())
                 .ForMember(dest => dest.Volume, opt => opt.Ignore())
                 .ForMember(dest => dest.ConteudoAtual, opt => opt.Ignore())
@@ -131,7 +135,11 @@ namespace Artigo.Server.Mappers
                 .ForMember(dest => dest.Interacoes, opt => opt.Ignore());
 
             // Entidade Staff -> StaffViewDTO (Formato Staff View)
-            CreateMap<Artigo.Intf.Entities.Staff, StaffViewDTO>();
+            CreateMap<Artigo.Intf.Entities.Staff, StaffViewDTO>()
+                .ForMember(dest => dest.Nome, opt => opt.MapFrom(src => src.Nome))
+                .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
+                .ForMember(dest => dest.Job, opt => opt.MapFrom(src => src.Job))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
 
             // Entidade Volume -> VolumeViewDTO (Formato Volume View)
             CreateMap<Artigo.Intf.Entities.Volume, VolumeViewDTO>();

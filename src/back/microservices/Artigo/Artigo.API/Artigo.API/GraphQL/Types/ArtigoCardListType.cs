@@ -1,6 +1,6 @@
 ﻿using Artigo.Server.DTOs;
 using HotChocolate.Types;
-using Artigo.Intf.Enums; // Adicionado para StatusArtigo
+using Artigo.Intf.Enums; 
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -21,7 +21,13 @@ namespace Artigo.API.GraphQL.Types
                 .Type<NonNullType<EnumType<StatusArtigo>>>()
                 .Description("O status editorial atual do artigo.");
 
-            // O campo 'Tipo' foi removido do DTO, conforme a nova especificação.
+            descriptor.Field(f => f.Tipo)
+                .Type<NonNullType<EnumType<TipoArtigo>>>()
+                .Description("O tipo do artigo (e.g., Artigo, Blog).");
+
+            descriptor.Field(f => f.PermitirComentario)
+                .Type<NonNullType<BooleanType>>()
+                .Description("Indica se comentários públicos estão permitidos.");
 
             descriptor.Field(f => f.MidiaDestaque)
                 .Type<MidiaEntryType>() // Reutiliza o MidiaEntryType (definido em ArtigoType.cs)

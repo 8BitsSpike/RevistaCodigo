@@ -3,14 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { Pencil, Trash2, MessageSquareReply } from 'lucide-react';
-import {
-    DELETAR_INTERACAO,
-    ATUALIZAR_INTERACAO,
-    GET_COMENTARIOS_PUBLICOS,
-    GET_ARTIGO_VIEW
-} from '@/graphql/queries';
+import { DELETAR_INTERACAO, ATUALIZAR_INTERACAO } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
 import CreateCommentCard from './CreateCommentCard';
+import toast from 'react-hot-toast';
+
+// --- Tipos de Dados ---
 
 export interface Comment {
     id: string;
@@ -21,16 +19,15 @@ export interface Comment {
     dataCriacao: string;
     parentCommentId: string | null;
     replies: Comment[];
-    __typename: string; // Necessário para o Apollo Cache
+    __typename: string;
 }
 
-// Define as props que o CommentCard recebe
 interface CommentCardProps {
     comment: Comment;
     artigoId: string;
-    isPublic: boolean;      // É um comentário público?
-    permitirRespostas: boolean; // O artigo permite comentários?
-    onCommentDeleted: () => void; // Função para recarregar a lista
+    isPublic: boolean;
+    permitirRespostas: boolean;
+    onCommentAction: () => void; // (MODIFICADO) Renomeado para onCommentAction
 }
 
 export default function CommentCard({
@@ -38,7 +35,7 @@ export default function CommentCard({
     artigoId,
     isPublic,
     permitirRespostas,
-    onCommentDeleted
+    onCommentAction
 }: CommentCardProps) {
 
     const { user } = useAuth();
@@ -48,7 +45,6 @@ export default function CommentCard({
     const [isExpanded, setIsExpanded] = useState(false);
     const [editedContent, setEditedContent] = useState(comment.content);
 
-    // Verifica se o usuário logado é o autor deste comentário
     const isAuthor = user?.id === comment.usuarioId;
 
     useEffect(() => {
@@ -63,29 +59,41 @@ export default function CommentCard({
 
     useEffect(() => {
         if (contentRef.current) {
-            const maxHeight = 1.5 * 16 * MAX_LINES;
+            const lineHeight = parseFloat(window.getComputedStyle(contentRef.current).lineHeight);
+            const maxHeight = lineHeight * MAX_LINES;
             if (contentRef.current.scrollHeight > maxHeight) {
                 setIsTruncated(true);
             }
         }
     }, [comment.content]);
 
-    // --- Mutações ---
+    // --- Mutações (MODIFICADO com toasts) ---
 
-    // Mutação para Deletar
     const [deleteInteraction, { loading: loadingDelete }] = useMutation(DELETAR_INTERACAO, {
         variables: {
             interacaoId: comment.id,
             commentary: "Excluído pelo usuário"
         },
-        onCompleted: onCommentDeleted, // Chama a função para recarregar
-        onError: (err) => console.error("Erro ao deletar:", err.message),
+        onCompleted: () => {
+            toast.success('Comentário deletado.');
+            onCommentAction();
+        },
+        onError: (err) => {
+            console.error("Erro ao deletar:", err.message);
+            toast.error(`Erro ao deletar: ${err.message}`);
+        },
     });
 
-    // Mutação para Atualizar
     const [updateInteraction, { loading: loadingUpdate }] = useMutation(ATUALIZAR_INTERACAO, {
-        onCompleted: () => setIsEditing(false), // Fecha o modo de edição
-        onError: (err) => console.error("Erro ao atualizar:", err.message),
+        onCompleted: () => {
+            toast.success('Comentário atualizado.');
+            setIsEditing(false);
+            onCommentAction();
+        },
+        onError: (err) => {
+            console.error("Erro ao atualizar:", err.message);
+            toast.error(`Erro ao atualizar: ${err.message}`);
+        },
     });
 
     // --- Handlers ---
@@ -101,7 +109,6 @@ export default function CommentCard({
         });
     };
 
-    // Formata a data (ex: 13 de novembro de 2025)
     const formattedDate = new Date(comment.dataCriacao).toLocaleDateString('pt-BR', {
         day: 'numeric',
         month: 'long',
@@ -113,7 +120,7 @@ export default function CommentCard({
             className={`bg-white shadow border border-gray-100 rounded-lg ${comment.parentCommentId ? 'ml-[2%]' : ''}`}
             style={{
                 width: comment.parentCommentId ? '98%' : '100%',
-                margin: '0.5% 1%',
+                margin: '10px 1%',
                 padding: '20px 0.5%',
             }}
         >
@@ -126,7 +133,6 @@ export default function CommentCard({
                         <span className="text-xs text-gray-500 ml-2">{formattedDate}</span>
                     </div>
 
-                    {/* Botões de Ação (Editar/Deletar) */}
                     {(isAuthor || isStaff) && !isEditing && (
                         <div className="flex gap-2 flex-shrink-0">
                             <button
@@ -153,7 +159,6 @@ export default function CommentCard({
                 {isEditing ? (
                     <div className="mt-2">
                         <textarea
-                            placeholder='Escreva seu comentário'
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
                             className="w-full h-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -176,7 +181,6 @@ export default function CommentCard({
                         </div>
                     </div>
                 ) : (
-                    // Modo de Leitura
                     <div>
                         <p
                             ref={contentRef}
@@ -185,7 +189,6 @@ export default function CommentCard({
                         >
                             {comment.content}
                         </p>
-                        {/* Botão "Ler mais" */}
                         {isTruncated && (
                             <button
                                 onClick={() => setIsExpanded(prev => !prev)}
@@ -216,19 +219,19 @@ export default function CommentCard({
                 <div className="mt-4 px-2">
                     <CreateCommentCard
                         artigoId={artigoId}
-                        parentCommentId={comment.id} // Envia o ID deste comentário como 'pai'
+                        parentCommentId={comment.id}
                         onCommentPosted={() => {
-                            setIsReplying(false);   // Fecha o formulário
-                            onCommentDeleted();     // Recarrega a lista (o onCommentDeleted recarrega tudo)
+                            setIsReplying(false);
+                            onCommentAction();
                         }}
-                        onCancel={() => setIsReplying(false)} // Botão Cancelar
+                        onCancel={() => setIsReplying(false)}
                     />
                 </div>
             )}
 
             {/* Seção de Respostas (Recursiva) */}
             {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-2 border-t border-gray-100 pt-2">
+                <div className="mt-0 border-t border-gray-100 pt-2">
                     {comment.replies.map(reply => (
                         <CommentCard
                             key={reply.id}
@@ -236,7 +239,7 @@ export default function CommentCard({
                             artigoId={artigoId}
                             isPublic={isPublic}
                             permitirRespostas={permitirRespostas}
-                            onCommentDeleted={onCommentDeleted}
+                            onCommentAction={onCommentAction}
                         />
                     ))}
                 </div>

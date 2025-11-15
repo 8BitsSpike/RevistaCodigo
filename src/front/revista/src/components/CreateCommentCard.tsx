@@ -8,9 +8,10 @@ import {
     GET_ARTIGO_VIEW
 } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
+import toast from 'react-hot-toast'; // (NOVO) Importa o toast
 
-
-export type CreateCommentCard = {
+// Tipos das props que o componente aceita
+interface CreateCommentCardProps {
     artigoId: string;
     parentCommentId?: string | null;
     onCommentPosted: () => void;
@@ -22,7 +23,7 @@ export default function CreateCommentCard({
     parentCommentId = null,
     onCommentPosted,
     onCancel,
-}: CreateCommentType) {
+}: CreateCommentCardProps) {
 
     const { user } = useAuth();
     const [content, setContent] = useState('');
@@ -30,6 +31,17 @@ export default function CreateCommentCard({
     const [submitComment, { loading, error }] = useMutation(
         CRIAR_COMENTARIO_PUBLICO,
         {
+            // (NOVO) Adiciona handlers de onCompleted e onError
+            onCompleted: () => {
+                toast.success('Comentário enviado com sucesso!');
+                setContent('');
+                onCommentPosted();
+            },
+            onError: (err) => {
+                console.error("Erro ao enviar comentário:", err);
+                toast.error(`Erro ao enviar comentário: ${err.message}`);
+            },
+            // Atualiza o cache do Apollo
             refetchQueries: [
                 {
                     query: GET_COMENTARIOS_PUBLICOS,
@@ -47,30 +59,21 @@ export default function CreateCommentCard({
         }
     );
 
-    // (Simulação) Precisamos pegar o nome de usuário. O hook useAuth não o provê.
-    // Vamos usar um placeholder por agora, mas o ideal é que o hook useAuth
-    // buscasse o nome do usuário da UsuarioAPI e o armazenasse.
-    // TODO: Substituir "Nome do Usuário" pelo nome real vindo do hook useAuth/localStorage
-    const usuarioNome = "Nome do Usuário Logado";
+    const usuarioNome = user?.name || "Leitor Anônimo";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!content.trim() || !user) return;
 
-        try {
-            await submitComment({
-                variables: {
-                    artigoId,
-                    content,
-                    usuarioNome: usuarioNome,
-                    parentCommentId,
-                },
-            });
-            setContent('');
-            onCommentPosted();
-        } catch (err) {
-            console.error("Erro ao enviar comentário:", err);
-        }
+        // (MODIFICADO) A lógica de try/catch foi movida para os handlers do useMutation
+        await submitComment({
+            variables: {
+                artigoId,
+                content,
+                usuarioNome: usuarioNome,
+                parentCommentId,
+            },
+        });
     };
 
     return (
@@ -92,7 +95,6 @@ export default function CreateCommentCard({
                 required
             />
             <div className="flex justify-end gap-3 mt-3">
-                {/* O botão 'Cancelar' só aparece se a prop onCancel for passada (ex: em uma resposta) */}
                 {onCancel && (
                     <button
                         type="button"
@@ -111,6 +113,7 @@ export default function CreateCommentCard({
                     {loading ? 'Enviando...' : 'Enviar'}
                 </button>
             </div>
+            {/* O erro agora é tratado pelo toast, mas podemos manter isso se quisermos */}
             {error && <p className="text-red-600 text-sm mt-2">Erro: {error.message}</p>}
         </form>
     );

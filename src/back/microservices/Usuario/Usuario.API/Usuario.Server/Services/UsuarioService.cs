@@ -11,6 +11,7 @@ using BCrypt.Net;
 using System.Net.Mail;
 using System.Net;
 using MongoDB.Driver.Linq;
+using System.Threading.Tasks;
 
 namespace Usuario.Server.Services
 {
@@ -21,46 +22,115 @@ namespace Usuario.Server.Services
 
         public UsuarioService(MongoDbContext context, IConfiguration configuration)
         {
-            _usuariosCollection = context.Usuarios;
+            _usuariosCollection = context.Usuarios;
             _configuration = configuration;
         }
 
         // --- MÉTODOS CRUD BÁSICOS ---
 
-        public async Task<List<Usuario.Intf.Models.Usuario>> GetAsync() =>
-   await _usuariosCollection.Find(_ => true).ToListAsync();
+        // --- BUCAR LISTA USER ---
+        public async Task<List<Usuario.Intf.Models.Usuario>> GetAsync(string token)
+        {
 
-        public async Task<Usuario.Intf.Models.Usuario?> GetAsync(ObjectId id) =>
-         await _usuariosCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+            // Validação do Token
+            var validationResult = ValidateToken(token, "");
+
+            if (!validationResult.IsSuccess)
+                return null;
+            else
+                return await _usuariosCollection.Find(_ => true).ToListAsync();
+        }
+
+        // --- BUCAR USER ID ---
+        public async Task<Usuario.Intf.Models.Usuario?> GetAsync(ObjectId id, string token)
+
+        {
+            // Validação do Token
+            var validationResult = ValidateToken(token, id.ToString());
+
+            if (!validationResult.IsSuccess)
+                return null;
+            else
+                return await _usuariosCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+
+        }
+        // --- BUCAR USER Name ---
+        public async Task<List<Usuario.Intf.Models.Usuario>> GetListNameAsync(string nome)
+
+        {
+
+            var teste = await _usuariosCollection.Find(_ => true).ToListAsync();
+            var resultados = await _usuariosCollection
+        // 1. Define o filtro (WHERE/Find)
+        .Find(x => x.Name.Contains(nome))
+
+        // 2. Define a Projeção (SELECT)
+        .Project<Usuario.Intf.Models.Usuario>(Builders<Usuario.Intf.Models.Usuario>.Projection
+            .Include(u => u.Name)
+            .Include(u => u.Email)
+            .Include(u => u.Foto)
+            .Include(u => u.Id)
+        )
+        // 3. Executa a consulta
+        .ToListAsync();
+
+            return resultados;
+        }
 
         public async Task<Usuario.Intf.Models.Usuario?> FindUser(string email)
         {
-            var filter = Builders<Usuario.Intf.Models.Usuario>.Filter.Eq(u => u.Email, email);
+            var filter = Builders<Usuario.Intf.Models.Usuario>.Filter.Eq(u => u.Email, email);
             var usuario = await _usuariosCollection.Find(filter).FirstOrDefaultAsync();
 
 
             return usuario;
         }
 
+        // --- CREATE ---
         public async Task<Usuario.Intf.Models.Usuario> CreateAsync(UsuarioDto newUsuario)
         {
-          
-            var novoUsuario = new Usuario.Intf.Models.Usuario
+
+            var novoUsuario = new Usuario.Intf.Models.Usuario
             {
                 Name = newUsuario.Name,
                 Sobrenome = newUsuario.Sobrenome,
                 Email = newUsuario.Email,
-                Password = newUsuario.Password 
-            };
+                Password = newUsuario.Password
+            };
             await _usuariosCollection.InsertOneAsync(novoUsuario);
             return novoUsuario;
         }
 
-        public async Task UpdateAsync(ObjectId id, Usuario.Intf.Models.Usuario updatedUsuario) =>
-         await _usuariosCollection.ReplaceOneAsync(x => x.Id == id, updatedUsuario);
+        // --- UPDATE ---
+        public async Task<ServiceResult> UpdateAsync(ObjectId id, Usuario.Intf.Models.Usuario updatedUsuario, string token)
+        {
+            // Validação do Token
+            var validationResult = ValidateToken(token, id.ToString());
 
-        public async Task DeleteAsync(ObjectId id) =>
-         await _usuariosCollection.DeleteOneAsync(x => x.Id == id);
+            if (!validationResult.IsSuccess)
+            {
+                return validationResult;
+            }
+            await _usuariosCollection.ReplaceOneAsync(x => x.Id == id, updatedUsuario);
+            return ServiceResult.Success("Update Realizado com sucesso");
+        }
+
+
+        // --- DELETE ---
+
+        public async Task<ServiceResult> DeleteAsync(ObjectId id, string token)
+        {
+            // Validação do Token
+            var validationResult = ValidateToken(token, id.ToString());
+
+            if (!validationResult.IsSuccess)
+            {
+                return validationResult;
+            }
+            await _usuariosCollection.DeleteOneAsync(x => x.Id == id);
+            return ServiceResult.Success("Delete Realizado com sucesso");
+
+        }
 
         // --- GERAÇÃO DE JWT ---
         public string GenerateJwtToken(Usuario.Intf.Models.Usuario usuario)
@@ -80,7 +150,7 @@ namespace Usuario.Server.Services
                 Subject = new ClaimsIdentity(new[]
              {
      new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-     new Claim(ClaimTypes.Email, usuario.Email)
+     new Claim(ClaimTypes.Role, usuario.Tipo)
     }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -98,10 +168,10 @@ namespace Usuario.Server.Services
                 // Busca as configurações de e-mail do appsettings.json
                 var senderEmail = _configuration["EmailSettings:SenderEmail"];
                 var senderPassword = _configuration["EmailSettings:SenderPassword"];
-                var smtpHost = _configuration["EmailSettings:SmtpHost"] ?? "smtp.gmail.com"; 
+                var smtpHost = _configuration["EmailSettings:SmtpHost"] ?? "smtp.gmail.com";
 
-                // Conversão segura do porto
-                if (!int.TryParse(_configuration["EmailSettings:SmtpPort"], out int smtpPort))
+                // Conversão segura do porto
+                if (!int.TryParse(_configuration["EmailSettings:SmtpPort"], out int smtpPort))
                 {
                     smtpPort = 587; // Padrão TLS
                 }
@@ -116,7 +186,7 @@ namespace Usuario.Server.Services
                 using (var smtpClient = new SmtpClient(smtpHost, smtpPort))
                 {
                     smtpClient.EnableSsl = true;
-                    smtpClient.Credentials = new NetworkCredential(smtpUsername, senderPassword);
+                    smtpClient.Credentials = new NetworkCredential(smtpUsername, senderPassword);
 
                     var emailMessage = new MailMessage
                     {
@@ -134,7 +204,7 @@ namespace Usuario.Server.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro ao enviar e-mail: {ex.Message}");
+                Console.WriteLine($"Erro ao enviar e-mail: {ex.Message}");
                 return ServiceResult.Failure($"Não foi possível enviar o e-mail de recuperação. Falha de autenticação/conexão: {ex.Message}", 500);
             }
         }
@@ -226,7 +296,7 @@ namespace Usuario.Server.Services
             }
 
             // 2. Localiza o usuário
-            var usuario = await GetAsync(userId);
+            var usuario = await GetAsync(userId, token);
             if (usuario is null)
             {
                 // Se o usuário não for encontrado, tratamos como token inválido por segurança
@@ -237,7 +307,7 @@ namespace Usuario.Server.Services
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword);
             usuario.Password = hashedPassword;
 
-            await UpdateAsync(userId, usuario);
+            await UpdateAsync(userId, usuario, token);
 
             return ServiceResult.Success("Senha redefinida com sucesso!", 200);
         }
@@ -247,7 +317,7 @@ namespace Usuario.Server.Services
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var jwtKey = _configuration["Key"];
-            var key = Encoding.ASCII.GetBytes(jwtKey!);
+            var key = Encoding.ASCII.GetBytes(jwtKey!);
 
             try
             {
@@ -273,6 +343,44 @@ namespace Usuario.Server.Services
                 if (tokenTypeClaim != "PasswordReset")
                 {
                     return ServiceResult.Failure("Token não é um token de redefinição de senha.", 401);
+                }
+
+                return ServiceResult.Success();
+            }
+            catch (SecurityTokenExpiredException)
+            {
+                return ServiceResult.Failure("Token de recuperação expirado.", 401);
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Failure("Token de recuperação inválido.", 401);
+            }
+        }
+        private ServiceResult ValidateToken(string token, string expectedUserId)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtKey = _configuration["Key"];
+            var key = Encoding.ASCII.GetBytes(jwtKey!);
+
+            try
+            {
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
+
+                var jwtToken = (JwtSecurityToken)validatedToken;
+
+                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "nameid")?.Value;
+                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+                if (userIdClaim != expectedUserId && role != "0")
+                {
+                    return ServiceResult.Failure("Token inválido para este usuário.", 401);
                 }
 
                 return ServiceResult.Success();

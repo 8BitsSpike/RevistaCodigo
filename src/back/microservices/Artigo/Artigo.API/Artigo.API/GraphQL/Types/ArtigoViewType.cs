@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Artigo.API.GraphQL.Resolvers; // *** ADICIONADO PARA O RESOLVER CENTRAL ***
+using Artigo.API.GraphQL.Resolvers; 
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -64,6 +64,10 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.PermitirComentario)
                 .Name("permitirComentario")
                 .Type<NonNullType<BooleanType>>();
+
+            descriptor.Field(f => f.Tipo)
+                .Type<NonNullType<EnumType<TipoArtigo>>>()
+                .Description("O tipo do artigo (e.g., Artigo, Blog).");
 
             // IDs usados pelos resolvers (não expostos diretamente se não necessário)
             descriptor.Field(f => f.AutorIds).Ignore();

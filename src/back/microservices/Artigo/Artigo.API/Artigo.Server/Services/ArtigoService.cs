@@ -180,7 +180,7 @@ namespace Artigo.Server.Services
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            if (staff == null)
+            if (!IsStaff(staff)) // Usa a verificação IsStaff (ativo)
             {
                 throw new UnauthorizedAccessException("Usuário não tem permissão para esta lista.");
             }
@@ -354,6 +354,47 @@ namespace Artigo.Server.Services
 
             // 3. Retorna a lista completa (todos os status).
             return artigos;
+        }
+
+        // --- (NOVOS MÉTODOS PARA STAFF) ---
+
+        /// <sumario>
+        /// (STAFF) Retorna artigos (card) filtrados por TipoArtigo, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.ObterArtigosEditorialPorTipoAsync(tipo, pagina, tamanho);
+        }
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por Título, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.SearchArtigosEditorialByTitleAsync(searchTerm, pagina, tamanho);
+        }
+
+        /// <sumario>
+        /// (STAFF) Busca artigos (card) por IDs de Autor, SEM filtro de status.
+        /// </sumario>
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.SearchArtigosEditorialByAutorIdsAsync(autorIds, pagina, tamanho);
         }
 
 
@@ -937,13 +978,13 @@ namespace Artigo.Server.Services
                         }
                         break;
 
-                    case "UpdateStaffJob":
-                        var staffParams = JsonSerializer.Deserialize<Dictionary<string, string>>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
-                        var staffToUpdate = await _staffRepository.GetByIdAsync(pendingRequest.TargetEntityId, session);
-                        if (staffToUpdate != null && staffParams != null && staffParams.TryGetValue("NewJob", out var newJobString) && Enum.TryParse<FuncaoTrabalho>(newJobString, true, out var newJob))
+                    // (MODIFICADO) 'UpdateStaffJob' foi substituído por 'UpdateStaff'
+                    case "UpdateStaff":
+                        var updateStaffParams = JsonSerializer.Deserialize<UpdateStaffInput>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
+                        if (updateStaffParams != null)
                         {
-                            staffToUpdate.Job = newJob;
-                            executionSuccess = await _staffRepository.UpdateAsync(staffToUpdate, session);
+                            var updatedStaff = await ExecuteAtualizarStaffAsync(updateStaffParams, session);
+                            executionSuccess = (updatedStaff != null);
                         }
                         break;
 
@@ -987,7 +1028,22 @@ namespace Artigo.Server.Services
                         break;
 
                     default:
-                        throw new InvalidOperationException($"Comando '{pendingRequest.CommandType}' não reconhecido para execução.");
+                        // Mantém o 'UpdateStaffJob' legado por segurança, se houver algum no DB
+                        if (pendingRequest.CommandType == "UpdateStaffJob")
+                        {
+                            var staffParams = JsonSerializer.Deserialize<Dictionary<string, string>>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
+                            var staffToUpdate = await _staffRepository.GetByUsuarioIdAsync(pendingRequest.TargetEntityId, session); // 'UpdateStaffJob' antigo usava TargetEntityId como UsuarioId
+                            if (staffToUpdate != null && staffParams != null && staffParams.TryGetValue("NewJob", out var newJobString) && Enum.TryParse<FuncaoTrabalho>(newJobString, true, out var newJob))
+                            {
+                                staffToUpdate.Job = newJob;
+                                executionSuccess = await _staffRepository.UpdateAsync(staffToUpdate, session);
+                            }
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"Comando '{pendingRequest.CommandType}' não reconhecido para execução.");
+                        }
+                        break;
                 }
 
                 if (executionSuccess)
@@ -1220,34 +1276,6 @@ namespace Artigo.Server.Services
             return await _autorRepository.GetAllAsync(pagina, tamanho);
         }
 
-        public async Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId)
-        {
-            // 1. Verifica se o usuário é Staff
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (IsStaff(staff)) // Usando a função helper IsStaff
-            {
-                // Se for Staff, pode buscar qualquer autor
-                return await _autorRepository.GetByIdAsync(idAutor);
-            }
-
-            // 2. Se não for Staff, busca o registro de Autor
-            var autor = await _autorRepository.GetByIdAsync(idAutor);
-            if (autor == null)
-            {
-                // Se não for encontrado, retorna nulo (não vaza informação)
-                return null;
-            }
-
-            // 3. Verifica se o usuário logado é o "dono" do registro de Autor
-            if (autor.UsuarioId == currentUsuarioId)
-            {
-                // Se for o dono, pode ver o registro
-                return autor;
-            }
-
-            // 4. Se não for Staff e não for o dono, o acesso é negado
-            throw new UnauthorizedAccessException("Usuário deve ser Staff ou o próprio autor para buscar este registro.");
-        }
         public async Task<Staff> CriarNovoStaffAsync(Staff novoStaff, string currentUsuarioId, string commentary)
         {
             var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -1304,6 +1332,67 @@ namespace Artigo.Server.Services
             return novoStaff;
         }
 
+        /// <sumario>
+        /// (NOVO) Atualiza o registro de um membro da Staff (Job ou IsActive).
+        /// </sumario>
+        public async Task<Staff> AtualizarStaffAsync(UpdateStaffInput input, string currentUsuarioId, string commentary)
+        {
+            var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+
+            // Regra de Negócio: Bolsistas só podem criar pendências
+            if (requestingStaff?.Job == FuncaoTrabalho.EditorBolsista)
+            {
+                var parameters = JsonSerializer.Serialize(input, _jsonSerializerOptions);
+                var pending = new Pending
+                {
+                    // O Alvo é o UsuarioId do staff sendo modificado
+                    TargetEntityId = input.UsuarioId,
+                    TargetType = TipoEntidadeAlvo.Staff,
+                    CommandType = "UpdateStaff", // Novo tipo de comando
+                    CommandParametersJson = parameters,
+                    Commentary = commentary,
+                    RequesterUsuarioId = currentUsuarioId
+                };
+                await _pendingRepository.AddAsync(pending);
+
+                // Retorna o staff *antes* da modificação, pois ela está pendente
+                var originalStaff = await _staffRepository.GetByUsuarioIdAsync(input.UsuarioId);
+                if (originalStaff == null) throw new KeyNotFoundException("Staff alvo não encontrado.");
+                return originalStaff;
+            }
+
+            // Regra de Negócio: Apenas Admin ou EditorChefe podem executar diretamente
+            if (requestingStaff?.Job == FuncaoTrabalho.EditorChefe || requestingStaff?.Job == FuncaoTrabalho.Administrador)
+            {
+                return await ExecuteAtualizarStaffAsync(input);
+            }
+
+            throw new UnauthorizedAccessException("Usuário não tem permissão para atualizar registros de Staff.");
+        }
+
+        // (NOVO) Helper privado para executar a atualização de Staff
+        private async Task<Staff> ExecuteAtualizarStaffAsync(UpdateStaffInput input, object? sessionHandle = null)
+        {
+            var staffToUpdate = await _staffRepository.GetByUsuarioIdAsync(input.UsuarioId, sessionHandle);
+            if (staffToUpdate == null)
+            {
+                throw new KeyNotFoundException($"Staff com UsuarioId {input.UsuarioId} não encontrado.");
+            }
+
+            // Aplica as atualizações parciais
+            if (input.Job.HasValue)
+            {
+                staffToUpdate.Job = input.Job.Value;
+            }
+            if (input.IsActive.HasValue)
+            {
+                staffToUpdate.IsActive = input.IsActive.Value;
+            }
+
+            await _staffRepository.UpdateAsync(staffToUpdate, sessionHandle);
+            return staffToUpdate;
+        }
+
         public async Task<Staff?> ObterStaffPorIdAsync(string staffId, string currentUsuarioId)
         {
             var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -1322,6 +1411,44 @@ namespace Artigo.Server.Services
                 throw new UnauthorizedAccessException("Usuário não tem permissão para visualizar dados de Staff.");
             }
             return await _staffRepository.GetAllAsync(pagina, tamanho);
+        }
+
+        /// <sumario>
+        /// (NOVO) Verifica se o usuário autenticado é um membro ativo da equipe Staff.
+        /// </sumario>
+        public async Task<bool> VerificarStaffAsync(string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            return IsStaff(staff); // Reutiliza a lógica de IsStaff (ativo)
+        }
+
+        public async Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId)
+        {
+            // 1. Verifica se o usuário é Staff
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (IsStaff(staff)) // Usando a função helper IsStaff
+            {
+                // Se for Staff, pode buscar qualquer autor
+                return await _autorRepository.GetByIdAsync(idAutor);
+            }
+
+            // 2. Se não for Staff, busca o registro de Autor
+            var autor = await _autorRepository.GetByIdAsync(idAutor);
+            if (autor == null)
+            {
+                // Se não for encontrado, retorna nulo (não vaza informação)
+                return null;
+            }
+
+            // 3. Verifica se o usuário logado é o "dono" do registro de Autor
+            if (autor.UsuarioId == currentUsuarioId)
+            {
+                // Se for o dono, pode ver o registro
+                return autor;
+            }
+
+            // 4. Se não for Staff e não for o dono, o acesso é negado
+            throw new UnauthorizedAccessException("Usuário deve ser Staff ou o próprio autor para buscar este registro.");
         }
     }
 }

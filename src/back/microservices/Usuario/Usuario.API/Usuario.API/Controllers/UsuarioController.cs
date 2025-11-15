@@ -24,23 +24,34 @@ namespace Usuario.API.Controllers
 
         // --- GET ALL ---
         [HttpGet]
-        public async Task<List<Usuario.Intf.Models.Usuario>> Get() =>
-            await _usuarioService.GetAsync();
+        public async Task<ActionResult<List<Usuario.Intf.Models.Usuario>>> Get(string token)
+        {
+            var userlist = await _usuarioService.GetAsync(token);
+            if (userlist == null)
+                return NoContent();
+            else
+                return Ok(userlist);
+
+        }
 
         // --- GET BY ID ---
         [HttpGet("{id}")]
-        public async Task<ActionResult<Usuario.Intf.Models.Usuario>> Get(string id)
+        public async Task<ActionResult<Usuario.Intf.Models.Usuario>> Get(string id, string token)
         {
             var trimmedId = id.Trim();
 
             if (!ObjectId.TryParse(trimmedId, out var objectId))
                 return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
 
-            var usuario = await _usuarioService.GetAsync(objectId);
-            if (usuario is null)
-                return NotFound();
-
-            return usuario;
+            var usuario = await _usuarioService.GetAsync(objectId, token);
+            return Ok(usuario);
+        }
+        // --- GET BY ID ---
+        [HttpGet("UserSearch")]
+        public async Task<ActionResult<List<Usuario.Intf.Models.Usuario>>> UserSearch(string nome)
+        {
+            var usuario = await _usuarioService.GetListNameAsync(nome);
+            return Ok(usuario);
         }
 
         // --- POST /Register ---
@@ -76,12 +87,12 @@ namespace Usuario.API.Controllers
 
         // --- PUT (ATUALIZAR) ---
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(string id, Usuario.Intf.Models.Usuario updatedUsuario)
+        public async Task<IActionResult> Update(string id, Usuario.Intf.Models.Usuario updatedUsuario, string token)
         {
             if (!ObjectId.TryParse(id, out var objectId))
                 return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
 
-            var existingUsuario = await _usuarioService.GetAsync(objectId);
+            var existingUsuario = await _usuarioService.GetAsync(objectId, token);
             if (existingUsuario is null)
                 return NotFound();
 
@@ -115,24 +126,47 @@ namespace Usuario.API.Controllers
                 existingUsuario.Atuacoes.AddRange(updatedUsuario.Atuacoes);
             }
 
-            await _usuarioService.UpdateAsync(objectId, existingUsuario);
-            return NoContent(); // 204 Sucesso
+            var result = await _usuarioService.UpdateAsync(objectId, existingUsuario, token);
+            if (result.IsSuccess)
+                return Ok(result.Message); // 200 OK
+            else
+                return StatusCode(result.StatusCode, result.Message);
         }
 
-        // --- DELETE ---
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        // --- PUT (ATUALIZAR TIPO) ---
+        [HttpPut("UpdateUserTipo")]
+        public async Task<IActionResult> UpdateUserTipo(string id, string tipo, string token)
         {
             if (!ObjectId.TryParse(id, out var objectId))
                 return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
 
-            var usuario = await _usuarioService.GetAsync(objectId);
-            if (usuario is null)
+            var existingUsuario = await _usuarioService.GetAsync(objectId, token);
+            if (existingUsuario is null)
                 return NotFound();
 
-            await _usuarioService.DeleteAsync(objectId);
-            return NoContent(); // 204 Sucesso
+            existingUsuario.Tipo = tipo;
+
+            var result = await _usuarioService.UpdateAsync(objectId, existingUsuario, token);
+            if (result.IsSuccess)
+                return Ok(result.Message); // 200 OK
+            else
+                return StatusCode(result.StatusCode, result.Message);
         }
+
+        // --- DELETE ---
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(string id, string token)
+        {
+            if (!ObjectId.TryParse(id, out var objectId))
+                return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
+
+            var result = await _usuarioService.DeleteAsync(objectId, token);
+            if (result.IsSuccess)
+                return Ok(result.Message); // 200 OK
+            else
+                return StatusCode(result.StatusCode, result.Message);
+        }
+
 
         // --- POST /Authenticate ---
         [AllowAnonymous]

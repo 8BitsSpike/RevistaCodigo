@@ -11,7 +11,7 @@ import ImageAltModal from '@/components/ImageAltModal';
 import { Check, X, Trash2, Plus, UploadCloud } from 'lucide-react';
 import 'quill/dist/quill.snow.css';
 import type Quill from 'quill';
-import toast from 'react-hot-toast'; // (NOVO) Importa o toast
+import toast from 'react-hot-toast';
 
 // --- Interfaces ---
 interface UsuarioBusca {
@@ -69,7 +69,7 @@ export default function SubmitArtigoClient() {
     const quillInstance = useRef<Quill | null>(null);
     const initializedRef = useRef(false);
 
-    // (MODIFICADO) Mutation com handlers de toast
+    // Mutation com handlers de toast
     const [criarArtigo] = useMutation<CriarArtigoData>(CRIAR_ARTIGO, {
         onCompleted: (data) => {
             if (data?.criarArtigo?.id) {
@@ -84,13 +84,13 @@ export default function SubmitArtigoClient() {
             setErrorMsg(err.message || "Erro ao enviar artigo.");
             toast.error(`Erro ao enviar: ${err.message}`);
         },
-        // (NOVO) Atualiza a query de "meus artigos" no cache
+        // Atualiza a query de "meus artigos" no cache
         refetchQueries: [
             { query: GET_MEUS_ARTIGOS }
         ]
     });
 
-    // --- 1. Busca de Usuários (Co-autores) ---
+    // --- Busca de Usuários (Co-autores) ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (authorSearchQuery.length < 3) {
@@ -131,7 +131,7 @@ export default function SubmitArtigoClient() {
         setSelectedAuthors(selectedAuthors.filter(a => a.id !== id));
     };
 
-    // --- 2. Referências Notáveis ---
+    // --- Referências Notáveis ---
     const addExternalRef = () => {
         if (newRef.trim()) {
             setExternalRefs([...externalRefs, newRef.trim()]);
@@ -143,7 +143,7 @@ export default function SubmitArtigoClient() {
         setExternalRefs(externalRefs.filter((_, i) => i !== index));
     };
 
-    // --- 3. Configuração do Quill e Manipulação de Imagem ---
+    // --- Configuração do Quill e Manipulação de Imagem ---
 
     const imageHandler = () => {
         const input = document.createElement('input');
@@ -243,7 +243,7 @@ export default function SubmitArtigoClient() {
     }, []);
 
 
-    // --- 4. Submissão e Deleção ---
+    // --- Submissão e Deleção ---
 
     const handleSubmit = async () => {
         if (!titulo.trim() || !resumo.trim() || quillContent === '<p><br></p>' || !quillContent.trim()) {
@@ -269,8 +269,6 @@ export default function SubmitArtigoClient() {
             alt: m.alt
         }));
 
-        // (MODIFICADO) Lógica de try/catch não é mais necessária aqui
-        // pois é tratada pelos handlers do 'useMutation'
         await criarArtigo({
             variables: {
                 input: {
@@ -286,13 +284,12 @@ export default function SubmitArtigoClient() {
             }
         });
 
-        toast.dismiss('submit-artigo'); // Limpa o toast de loading
-        setIsSubmitting(false); // O 'finally' foi removido
+        toast.dismiss('submit-artigo');
+        setIsSubmitting(false);
     };
 
     const handleDelete = () => {
         if (confirm("Tem certeza? Isso apagará todo o progresso.")) {
-            // TODO: Chamar API para deletar as imagens Base64 (se necessário)
             toast.success('Rascunho deletado.');
             router.push('/sessoes-especiais');
         }
@@ -312,7 +309,6 @@ export default function SubmitArtigoClient() {
                     Submeter Novo Artigo
                 </h1>
 
-                {/* O 'errorMsg' agora é primariamente tratado pelo toast */}
                 {errorMsg && (
                     <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md border border-red-300">
                         {errorMsg}

@@ -53,6 +53,7 @@ namespace Artigo.Server.DTOs
     /// </sumario>
     public class ArtigoHistoryEditorialViewDTO
     {
+        public VersaoArtigo Version { get; set; }
         public string Content { get; set; } = string.Empty;
         public List<MidiaEntryDTO> Midias { get; set; } = [];
         public List<StaffComentario> StaffComentarios { get; set; } = [];

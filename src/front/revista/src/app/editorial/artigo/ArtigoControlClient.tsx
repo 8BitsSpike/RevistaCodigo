@@ -16,11 +16,11 @@ import ArtigoSearch, { SearchVariables } from './ArtigoSearch';
 import ArticleEditorialCard, { ArtigoEditorial } from '@/components/ArticleEditorialCard';
 import { StaffMember } from '@/components/StaffCard';
 import { ArrowLeft, ArrowRight, ArrowLeftCircle } from 'lucide-react';
-import { StatusArtigo, TipoArtigo } from '@/types/enums'; // Importa os enums
+import { StatusArtigo, TipoArtigo } from '@/types/enums';
 
 // --- Tipos ---
 
-// (MODIFICADO) Tipos para as várias queries de busca
+// Tipos para as várias queries de busca
 interface ArtigoCardListQueryData {
     obterArtigosPorStatus?: ArtigoEditorial[];
     obterArtigosEditorialPorTipo?: ArtigoEditorial[];
@@ -40,7 +40,7 @@ export default function ArtigoControlClient() {
     const [page, setPage] = useState(0);
     const [currentSearchVars, setCurrentSearchVars] = useState<SearchVariables | null>(null);
 
-    // --- Query 1: Verificação de Staff ---
+    // --- Query Verificação de Staff ---
     const { data: staffData, loading: loadingStaff, error: errorStaff } = useQuery<StaffQueryData>(OBTER_STAFF_LIST, {
         variables: { page: 0, pageSize: 200 },
         fetchPolicy: 'cache-and-network',
@@ -58,25 +58,25 @@ export default function ArtigoControlClient() {
 
     // --- Queries de Busca (Lazy) ---
 
-    // Query A: Por Status
+    // Query Por Status
     const [runStatusSearch, { data: statusData, loading: statusLoading, error: statusError }] = useLazyQuery<ArtigoCardListQueryData>(
         OBTER_ARTIGOS_POR_STATUS,
         { fetchPolicy: 'network-only' }
     );
 
-    // Query B: Por Tipo (TODO Resolvido)
+    // Query Por Tipo
     const [runTipoSearch, { data: tipoData, loading: tipoLoading, error: tipoError }] = useLazyQuery<ArtigoCardListQueryData>(
         OBTER_ARTIGOS_EDITORIAL_POR_TIPO,
         { fetchPolicy: 'network-only' }
     );
 
-    // Query C: Por Título (TODO Resolvido)
+    // Query Por Título
     const [runTitleSearch, { data: titleData, loading: titleLoading, error: titleError }] = useLazyQuery<ArtigoCardListQueryData>(
         SEARCH_ARTIGOS_EDITORIAL_BY_TITLE,
         { fetchPolicy: 'network-only' }
     );
 
-    // Query D: Por Autor (TODO Resolvido)
+    // Query Por Autor
     const [runAuthorSearch, { data: authorData, loading: authorLoading, error: authorError }] = useLazyQuery<ArtigoCardListQueryData>(
         SEARCH_ARTIGOS_EDITORIAL_BY_AUTOR_IDS,
         { fetchPolicy: 'network-only' }
@@ -84,7 +84,7 @@ export default function ArtigoControlClient() {
 
     // --- Handlers ---
 
-    // (MODIFICADO) Lógica de busca e paginação combinada
+    // Lógica de busca e paginação combinada
     const handleSearch = (variables: SearchVariables, newPage: number) => {
         setPage(newPage);
         setCurrentSearchVars(variables);
@@ -102,7 +102,6 @@ export default function ArtigoControlClient() {
         } else if (variables.searchType === 'status') {
             runStatusSearch({ variables: { ...queryVars, status: variables.searchStatus || StatusArtigo.EmRevisao } });
         } else if (variables.searchType === 'tipo') {
-            // (MODIFICADO) TODO resolvido, usa a query correta
             runTipoSearch({ variables: { ...queryVars, tipo: variables.searchTipo || TipoArtigo.Artigo } });
         } else { // 'todos'
             // 'Todos' agora busca por 'EmRevisao' como padrão
@@ -110,7 +109,7 @@ export default function ArtigoControlClient() {
         }
     };
 
-    // (MODIFICADO) Paginação agora funciona
+    // Paginação agora funciona
     const handlePageChange = (newPage: number) => {
         if (currentSearchVars && newPage >= 0) { // Garante que a página não seja negativa
             handleSearch(currentSearchVars, newPage);
@@ -150,7 +149,7 @@ export default function ArtigoControlClient() {
                     <h1 className="text-3xl font-bold text-center flex-1">Controle de Artigos</h1>
                 </div>
 
-                {/* (MODIFICADO) onSearch agora passa a página 0 */}
+                {/* onSearch agora passa a página 0 */}
                 <ArtigoSearch
                     staffList={staffList}
                     onSearch={(vars) => handleSearch(vars, 0)}
@@ -189,7 +188,7 @@ export default function ArtigoControlClient() {
                                 ))}
                             </ul>
 
-                            {/* (MODIFICADO) Paginação agora usa 'handlePageChange' */}
+                            {/* Paginação usa 'handlePageChange' */}
                             <div className="flex justify-center items-center gap-4 mt-8">
                                 <button
                                     onClick={() => handlePageChange(page - 1)}

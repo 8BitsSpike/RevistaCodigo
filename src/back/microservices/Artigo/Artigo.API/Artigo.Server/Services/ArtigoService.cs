@@ -12,6 +12,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Text.Json;
 using System.Text.Encodings.Web;
+using System.Text.Json.Serialization; 
 
 namespace Artigo.Server.Services
 {
@@ -34,11 +35,13 @@ namespace Artigo.Server.Services
         private readonly IVolumeRepository _volumeRepository;
 
         /// <sumario>
-        /// Opções de serialização JSON para não escapar caracteres UTF-8 (como 'ç' e 'ã').
+        ///  Opções de serialização JSON atualizadas.
         /// </sumario>
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
         {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            // Converte Enums para Strings (ex: PosicaoEditorial.AguardandoRevisao -> "AguardandoRevisao")
+            Converters = { new JsonStringEnumConverter() }
         };
 
         public ArtigoService(
@@ -180,7 +183,7 @@ namespace Artigo.Server.Services
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            if (!IsStaff(staff)) // Usa a verificação IsStaff (ativo)
+            if (!IsStaff(staff))
             {
                 throw new UnauthorizedAccessException("Usuário não tem permissão para esta lista.");
             }
@@ -201,22 +204,16 @@ namespace Artigo.Server.Services
 
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTituloAsync(string searchTerm, int pagina, int tamanho)
         {
-            // Nenhuma autorização necessária, chama diretamente o repositório.
             return await _artigoRepository.SearchArtigosCardListByTitleAsync(searchTerm, pagina, tamanho);
         }
 
-        /// <sumario>
-        /// Busca artigos (formato card) pelo nome do autor (registrado ou não).
-        /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorNomeAutorAsync(string searchTerm, int pagina, int tamanho)
         {
             int skip = pagina * tamanho;
 
-            // 1. Encontra autores registrados que correspondem ao nome
             var autoresRegistrados = await _autorRepository.SearchAutoresByNameAsync(searchTerm);
             var autorIds = autoresRegistrados.Select(a => a.Id).ToList().AsReadOnly();
 
-            // 2. Inicia as duas tarefas de busca de artigos em paralelo
             Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresRegistrados;
             if (autorIds.Count > 0)
             {
@@ -229,14 +226,11 @@ namespace Artigo.Server.Services
 
             Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresReferencia = _artigoRepository.SearchArtigosCardListByAutorReferenceAsync(searchTerm);
 
-            // 3. Aguarda a conclusão de ambas
             await Task.WhenAll(taskAutoresRegistrados, taskAutoresReferencia);
 
             var artigosPorId = taskAutoresRegistrados.Result;
             var artigosPorReferencia = taskAutoresReferencia.Result;
 
-            // 4. Combina os resultados e remove duplicatas
-            // Usa um HashSet para garantir que cada Artigo.Id seja único
             var artigosCombinados = new Dictionary<string, Artigo.Intf.Entities.Artigo>();
 
             foreach (var artigo in artigosPorId)
@@ -248,7 +242,6 @@ namespace Artigo.Server.Services
                 artigosCombinados[artigo.Id] = artigo;
             }
 
-            // 5. Ordena, pagina e retorna a lista final
             return artigosCombinados.Values
                 .OrderByDescending(a => a.DataCriacao)
                 .Skip(skip)
@@ -260,8 +253,6 @@ namespace Artigo.Server.Services
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorListaIdsAsync(IReadOnlyList<string> ids)
         {
             var artigos = await _artigoRepository.GetByIdsAsync(ids);
-
-            // Regra de Negócio: O público só pode ver artigos publicados.
             return artigos.Where(a => a.Status == StatusArtigo.Publicado).ToList();
         }
 
@@ -288,12 +279,10 @@ namespace Artigo.Server.Services
         public async Task<Volume?> ObterVolumeViewAsync(string volumeId)
         {
             var volume = await _volumeRepository.GetByIdAsync(volumeId);
-
             if (volume == null || volume.Status != StatusVolume.Publicado)
             {
                 return null;
             }
-
             return volume;
         }
 
@@ -334,33 +323,19 @@ namespace Artigo.Server.Services
             return await _volumeRepository.ObterVolumesListAsync(pagina, tamanho);
         }
 
-        /// <sumario>
-        /// Busca artigos (formato card) de um autor específico usando seu UsuarioId.
-        /// Retorna todos os status (rascunho, publicado, etc.)
-        /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterMeusArtigosCardListAsync(string currentUsuarioId)
         {
-            // 1. Encontra o registro local do Autor usando o UsuarioId do token.
             var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId);
             if (autor == null || autor.ArtigoWorkIds == null || !autor.ArtigoWorkIds.Any())
             {
-                // Se o usuário não for um autor ou não tiver artigos, retorna lista vazia.
                 return new List<Artigo.Intf.Entities.Artigo>();
             }
-
-            // 2. Busca todos os artigos do autor usando o NOVO método de repositório.
-            // Este método usa a projeção de card e NÃO filtra por status.
             var artigos = await _artigoRepository.ObterArtigosCardListPorAutorIdAsync(autor.Id);
-
-            // 3. Retorna a lista completa (todos os status).
             return artigos;
         }
 
-        // --- (NOVOS MÉTODOS PARA STAFF) ---
+        // --- (MÉTODOS PARA STAFF) ---
 
-        /// <sumario>
-        /// (STAFF) Retorna artigos (card) filtrados por TipoArtigo, SEM filtro de status.
-        /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -371,9 +346,6 @@ namespace Artigo.Server.Services
             return await _artigoRepository.ObterArtigosEditorialPorTipoAsync(tipo, pagina, tamanho);
         }
 
-        /// <sumario>
-        /// (STAFF) Busca artigos (card) por Título, SEM filtro de status.
-        /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -384,9 +356,6 @@ namespace Artigo.Server.Services
             return await _artigoRepository.SearchArtigosEditorialByTitleAsync(searchTerm, pagina, tamanho);
         }
 
-        /// <sumario>
-        /// (STAFF) Busca artigos (card) por IDs de Autor, SEM filtro de status.
-        /// </sumario>
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -443,7 +412,7 @@ namespace Artigo.Server.Services
                     ArtigoId = artigo.Id,
                     Version = VersaoArtigo.Original,
                     Content = conteudoInicial,
-                    Midias = midiasCompletas // Salva a lista completa no histórico
+                    Midias = midiasCompletas
                 };
                 await _historyRepository.AddAsync(initialHistory, session);
 
@@ -508,8 +477,7 @@ namespace Artigo.Server.Services
 
             if (staff?.Job == FuncaoTrabalho.EditorChefe || staff?.Job == FuncaoTrabalho.Administrador)
             {
-                ApplyMetadataUpdates(existingArtigo, input);
-                return await _artigoRepository.UpdateAsync(existingArtigo);
+                return await ExecuteAtualizarMetadadosArtigoAsync(existingArtigo, input, staff, currentUsuarioId);
             }
 
             if (!await CanEditArtigoAsync(existingArtigo, staff, currentUsuarioId))
@@ -517,32 +485,75 @@ namespace Artigo.Server.Services
                 throw new UnauthorizedAccessException("Usuário não tem permissão para editar este artigo.");
             }
 
-            ApplyMetadataUpdates(existingArtigo, input);
-            return await _artigoRepository.UpdateAsync(existingArtigo);
+            return await ExecuteAtualizarMetadadosArtigoAsync(existingArtigo, input, staff, currentUsuarioId);
         }
 
-        private void ApplyMetadataUpdates(Artigo.Intf.Entities.Artigo existingArtigo, UpdateArtigoMetadataInput input)
+        private async Task<bool> ExecuteAtualizarMetadadosArtigoAsync(Artigo.Intf.Entities.Artigo existingArtigo, UpdateArtigoMetadataInput input, Staff? staff, string currentUsuarioId, object? sessionHandle = null)
         {
+            bool artigoUpdated = ApplyMetadataUpdates(existingArtigo, input);
+            if (artigoUpdated)
+            {
+                await _artigoRepository.UpdateAsync(existingArtigo, sessionHandle);
+            }
+
+            if (input.Posicao.HasValue)
+            {
+                if (!CanModifyStatus(staff))
+                {
+                    throw new UnauthorizedAccessException("Usuário não tem permissão para alterar a Posição Editorial.");
+                }
+
+                var editorial = await _editorialRepository.GetByIdAsync(existingArtigo.EditorialId, sessionHandle);
+                if (editorial == null)
+                {
+                    throw new KeyNotFoundException("Registro editorial não encontrado para este artigo.");
+                }
+
+                await _editorialRepository.UpdatePositionAsync(editorial.Id, input.Posicao.Value, sessionHandle);
+            }
+
+            return true;
+        }
+
+        private bool ApplyMetadataUpdates(Artigo.Intf.Entities.Artigo existingArtigo, UpdateArtigoMetadataInput input)
+        {
+            bool updated = false;
             if (input.Titulo != null)
+            {
                 existingArtigo.Titulo = input.Titulo;
-
+                updated = true;
+            }
             if (input.Resumo != null)
+            {
                 existingArtigo.Resumo = input.Resumo;
-
+                updated = true;
+            }
             if (input.Tipo.HasValue)
+            {
                 existingArtigo.Tipo = input.Tipo.Value;
-
+                updated = true;
+            }
             if (input.ReferenciasAutor != null)
+            {
                 existingArtigo.AutorReference = input.ReferenciasAutor;
-
+                updated = true;
+            }
             if (input.IdsAutor != null)
+            {
                 existingArtigo.AutorIds = input.IdsAutor;
-
+                updated = true;
+            }
             if (input.Status.HasValue)
+            {
                 existingArtigo.Status = input.Status.Value;
-
+                updated = true;
+            }
             if (input.PermitirComentario.HasValue)
+            {
                 existingArtigo.PermitirComentario = input.PermitirComentario.Value;
+                updated = true;
+            }
+            return updated;
         }
 
         public async Task<bool> AlterarStatusArtigoAsync(string artigoId, StatusArtigo newStatus, string currentUsuarioId, string commentary)
@@ -592,7 +603,6 @@ namespace Artigo.Server.Services
 
             if (staff?.Job == FuncaoTrabalho.EditorBolsista)
             {
-                // Serializa tanto o conteúdo quanto as mídias para a requisição pendente
                 var parameters = JsonSerializer.Serialize(new { Content = newContent, Midias = midias }, _jsonSerializerOptions);
                 var pending = new Pending
                 {
@@ -638,7 +648,7 @@ namespace Artigo.Server.Services
                 ArtigoId = artigoId,
                 Version = nextVersion,
                 Content = newContent,
-                Midias = midias, // Salva a lista completa de mídias no histórico
+                Midias = midias,
                 DataRegistro = DateTime.UtcNow
             };
             await _historyRepository.AddAsync(newHistory, sessionHandle);
@@ -649,7 +659,6 @@ namespace Artigo.Server.Services
             bool success = await _editorialRepository.UpdateHistoryAsync(editorial.Id, newHistory.Id, editorial.HistoryIds, sessionHandle);
 
             artigo.DataEdicao = DateTime.UtcNow;
-            // Atualiza a MidiaDestaque no artigo principal para manter a consistência
             artigo.MidiaDestaque = midias.FirstOrDefault();
             await _artigoRepository.UpdateAsync(artigo, sessionHandle);
 
@@ -668,7 +677,7 @@ namespace Artigo.Server.Services
                 var parameters = JsonSerializer.Serialize(team, _jsonSerializerOptions);
                 var pending = new Pending
                 {
-                    TargetEntityId = editorial.Id, // O alvo é o Editorial, não o Artigo
+                    TargetEntityId = editorial.Id,
                     TargetType = TipoEntidadeAlvo.Editorial,
                     CommandType = "UpdateEditorialTeam",
                     CommandParametersJson = parameters,
@@ -676,7 +685,7 @@ namespace Artigo.Server.Services
                     RequesterUsuarioId = currentUsuarioId
                 };
                 await _pendingRepository.AddAsync(pending);
-                return editorial; // Retorna a entidade antiga (pré-mudança)
+                return editorial;
             }
 
             if (staff?.Job == FuncaoTrabalho.EditorChefe || staff?.Job == FuncaoTrabalho.Administrador)
@@ -803,7 +812,6 @@ namespace Artigo.Server.Services
 
         public async Task<IReadOnlyList<Interaction>> ObterComentariosPublicosAsync(string artigoId, int pagina, int tamanho)
         {
-            // Nenhuma autorização necessária, chama diretamente o repositório.
             return await _interactionRepository.GetPublicCommentsAsync(artigoId, pagina, tamanho);
         }
 
@@ -818,7 +826,6 @@ namespace Artigo.Server.Services
 
             if (!isStaff)
             {
-                // Se não for Staff, verifica se é da equipe editorial do artigo
                 var artigo = await _artigoRepository.GetByIdAsync(history.ArtigoId);
                 if (artigo == null) throw new KeyNotFoundException("Artigo associado ao histórico não encontrado.");
 
@@ -951,8 +958,7 @@ namespace Artigo.Server.Services
                             var artigo = await _artigoRepository.GetByIdAsync(pendingRequest.TargetEntityId, session);
                             if (artigo != null)
                             {
-                                ApplyMetadataUpdates(artigo, metaParams);
-                                executionSuccess = await _artigoRepository.UpdateAsync(artigo, session);
+                                executionSuccess = await ExecuteAtualizarMetadadosArtigoAsync(artigo, metaParams, staff, currentUsuarioId, session);
                             }
                         }
                         break;
@@ -978,7 +984,6 @@ namespace Artigo.Server.Services
                         }
                         break;
 
-                    // (MODIFICADO) 'UpdateStaffJob' foi substituído por 'UpdateStaff'
                     case "UpdateStaff":
                         var updateStaffParams = JsonSerializer.Deserialize<UpdateStaffInput>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
                         if (updateStaffParams != null)
@@ -1000,7 +1005,6 @@ namespace Artigo.Server.Services
                         var createVolumeParams = JsonSerializer.Deserialize<Volume>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
                         if (createVolumeParams != null)
                         {
-                            // Define o status padrão (caso não tenha sido serializado)
                             createVolumeParams.Status = StatusVolume.EmRevisao;
                             await _volumeRepository.AddAsync(createVolumeParams, session);
                             executionSuccess = true;
@@ -1019,7 +1023,6 @@ namespace Artigo.Server.Services
 
                     case "UpdateEditorialTeam":
                         var teamParams = JsonSerializer.Deserialize<EditorialTeam>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
-                        // O TargetEntityId para este comando é o Editorial.Id
                         var editorial = await _editorialRepository.GetByIdAsync(pendingRequest.TargetEntityId, session);
                         if (teamParams != null && editorial != null)
                         {
@@ -1028,11 +1031,10 @@ namespace Artigo.Server.Services
                         break;
 
                     default:
-                        // Mantém o 'UpdateStaffJob' legado por segurança, se houver algum no DB
                         if (pendingRequest.CommandType == "UpdateStaffJob")
                         {
                             var staffParams = JsonSerializer.Deserialize<Dictionary<string, string>>(pendingRequest.CommandParametersJson, _jsonSerializerOptions);
-                            var staffToUpdate = await _staffRepository.GetByUsuarioIdAsync(pendingRequest.TargetEntityId, session); // 'UpdateStaffJob' antigo usava TargetEntityId como UsuarioId
+                            var staffToUpdate = await _staffRepository.GetByUsuarioIdAsync(pendingRequest.TargetEntityId, session);
                             if (staffToUpdate != null && staffParams != null && staffParams.TryGetValue("NewJob", out var newJobString) && Enum.TryParse<FuncaoTrabalho>(newJobString, true, out var newJob))
                             {
                                 staffToUpdate.Job = newJob;
@@ -1125,7 +1127,6 @@ namespace Artigo.Server.Services
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            // Define o status padrão no momento da criação
             novoVolume.Status = StatusVolume.EmRevisao;
 
             if (staff?.Job == FuncaoTrabalho.EditorBolsista)
@@ -1164,7 +1165,7 @@ namespace Artigo.Server.Services
                 {
                     TargetEntityId = volumeId,
                     TargetType = TipoEntidadeAlvo.Volume,
-                    CommandType = "UpdateVolume", // Nome do comando
+                    CommandType = "UpdateVolume",
                     CommandParametersJson = parameters,
                     Commentary = commentary,
                     RequesterUsuarioId = currentUsuarioId
@@ -1184,7 +1185,6 @@ namespace Artigo.Server.Services
                 throw new KeyNotFoundException($"Volume com ID {volumeId} não encontrado.");
             }
 
-            // Aplica a lógica de atualização parcial
             ApplyVolumeMetadataUpdates(existingVolume, input);
 
             return await _volumeRepository.UpdateAsync(existingVolume);
@@ -1194,28 +1194,20 @@ namespace Artigo.Server.Services
         {
             if (input.Edicao.HasValue)
                 existingVolume.Edicao = input.Edicao.Value;
-
             if (input.VolumeTitulo != null)
                 existingVolume.VolumeTitulo = input.VolumeTitulo;
-
             if (input.VolumeResumo != null)
                 existingVolume.VolumeResumo = input.VolumeResumo;
-
             if (input.M.HasValue)
                 existingVolume.M = input.M.Value;
-
             if (input.N.HasValue)
                 existingVolume.N = input.N.Value;
-
             if (input.Year.HasValue)
                 existingVolume.Year = input.Year.Value;
-
             if (input.Status.HasValue)
                 existingVolume.Status = input.Status.Value;
-
-            if (input.ImagemCapa != null) // Permite definir a imagem
+            if (input.ImagemCapa != null)
                 existingVolume.ImagemCapa = input.ImagemCapa;
-
             if (input.ArtigoIds != null)
                 existingVolume.ArtigoIds = input.ArtigoIds;
         }
@@ -1332,36 +1324,29 @@ namespace Artigo.Server.Services
             return novoStaff;
         }
 
-        /// <sumario>
-        /// (NOVO) Atualiza o registro de um membro da Staff (Job ou IsActive).
-        /// </sumario>
         public async Task<Staff> AtualizarStaffAsync(UpdateStaffInput input, string currentUsuarioId, string commentary)
         {
             var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
-            // Regra de Negócio: Bolsistas só podem criar pendências
             if (requestingStaff?.Job == FuncaoTrabalho.EditorBolsista)
             {
                 var parameters = JsonSerializer.Serialize(input, _jsonSerializerOptions);
                 var pending = new Pending
                 {
-                    // O Alvo é o UsuarioId do staff sendo modificado
                     TargetEntityId = input.UsuarioId,
                     TargetType = TipoEntidadeAlvo.Staff,
-                    CommandType = "UpdateStaff", // Novo tipo de comando
+                    CommandType = "UpdateStaff",
                     CommandParametersJson = parameters,
                     Commentary = commentary,
                     RequesterUsuarioId = currentUsuarioId
                 };
                 await _pendingRepository.AddAsync(pending);
 
-                // Retorna o staff *antes* da modificação, pois ela está pendente
                 var originalStaff = await _staffRepository.GetByUsuarioIdAsync(input.UsuarioId);
                 if (originalStaff == null) throw new KeyNotFoundException("Staff alvo não encontrado.");
                 return originalStaff;
             }
 
-            // Regra de Negócio: Apenas Admin ou EditorChefe podem executar diretamente
             if (requestingStaff?.Job == FuncaoTrabalho.EditorChefe || requestingStaff?.Job == FuncaoTrabalho.Administrador)
             {
                 return await ExecuteAtualizarStaffAsync(input);
@@ -1370,7 +1355,6 @@ namespace Artigo.Server.Services
             throw new UnauthorizedAccessException("Usuário não tem permissão para atualizar registros de Staff.");
         }
 
-        // (NOVO) Helper privado para executar a atualização de Staff
         private async Task<Staff> ExecuteAtualizarStaffAsync(UpdateStaffInput input, object? sessionHandle = null)
         {
             var staffToUpdate = await _staffRepository.GetByUsuarioIdAsync(input.UsuarioId, sessionHandle);
@@ -1379,7 +1363,6 @@ namespace Artigo.Server.Services
                 throw new KeyNotFoundException($"Staff com UsuarioId {input.UsuarioId} não encontrado.");
             }
 
-            // Aplica as atualizações parciais
             if (input.Job.HasValue)
             {
                 staffToUpdate.Job = input.Job.Value;
@@ -1413,41 +1396,31 @@ namespace Artigo.Server.Services
             return await _staffRepository.GetAllAsync(pagina, tamanho);
         }
 
-        /// <sumario>
-        /// (NOVO) Verifica se o usuário autenticado é um membro ativo da equipe Staff.
-        /// </sumario>
         public async Task<bool> VerificarStaffAsync(string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            return IsStaff(staff); // Reutiliza a lógica de IsStaff (ativo)
+            return IsStaff(staff);
         }
 
         public async Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId)
         {
-            // 1. Verifica se o usuário é Staff
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (IsStaff(staff)) // Usando a função helper IsStaff
+            if (IsStaff(staff))
             {
-                // Se for Staff, pode buscar qualquer autor
                 return await _autorRepository.GetByIdAsync(idAutor);
             }
 
-            // 2. Se não for Staff, busca o registro de Autor
             var autor = await _autorRepository.GetByIdAsync(idAutor);
             if (autor == null)
             {
-                // Se não for encontrado, retorna nulo (não vaza informação)
                 return null;
             }
 
-            // 3. Verifica se o usuário logado é o "dono" do registro de Autor
             if (autor.UsuarioId == currentUsuarioId)
             {
-                // Se for o dono, pode ver o registro
                 return autor;
             }
 
-            // 4. Se não for Staff e não for o dono, o acesso é negado
             throw new UnauthorizedAccessException("Usuário deve ser Staff ou o próprio autor para buscar este registro.");
         }
     }

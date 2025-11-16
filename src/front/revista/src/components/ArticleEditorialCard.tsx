@@ -22,7 +22,7 @@ export interface ArtigoEditorial {
 
 interface ArticleEditorialCardProps {
     artigo: ArtigoEditorial;
-    onUpdate: () => void; // Função para recarregar a lista
+    onUpdate: () => void;
 }
 
 // Opções do dropdown de Status (baseado no Enum)
@@ -38,8 +38,6 @@ export default function ArticleEditorialCard({ artigo, onUpdate }: ArticleEditor
     const [selectedStatus, setSelectedStatus] = useState<StatusArtigo>(artigo.status);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-
-    // (MODIFICADO) Mutação com handlers de toast
     const [atualizarMetadados, { loading }] = useMutation(
         ATUALIZAR_METADADOS_ARTIGO,
         {
@@ -63,7 +61,6 @@ export default function ArticleEditorialCard({ artigo, onUpdate }: ArticleEditor
     };
 
     const handleConfirmStatusChange = (commentary: string) => {
-        // (NOVO) Toast de carregamento
         toast.loading('Atualizando status...', { id: 'status-update' });
 
         atualizarMetadados({

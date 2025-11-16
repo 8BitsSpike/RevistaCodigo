@@ -6,7 +6,7 @@ import { RESOLVER_REQUISICAO_PENDENTE, OBTER_PENDENTES } from '@/graphql/queries
 import { StaffMember } from './StaffCard';
 import { Check, X, Clock, User, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
-import toast from 'react-hot-toast'; // (NOVO) Importa o toast
+import toast from 'react-hot-toast';
 
 // --- Tipos ---
 
@@ -89,7 +89,6 @@ export default function PendingCard({
     const dataSolicitacao = new Date(pending.dateRequested);
     const dataResolucao = pending.dataAprovacao ? new Date(pending.dataAprovacao) : null;
 
-    // (MODIFICADO) Mutação com handlers de toast
     const [resolverPendencia, { loading }] = useMutation(RESOLVER_REQUISICAO_PENDENTE, {
         refetchQueries: [
             {
@@ -121,8 +120,6 @@ export default function PendingCard({
 
     const handleActionSubmit = () => {
         const isApproved = selectedAction === 'Aprovar';
-
-        // (NOVO) Toast de carregamento
         toast.loading(`Processando ${selectedAction}...`, { id: 'pending-action' });
 
         resolverPendencia({
@@ -131,7 +128,7 @@ export default function PendingCard({
                 isApproved: isApproved,
             }
         }).finally(() => {
-            toast.dismiss('pending-action'); // Limpa o toast de loading
+            toast.dismiss('pending-action');
         });
     };
 

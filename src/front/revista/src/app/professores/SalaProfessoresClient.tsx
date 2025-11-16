@@ -29,7 +29,7 @@ interface MeusArtigosQueryData {
 
 export default function SalaProfessoresClient() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth(); // Hook de autenticação
+    const { user, loading: authLoading } = useAuth();
 
     const [biografia, setBiografia] = useState<string | null>(null);
     const [loadingBio, setLoadingBio] = useState(true);
@@ -99,7 +99,6 @@ export default function SalaProfessoresClient() {
         );
     }
 
-    // Se não estiver carregando e não houver usuário, não renderiza nada (o useEffect já redirecionou)
     if (!user) {
         return null;
     }
@@ -176,7 +175,6 @@ export default function SalaProfessoresClient() {
                             ))}
                         </ul>
                     ) : (
-                        // Mensagem se não houver artigos em revisão
                         <p className="text-gray-600 text-center italic">
                             Sem artigos em revisão no momento.
                         </p>

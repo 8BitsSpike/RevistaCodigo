@@ -67,7 +67,9 @@
         AguardandoRedacao,      // Aguardando redacao final.
         RedacaoConcluida,       // Redacao concluída, pronto para a pauta.
         Rejeitado,              // Rejeitado em qualquer fase.
-        EmEspera                // Em espera de que algo aconteça.
+        EmEspera,               // Em espera de que algo aconteça.
+        ProntoParaPublicar,     // Em condições para publicação.
+        Publicado               // Publicado, oficialmente fora do ciclo editorial.
     }
 
     /// <sumario>

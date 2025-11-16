@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ApolloWrapper } from "../components/ApolloWrapper";
+import { ApolloWrapper } from "@/components/ApolloWrapper";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -31,8 +31,6 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
                 <ApolloWrapper>
-                    {/* Adiciona o componente Toaster aqui.
-              Ele renderiza as notificações globalmente. */}
                     <Toaster
                         position="top-right" // Posição
                         toastOptions={{

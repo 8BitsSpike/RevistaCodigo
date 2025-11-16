@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -9,32 +9,32 @@ type IconProps = React.SVGProps<SVGSVGElement>;
 const EyeIcon = (props: IconProps) => (
     // Ícone de Olho Aberto (Mostrar Senha)
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye">
-        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-        <circle cx="12" cy="12" r="3"/>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
     </svg>
 );
 
 const EyeOffIcon = (props: IconProps) => (
     // Ícone de Olho Fechado (Esconder Senha)
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye-off">
-        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-        <path d="M6.61 6.61A13.16 13.16 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.46-1.39"/>
-        <line x1="2" x2="22" y1="2" y2="22"/>
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+        <path d="M6.61 6.61A13.16 13.16 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.46-1.39" />
+        <line x1="2" x2="22" y1="2" y2="22" />
     </svg>
 );
 const CheckCircleIcon = ({ isMet }: { isMet: boolean }) => (
-    <svg 
-        className={`h-4 w-4 mr-1 transition-colors duration-200 ${isMet ? 'text-emerald-500' : 'text-gray-400'}`} 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
+    <svg
+        className={`h-4 w-4 mr-1 transition-colors duration-200 ${isMet ? 'text-emerald-500' : 'text-gray-400'}`}
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
         strokeLinejoin="round"
     >
-        {isMet 
+        {isMet
             ? <path d="M22 11.08V12a10 10 0 1 1-5.93-8.83"></path>
             : <path d="M22 11.08V12a10 10 0 1 1-5.93-8.83"></path>
         }
@@ -52,9 +52,9 @@ export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
-    
+
     // Estado para controlar a visibilidade das senhas
-    const [showPassword, setShowPassword] = useState(false); 
+    const [showPassword, setShowPassword] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -112,12 +112,12 @@ export default function RegisterPage() {
             return;
         }
 
-        const payload = { 
-            Name: firstName, 
-            Sobrenome: lastName, 
-            Email: email, 
-            Password: password, 
-            PasswordConfirm: passwordConfirm 
+        const payload = {
+            Name: firstName,
+            Sobrenome: lastName,
+            Email: email,
+            Password: password,
+            PasswordConfirm: passwordConfirm
         };
 
 
@@ -131,9 +131,9 @@ export default function RegisterPage() {
             });
 
             if (response.ok) {
-                
+
                 setSuccess('Cadastro realizado com sucesso! Redirecionando para o login...');
-                
+
                 // Limpa os campos após o sucesso
                 setFirstName('');
                 setLastName('');
@@ -143,23 +143,17 @@ export default function RegisterPage() {
 
                 // Redireciona para o Login
                 setTimeout(() => {
-                    window.location.href = '/login'; 
+                    window.location.href = '/login';
                 }, 2000);
 
             } else {
-                // Bloco de Tratamento de Erro
-                let errorMessage = 'Não foi possível completar o cadastro. Credenciais inválidas ou erro do servidor.'; 
-                
-                try {
-                    // Tenta ler o corpo da resposta em JSON para obter uma mensagem detalhada
-                    const errorData = await response.json();
+                let errorMessage = 'Não foi possível completar o cadastro. Credenciais inválidas ou erro do servidor.';
 
-                    // Procura a mensagem de erro em campos comuns (message, error, title, etc.)
+                try {
+                    const errorData = await response.json();
                     errorMessage = errorData.message || errorData.error || errorData.title || errorMessage;
 
-                    // Tratamento específico para erros de validação do .NET Core
                     if (errorData.errors && typeof errorData.errors === 'object') {
-                        // Concatena todas as mensagens de erro de validação
                         const validationMessages = Object.values(errorData.errors).flat().join('; ');
                         if (validationMessages) {
                             errorMessage = validationMessages;
@@ -170,7 +164,7 @@ export default function RegisterPage() {
                     // Se não for possível ler o JSON (ex: erro 500), usa uma mensagem genérica
                     errorMessage = `Falha no cadastro (Status: ${response.status}).`;
                 }
-                
+
                 setError(errorMessage);
                 setSuccess('');
             }
@@ -200,21 +194,21 @@ export default function RegisterPage() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 sm:p-6 font-sans">
             <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-xl shadow-2xl transition-all duration-300 transform hover:shadow-3xl">
-                
+
                 {/* LOGO RBEB */}
                 <div className="flex justify-center mb-6">
-                    <img 
-                        src="/faviccon.png" 
+                    <img
+                        src="/faviccon.png"
                         alt="Logo RBEB"
                         className="h-[100px] w-[100px] object-contain rounded-full shadow-lg"
-                        onError={(e) => { 
+                        onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = "https://faviccon.png/100x100/ffffff/2c3e50?text=RBEB"; 
-                            target.onerror = null; 
+                            target.src = "https://faviccon.png/100x100/ffffff/2c3e50?text=RBEB";
+                            target.onerror = null;
                         }}
                     />
                 </div>
-                
+
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-800">Crie sua Conta</h1>
                     <p className="mt-2 text-gray-500">
@@ -223,7 +217,7 @@ export default function RegisterPage() {
                 </div>
 
                 <form onSubmit={handleRegister} className="space-y-6">
-                    
+
                     {/* Campos Nome e Sobrenome lado a lado */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -274,7 +268,7 @@ export default function RegisterPage() {
                     {/* Campo Senha */}
                     <div>
                         <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1">Senha</label>
-                        <div className="relative"> 
+                        <div className="relative">
                             <input
                                 id="password"
                                 name="password"
@@ -301,7 +295,7 @@ export default function RegisterPage() {
                                 )}
                             </button>
                         </div>
-                        
+
                         {/* Indicadores de Requisitos de Senha */}
                         {password.length > 0 && (
                             <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-medium">
@@ -328,13 +322,12 @@ export default function RegisterPage() {
                                 required
                                 value={passwordConfirm}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordConfirm(e.target.value)}
-                                className={`w-full pr-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm ${inputFocusStyle} ${
-                                    passwordConfirm.length > 0 && password !== passwordConfirm ? 'border-red-500' : ''
-                                }`}
+                                className={`w-full pr-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm ${inputFocusStyle} ${passwordConfirm.length > 0 && password !== passwordConfirm ? 'border-red-500' : ''
+                                    }`}
                                 placeholder="********"
                                 disabled={loading}
                             />
-                             <button
+                            <button
                                 type="button"
                                 onClick={toggleShowPassword}
                                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition duration-150"
@@ -354,9 +347,8 @@ export default function RegisterPage() {
 
                     {/* Exibição de Erros e Sucesso */}
                     {(error || success) && (
-                         <div className={`p-3 border rounded-lg text-sm font-medium transition-all duration-300 animate-fade-in ${
-                            error ? 'bg-red-100 border-red-400 text-red-700' : 'bg-green-100 border-green-400 text-green-700'
-                        }`} role={error ? "alert" : "status"}>
+                        <div className={`p-3 border rounded-lg text-sm font-medium transition-all duration-300 animate-fade-in ${error ? 'bg-red-100 border-red-400 text-red-700' : 'bg-green-100 border-green-400 text-green-700'
+                            }`} role={error ? "alert" : "status"}>
                             {error || success}
                         </div>
                     )}
@@ -366,11 +358,10 @@ export default function RegisterPage() {
                         <button
                             type="submit"
                             disabled={loading || !passwordValidationChecks.minLength || password !== passwordConfirm}
-                            className={`${buttonBaseStyle} ${
-                                (loading || !passwordValidationChecks.minLength || password !== passwordConfirm) 
-                                ? buttonLoadingStyle 
-                                : buttonActiveStyle
-                            }`}
+                            className={`${buttonBaseStyle} ${(loading || !passwordValidationChecks.minLength || password !== passwordConfirm)
+                                    ? buttonLoadingStyle
+                                    : buttonActiveStyle
+                                }`}
                         >
                             {loading ? (
                                 <div className="flex items-center space-x-2">

@@ -7,7 +7,7 @@ import { StaffMember } from '@/components/StaffCard';
 import PendingCard, { PendingItem } from '@/components/PendingCard';
 import { Search, X, User } from 'lucide-react';
 import Image from 'next/image';
-import toast from 'react-hot-toast'; // (NOVO) Importa o toast
+import toast from 'react-hot-toast';
 
 // --- Tipos ---
 
@@ -43,15 +43,12 @@ const commandTypes = [
 export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingSearchProps) {
     const [filterType, setFilterType] = useState<SearchFilter>('statusAguardando');
     const [searchTerm, setSearchTerm] = useState('');
-
     const [staffQuery, setStaffQuery] = useState('');
     const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
     const [staffResults, setStaffResults] = useState<StaffMember[]>([]);
-
     const [commandQuery, setCommandQuery] = useState('');
     const [commandResults, setCommandResults] = useState<string[]>([]);
 
-    // (MODIFICADO) Adiciona handlers de toast
     const [runSearch, { data: searchData, loading: searchLoading, error: searchError, refetch }] = useLazyQuery<PendingQueryData>(OBTER_PENDENTES, {
         fetchPolicy: 'network-only',
         onCompleted: (data) => {
@@ -126,7 +123,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                 break;
         }
 
-        toast.loading('Buscando pendências...', { id: 'search-toast' }); // (NOVO)
+        toast.loading('Buscando pendências...', { id: 'search-toast' });
         runSearch({ variables }).finally(() => {
             toast.dismiss('search-toast'); // Limpa o toast
         });
@@ -160,7 +157,6 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                     <option value="statusAguardando">Aguardando revisão</option>
                     <option value="statusAprovado">Situação aprovada</option>
                     <option value="statusRecusado">Situação recusada</option>
-                    {/* <option value="statusArquivado">Situação arquivada</option> */}
                     <option value="solicitante">Solicitante</option>
                     <option value="responsavel">Responsável pela aprovação</option>
                     <option value="tipoPendencia">Tipo de pendência</option>

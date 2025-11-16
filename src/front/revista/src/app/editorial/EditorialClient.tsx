@@ -126,7 +126,7 @@ export default function EditorialClient() {
         if (!selectedUser) {
             const msg = "Nenhum usuário selecionado.";
             setErrorMsg(msg);
-            toast.error(msg); // (NOVO) Toast
+            toast.error(msg);
             return;
         }
         setErrorMsg('');
@@ -136,7 +136,7 @@ export default function EditorialClient() {
     const handleConfirmHire = (commentary: string) => {
         if (!selectedUser) return;
 
-        toast.loading('Contratando novo membro...', { id: 'hire-toast' }); // (NOVO)
+        toast.loading('Contratando novo membro...', { id: 'hire-toast' });
 
         criarStaff({
             variables: {
@@ -182,7 +182,7 @@ export default function EditorialClient() {
             <div className="w-full mx-auto mb-[5vh]">
                 <h1 className="text-3xl font-bold mb-10 text-center">Sala Editorial</h1>
 
-                {/* --- 1. Área 'Equipe Editorial' --- */}
+                {/* --- Área 'Equipe Editorial' --- */}
                 <div className="mb-12 p-6 bg-gray-50 rounded-lg shadow-sm">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 border-b border-gray-200 pb-2">
                         Equipe Editorial
@@ -198,7 +198,7 @@ export default function EditorialClient() {
                         ))}
                     </ul>
 
-                    {/* --- 2. Área 'Contratar Novo Membro' --- */}
+                    {/* --- Área 'Contratar Novo Membro' --- */}
                     <div className="mt-8 flex flex-col items-end">
                         <button
                             onClick={() => setShowHireForm(prev => !prev)}
@@ -212,7 +212,7 @@ export default function EditorialClient() {
                             <div className="w-full lg:w-2/3 mt-6 p-6 bg-white rounded-lg shadow-inner border border-gray-200">
                                 {errorMsg && <p className="text-red-600 text-sm mb-4">{errorMsg}</p>}
 
-                                {/* Campo 1: Nome do Usuário (Busca) */}
+                                {/* Campo Nome do Usuário (Busca) */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Nome do usuário
@@ -264,7 +264,7 @@ export default function EditorialClient() {
                                     )}
                                 </div>
 
-                                {/* Campo 2: Função (Dropdown) */}
+                                {/* Campo Função (Dropdown) */}
                                 <div className="mb-6">
                                     <label htmlFor="job" className="block text-sm font-semibold text-gray-700 mb-2">Função</label>
                                     <select

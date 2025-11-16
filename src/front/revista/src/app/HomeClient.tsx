@@ -6,7 +6,7 @@ import HeroCarousel, { Slide } from "@/components/HeroCarousel";
 import EditionList, { Edition } from "@/components/EditionList";
 import Layout from "@/components/Layout";
 
-// Define os tipos de dados que esperamos da query
+
 interface ArticleCardData {
     id: string;
     titulo: string;

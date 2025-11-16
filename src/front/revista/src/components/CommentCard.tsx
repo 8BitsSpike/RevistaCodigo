@@ -27,7 +27,7 @@ interface CommentCardProps {
     artigoId: string;
     isPublic: boolean;
     permitirRespostas: boolean;
-    onCommentAction: () => void; // (MODIFICADO) Renomeado para onCommentAction
+    onCommentAction: () => void;
 }
 
 export default function CommentCard({
@@ -66,8 +66,6 @@ export default function CommentCard({
             }
         }
     }, [comment.content]);
-
-    // --- Mutações (MODIFICADO com toasts) ---
 
     const [deleteInteraction, { loading: loadingDelete }] = useMutation(DELETAR_INTERACAO, {
         variables: {

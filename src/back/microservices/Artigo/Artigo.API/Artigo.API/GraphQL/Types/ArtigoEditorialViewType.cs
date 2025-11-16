@@ -1,4 +1,5 @@
 ﻿using Artigo.API.GraphQL.DataLoaders;
+using Artigo.API.GraphQL.Resolvers; // *** ADICIONADO PARA O RESOLVER CENTRAL ***
 using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
 using Artigo.Server.DTOs;
@@ -9,7 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Artigo.API.GraphQL.Resolvers; // *** ADICIONADO PARA O RESOLVER CENTRAL ***
+using AutoMapper;
 
 namespace Artigo.API.GraphQL.Types
 {
@@ -37,7 +38,12 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Description("O conteúdo formatado, mídias e comentários internos de uma versão do artigo.");
             descriptor.Field(f => f.Content).Type<NonNullType<StringType>>();
             descriptor.Field(f => f.Midias).Type<NonNullType<ListType<NonNullType<MidiaEntryType>>>>();
-            descriptor.Field(f => f.StaffComentarios).Type<NonNullType<ListType<NonNullType<StaffComentarioType>>>>();
+            descriptor.Field(f => f.StaffComentarios)
+                .Type<NonNullType<ListType<NonNullType<StaffComentarioType>>>>() 
+                .Description("Comentários internos da equipe editorial sobre esta versão.");
+            descriptor.Field(f => f.Version)
+                .Type<NonNullType<EnumType<VersaoArtigo>>>()
+                .Description("A versão do artigo (e.g., Original, PrimeiraEdicao, Final).");
         }
     }
 
@@ -71,7 +77,7 @@ namespace Artigo.API.GraphQL.Types
             // IDs usados pelos resolvers (não expostos)
             descriptor.Field(f => f.AutorIds).Ignore();
             descriptor.Field(f => f.VolumeId).Ignore();
-            descriptor.Field(f => f.EditorialId).Ignore();
+            descriptor.Field(f => f.EditorialId).Type<NonNullType<IdType>>();
 
             // =========================================================================
             // Campos Resolvidos (Usando DataLoaders para N+1)
@@ -105,6 +111,7 @@ namespace Artigo.API.GraphQL.Types
                 .Description("O conteúdo, mídias e comentários internos da versão atual do artigo.")
                 .Resolve(async ctx =>
                 {
+                    var mapper = ctx.Service<IMapper>();
                     var dto = ctx.Parent<ArtigoEditorialViewDTO>();
                     var editorialLoader = ctx.DataLoader<EditorialDataLoader>();
                     var editorial = await editorialLoader.LoadAsync(dto.EditorialId);
@@ -113,7 +120,7 @@ namespace Artigo.API.GraphQL.Types
 
                     var historyDataLoader = ctx.DataLoader<ArtigoHistoryGroupedDataLoader>();
                     var historyLookup = await historyDataLoader.LoadAsync(editorial.CurrentHistoryId);
-                    var history = historyLookup!.FirstOrDefault();
+                    var history = historyLookup?.FirstOrDefault();
 
                     if (history == null) return null;
 
@@ -121,12 +128,8 @@ namespace Artigo.API.GraphQL.Types
                     return new ArtigoHistoryEditorialViewDTO
                     {
                         Content = history.Content,
-                        Midias = history.Midias.Select(m => new MidiaEntryDTO
-                        {
-                            IdMidia = m.MidiaID,
-                            Url = m.Url,
-                            TextoAlternativo = m.Alt
-                        }).ToList(),
+                        Midias = mapper.Map<List<MidiaEntryDTO>>(history.Midias),
+                        Version = history.Version,
                         StaffComentarios = history.StaffComentarios
                     };
                 });

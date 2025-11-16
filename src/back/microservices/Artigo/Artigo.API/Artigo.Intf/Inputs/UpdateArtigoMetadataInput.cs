@@ -24,5 +24,10 @@ namespace Artigo.Intf.Inputs
         // Novos campos para gerenciamento de status e comentários
         public StatusArtigo? Status { get; set; }
         public bool? PermitirComentario { get; set; }
+
+        /// <sumario>
+        /// (NOVO) Opcional: Define a posição do artigo no fluxo de trabalho editorial.
+        /// </sumario>
+        public PosicaoEditorial? Posicao { get; set; }
     }
 }

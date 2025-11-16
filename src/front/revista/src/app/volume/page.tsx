@@ -82,7 +82,7 @@ function VolumePageContent() {
                         id={volume.id}
                         title={volume.volumeTitulo}
                         excerpt={volume.volumeResumo}
-                        href={`/volume/${volume.id}`} // Link para ele mesmo
+                        href={`/volume/${volume.id}`}
                         imagem={volume.imagemCapa ? {
                             url: volume.imagemCapa.url,
                             textoAlternativo: volume.imagemCapa.textoAlternativo
@@ -105,7 +105,7 @@ function VolumePageContent() {
                                     id={art.id}
                                     title={art.titulo}
                                     excerpt={art.resumo}
-                                    href={`/artigo/${art.id}`} // Link para a página do artigo
+                                    href={`/artigo/${art.id}`}
                                     imagem={art.midiaDestaque ? {
                                         url: art.midiaDestaque.url,
                                         textoAlternativo: art.midiaDestaque.textoAlternativo

@@ -1,8 +1,3 @@
-// Em types/enums.ts
-
-/**
- * Status do ciclo de vida editorial de um artigo.
- */
 export enum StatusArtigo {
     Rascunho = "Rascunho",
     AguardandoAprovacao = "AguardandoAprovacao",
@@ -12,9 +7,6 @@ export enum StatusArtigo {
     Arquivado = "Arquivado",
 }
 
-/**
- * Classificação do tipo de artigo.
- */
 export enum TipoArtigo {
     Artigo = "Artigo",
     Blog = "Blog",
@@ -24,21 +16,12 @@ export enum TipoArtigo {
     Administrativo = "Administrativo",
 }
 
-/**
- * Status do ciclo de vida de um volume (edição).
- * Espelha o C# Enum: Artigo.Intf.Enums.StatusVolume
- */
 export enum StatusVolume {
     EmRevisao = "EmRevisao",
     Publicado = "Publicado",
     Arquivado = "Arquivado",
 }
 
-/**
- * Mês de publicação para um volume.
- * Espelha o C# Enum: Artigo.Intf.Enums.MesVolume
- * (Nota: O GraphQL usa os Nomes, não valores numéricos)
- */
 export enum MesVolume {
     Janeiro = "Janeiro",
     Fevereiro = "Fevereiro",
@@ -52,4 +35,27 @@ export enum MesVolume {
     Outubro = "Outubro",
     Novembro = "Novembro",
     Dezembro = "Dezembro",
+}
+
+export enum PosicaoEditorial {
+    Submetido = "Submetido",
+    AguardandoRevisao = "AguardandoRevisao",
+    RevisaoConcluida = "RevisaoConcluida",
+    AguardandoCorrecao = "AguardandoCorrecao",
+    CorrecaoConcluida = "CorrecaoConcluida",
+    AguardandoRedacao = "AguardandoRedacao",
+    RedacaoConcluida = "RedacaoConcluida",
+    Rejeitado = "Rejeitado",
+    EmEspera = "EmEspera",
+    ProntoParaPublicar = "ProntoParaPublicar",
+    Publicado = "Publicado",
+}
+
+export enum VersaoArtigo {
+    Original = 0,
+    PrimeiraEdicao = 1,
+    SegundaEdicao = 2,
+    TerceiraEdicao = 3,
+    QuartaEdicao = 4,
+    Final = 5,
 }

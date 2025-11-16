@@ -8,7 +8,7 @@ import { useState } from 'react';
 import CommentaryModal from './CommentaryModal';
 import toast from 'react-hot-toast';
 
-// Define a estrutura dos dados do staff que esperamos
+// Define a estrutura dos dados do staff
 export interface StaffMember {
     usuarioId: string;
     nome: string;
@@ -65,8 +65,6 @@ export default function StaffCard({ staff, onUpdate }: StaffCardProps) {
         if (!pendingAction) return;
 
         const jobPayload = pendingAction.newJob ? pendingAction.newJob : (staff.job !== 'Aposentado' ? staff.job : 'EditorBolsista');
-
-        // (NOVO) Toast de carregamento
         toast.loading(`Executando ação: ${pendingAction.title}...`, { id: 'staff-action' });
 
         atualizarStaff({
@@ -77,7 +75,7 @@ export default function StaffCard({ staff, onUpdate }: StaffCardProps) {
                 commentary: `${pendingAction.commentaryPrefix}: ${commentary}`,
             },
         }).finally(() => {
-            toast.dismiss('staff-action'); // Limpa o toast de loading
+            toast.dismiss('staff-action');
         });
     };
 

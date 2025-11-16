@@ -7,7 +7,7 @@ import { OBTER_PENDENTES, OBTER_STAFF_LIST } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import PendingCard, { PendingItem } from '@/components/PendingCard';
-import PendenciasSearch from './PendenciasSearch'; // O componente de busca
+import PendenciasSearch from './PendenciasSearch';
 import { StaffMember } from '@/components/StaffCard';
 import { ArrowLeft, ArrowRight, ArrowLeftCircle } from 'lucide-react';
 
@@ -31,7 +31,7 @@ export default function PendenciasClient() {
     const [pageRecentes, setPageRecentes] = useState(0);
     const [pageResolvidas, setPageResolvidas] = useState(0);
 
-    // --- Query 1: Lista de Staff ---
+    // --- Query Lista de Staff ---
     // Usada para autorização e para passar aos cards
     const { data: staffData, loading: loadingStaff, error: errorStaff } = useQuery<StaffQueryData>(OBTER_STAFF_LIST, {
         variables: { page: 0, pageSize: 200 }, // Busca até 200 membros de staff
@@ -52,7 +52,7 @@ export default function PendenciasClient() {
         (s.job === 'Administrador' || s.job === 'EditorChefe')
     );
 
-    // --- Query 2: Pendências Recentes (AguardandoRevisao) ---
+    // --- Query Pendências Recentes (AguardandoRevisao) ---
     const {
         data: recentesData,
         loading: loadingRecentes,
@@ -71,10 +71,7 @@ export default function PendenciasClient() {
     const canGoNextRecentes = pendenciasRecentes.length === PAGE_SIZE;
     const canGoPrevRecentes = pageRecentes > 0;
 
-    // --- Query 3: Pendências Resolvidas (Aprovado) ---
-    // (Como discutido, misturar 'Aprovado' e 'Rejeitado' com ordenação
-    // por data de *resolução* exigiria mudança no backend.
-    // Por agora, listamos as 'Aprovadas' mais recentes)
+    // --- Query Pendências Resolvidas (Aprovado) ---
     const {
         data: resolvidasData,
         loading: loadingResolvidas,
@@ -123,7 +120,7 @@ export default function PendenciasClient() {
 
                 <h1 className="text-3xl font-bold mb-10 text-center">Controle de Pendências</h1>
 
-                {/* --- 1. Área 'Buscar pendências' --- */}
+                {/* --- Área 'Buscar pendências' --- */}
                 <div className="mb-12">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 border-b border-gray-200 pb-2">
                         Buscar pendências
@@ -135,7 +132,7 @@ export default function PendenciasClient() {
                     />
                 </div>
 
-                {/* --- 2. Área 'Pendências recentes' --- */}
+                {/* --- Área 'Pendências recentes' --- */}
                 <div className="mb-12">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 border-b border-gray-200 pb-2">
                         Pendências recentes (Aguardando Revisão)
@@ -181,7 +178,7 @@ export default function PendenciasClient() {
                     )}
                 </div>
 
-                {/* --- 3. Área 'Pendências resolvidas' --- */}
+                {/* --- Área 'Pendências resolvidas' --- */}
                 <div className="mt-8">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 border-b border-gray-200 pb-2">
                         Pendências resolvidas (Aprovadas)

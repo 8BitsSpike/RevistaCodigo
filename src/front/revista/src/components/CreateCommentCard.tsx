@@ -5,10 +5,12 @@ import { useMutation } from '@apollo/client/react';
 import {
     CRIAR_COMENTARIO_PUBLICO,
     GET_COMENTARIOS_PUBLICOS,
-    GET_ARTIGO_VIEW
+    GET_ARTIGO_VIEW,
+    CRIAR_COMENTARIO_EDITORIAL,
+    OBTER_ARTIGO_EDITORIAL_VIEW
 } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
-import toast from 'react-hot-toast'; // (NOVO) Importa o toast
+import toast from 'react-hot-toast';
 
 // Tipos das props que o componente aceita
 interface CreateCommentCardProps {
@@ -16,6 +18,7 @@ interface CreateCommentCardProps {
     parentCommentId?: string | null;
     onCommentPosted: () => void;
     onCancel?: () => void;
+    isEditorial?: boolean;
 }
 
 export default function CreateCommentCard({
@@ -23,25 +26,30 @@ export default function CreateCommentCard({
     parentCommentId = null,
     onCommentPosted,
     onCancel,
+    isEditorial = false,
 }: CreateCommentCardProps) {
 
     const { user } = useAuth();
     const [content, setContent] = useState('');
 
-    const [submitComment, { loading, error }] = useMutation(
+    // --- Handlers Comuns ---
+    const handleCompleted = (type: string) => {
+        toast.success(`Comentário ${type} enviado com sucesso!`);
+        setContent('');
+        onCommentPosted();
+    };
+
+    const handleError = (type: string, err: Error) => {
+        console.error(`Erro ao enviar comentário ${type}:`, err);
+        toast.error(`Erro ao enviar comentário: ${err.message}`);
+    };
+
+    // --- Mutação Comentário Público ---
+    const [submitPublicComment, { loading: loadingPublic }] = useMutation(
         CRIAR_COMENTARIO_PUBLICO,
         {
-            // (NOVO) Adiciona handlers de onCompleted e onError
-            onCompleted: () => {
-                toast.success('Comentário enviado com sucesso!');
-                setContent('');
-                onCommentPosted();
-            },
-            onError: (err) => {
-                console.error("Erro ao enviar comentário:", err);
-                toast.error(`Erro ao enviar comentário: ${err.message}`);
-            },
-            // Atualiza o cache do Apollo
+            onCompleted: () => handleCompleted('público'),
+            onError: (err) => handleError('público', err),
             refetchQueries: [
                 {
                     query: GET_COMENTARIOS_PUBLICOS,
@@ -51,6 +59,7 @@ export default function CreateCommentCard({
                         pageSize: 20
                     },
                 },
+                // Atualiza a contagem de comentários na ArtigoView (pública)
                 {
                     query: GET_ARTIGO_VIEW,
                     variables: { artigoId: artigoId }
@@ -59,21 +68,48 @@ export default function CreateCommentCard({
         }
     );
 
-    const usuarioNome = user?.name || "Leitor Anônimo";
+    // --- Mutação Comentário Editorial ---
+    const [submitEditorialComment, { loading: loadingEditorial }] = useMutation(
+        CRIAR_COMENTARIO_EDITORIAL,
+        {
+            onCompleted: () => handleCompleted('editorial'),
+            onError: (err) => handleError('editorial', err),
+            // Atualiza a lista de comentários na ArtigoEditorialView (de staff)
+            refetchQueries: [
+                {
+                    query: OBTER_ARTIGO_EDITORIAL_VIEW,
+                    variables: { artigoId: artigoId }
+                }
+            ]
+        }
+    );
+
+    const loading = loadingPublic || loadingEditorial; // Combina o estado de loading
+    const usuarioNome = user?.name || "Usuário";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!content.trim() || !user) return;
-
-        // (MODIFICADO) A lógica de try/catch foi movida para os handlers do useMutation
-        await submitComment({
-            variables: {
-                artigoId,
-                content,
-                usuarioNome: usuarioNome,
-                parentCommentId,
-            },
-        });
+        if (isEditorial) {
+            // --- Chama a Mutação Editorial ---
+            await submitEditorialComment({
+                variables: {
+                    artigoId,
+                    content,
+                    usuarioNome: usuarioNome,
+                },
+            });
+        } else {
+            // --- Chama a Mutação Pública ---
+            await submitPublicComment({
+                variables: {
+                    artigoId,
+                    content,
+                    usuarioNome: usuarioNome,
+                    parentCommentId,
+                },
+            });
+        }
     };
 
     return (
@@ -90,7 +126,7 @@ export default function CreateCommentCard({
             <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Escreva seu comentário..."
+                placeholder={isEditorial ? "Escreva seu comentário editorial..." : "Escreva seu comentário..."}
                 className="w-full h-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 required
             />
@@ -113,8 +149,7 @@ export default function CreateCommentCard({
                     {loading ? 'Enviando...' : 'Enviar'}
                 </button>
             </div>
-            {/* O erro agora é tratado pelo toast, mas podemos manter isso se quisermos */}
-            {error && <p className="text-red-600 text-sm mt-2">Erro: {error.message}</p>}
+            {/* O erro agora é tratado pelo toast */}
         </form>
     );
 }

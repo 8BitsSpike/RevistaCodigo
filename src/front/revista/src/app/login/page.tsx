@@ -46,14 +46,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  // (MODIFICADO) O setError agora também chamará o toast
   const [error, setError] = useState('');
 
   const redirectToHome = () => router.push('/');
 
   const toggleShowPassword = () => setShowPassword(prev => !prev);
 
-  // (NOVO) Função helper para mostrar o toast de erro
   const setAndToastError = (message: string) => {
     setError(message);
     toast.error(message);
@@ -63,13 +61,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // (NOVO) Toast de carregamento
+
     const loginToast = toast.loading('Autenticando...');
 
     const credentials: UserCredentials = { email, password };
 
     try {
-      // --- ETAPA 1: Autenticar na UsuarioAPI (/Authenticate) ---
+      // --- ETAPA Autenticar na UsuarioAPI (/Authenticate) ---
       const response = await fetch(AUTH_API_URL, {
         method: 'POST',
         headers: {
@@ -92,7 +90,7 @@ export default function LoginPage() {
         localStorage.setItem('userToken', userData.jwtToken);
         localStorage.setItem('userId', userData.id);
 
-        // --- ETAPA 2: Buscar a foto do perfil ---
+        // --- ETAPA Buscar a foto do perfil ---
         let userFoto: string | null = null;
         try {
           const profileResponse = await fetch(`${USER_API_URL}/${userData.id}`, {
@@ -108,7 +106,7 @@ export default function LoginPage() {
           console.error('Falha ao buscar foto do perfil:', profileError);
         }
 
-        // --- ETAPA 3: Verificar o status de Staff na ArtigoAPI ---
+        // --- ETAPA Verificar o status de Staff na ArtigoAPI ---
         let isStaff = false;
         try {
           toast.loading('Verificando permissões...', { id: loginToast });
@@ -122,7 +120,7 @@ export default function LoginPage() {
 
         localStorage.setItem('isStaff', isStaff.toString());
 
-        // --- ETAPA 4: Chamar o hook 'login' com todos os dados ---
+        // --- ETAPA Chamar o hook 'login' com todos os dados ---
         login({
           id: userData.id,
           jwtToken: userData.jwtToken,
@@ -131,13 +129,11 @@ export default function LoginPage() {
           foto: userFoto,
         });
 
-        // (NOVO) Toast de Sucesso
         toast.success(`Bem-vindo(a), ${userData.name}!`, { id: loginToast });
         redirectToHome();
 
       } else {
-        // (MODIFICADO) Lógica de erro agora usa 'setAndToastError'
-        toast.dismiss(loginToast); // Fecha o toast de loading
+        toast.dismiss(loginToast);
         let errorMessage = '';
         try {
           const errorData = await response.json();
@@ -163,7 +159,7 @@ export default function LoginPage() {
             errorMessage = `Falha no login (Status: ${response.status}).`;
           }
         }
-        setAndToastError(errorMessage); // Define o erro e mostra o toast
+        setAndToastError(errorMessage);
       }
     } catch (err) {
       toast.dismiss(loginToast);
@@ -243,21 +239,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* O erro agora é exibido apenas pelo toast, mas mantemos o 'error' para referência futura se necessário */}
-          {/* {error && (
-            <div className="p-4 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-lg animate-fade-in" role="alert">
-              {error}
-            </div>
-          )}
-          */}
-
           <div>
             <button
               type="submit"
               disabled={loading}
               className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium transition duration-200 ease-in-out transform ${loading
-                  ? 'bg-emerald-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 hover:scale-[1.01]'
+                ? 'bg-emerald-400 cursor-not-allowed'
+                : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 hover:scale-[1.01]'
                 } text-white`}
             >
               {loading ? (

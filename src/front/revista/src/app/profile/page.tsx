@@ -92,7 +92,7 @@ function ProfilePageContent() {
   const searchParams = useSearchParams();
 
   // --- Lógica de Roteamento ---
-  const urlId = searchParams.get('id'); // ID do autor da URL
+  const urlId = searchParams.get('id');
   const [myId, setMyId] = useState<string | null>(null);
   const [isMyProfile, setIsMyProfile] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);

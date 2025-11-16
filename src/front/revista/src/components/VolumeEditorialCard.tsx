@@ -50,8 +50,8 @@ interface ArtigoNaLista {
 // Props do componente
 interface VolumeEditorialCardProps {
     mode: 'view' | 'create';
-    initialData?: VolumeCardData; // Usado para 'view'
-    onUpdate: () => void; // Para recarregar a lista principal
+    initialData?: VolumeCardData;
+    onUpdate: () => void;
 }
 
 // --- Componente ---
@@ -96,9 +96,8 @@ export default function VolumeEditorialCard({
         fetchPolicy: 'network-only',
         onCompleted: (data) => {
             if (data.obterVolumePorId) {
-                setFormData(data.obterVolumePorId); // Preenche o formulário
-                setNewCoverImage(data.obterVolumePorId.imagemCapa?.url || null); // Define o preview
-                // Agora, busca os títulos dos artigos
+                setFormData(data.obterVolumePorId);
+                setNewCoverImage(data.obterVolumePorId.imagemCapa?.url || null);
                 if (data.obterVolumePorId.artigoIds.length > 0) {
                     loadArtigoTitles({ variables: { ids: data.obterVolumePorId.artigoIds } });
                 }
@@ -107,14 +106,14 @@ export default function VolumeEditorialCard({
         onError: (err) => toast.error(`Erro ao carregar volume: ${err.message}`)
     });
 
-    // 2. Busca os títulos dos artigos do volume
+    // Busca os títulos dos artigos do volume
     const [loadArtigoTitles, { loading: loadingArtigos }] = useLazyQuery(GET_ARTIGOS_BY_IDS, {
         onCompleted: (data) => {
             setArtigosNoVolume(data.obterArtigoCardListPorLista);
         }
     });
 
-    // 3. Busca de artigos (autocomplete) para adicionar ao volume
+    // Busca de artigos (autocomplete) para adicionar ao volume
     const [runArtigoSearch, { loading: loadingArtigoSearch }] = useLazyQuery(SEARCH_ARTIGOS_EDITORIAL_BY_TITLE, {
         onCompleted: (data) => {
             setArtigoSearchResults(data.searchArtigosEditorialByTitle || []);
@@ -160,9 +159,9 @@ export default function VolumeEditorialCard({
 
     const handleCancel = () => {
         if (mode === 'create') {
-            onUpdate(); // Chama 'onUpdate' para fechar o formulário de criação
+            onUpdate();
         } else {
-            setIsEditing(false); // Apenas volta ao modo 'view'
+            setIsEditing(false);
         }
     };
 
@@ -194,7 +193,7 @@ export default function VolumeEditorialCard({
 
     const handleSelectArtigo = (artigo: ArtigoNaLista) => {
         setSelectedArtigo(artigo);
-        setArtigoSearchTerm(artigo.titulo); // Preenche o campo de texto
+        setArtigoSearchTerm(artigo.titulo);
         setArtigoSearchResults([]);
     };
 
@@ -212,7 +211,6 @@ export default function VolumeEditorialCard({
         setFormData(prev => ({ ...prev, artigoIds: (prev.artigoIds || []).filter(artId => artId !== id) }));
     };
 
-    // Handler final de submissão (chamado pelo modal)
     const handleConfirmSubmit = (commentary: string) => {
         const input = {
             edicao: formData.edicao,
@@ -244,7 +242,7 @@ export default function VolumeEditorialCard({
 
     // --- Renderização ---
 
-    // Modo 1: Visualização (Card Simples)
+    // Modo Visualização (Card Simples)
     if (mode === 'view' && !isEditing) {
         if (!initialData) return null;
         return (
@@ -275,7 +273,7 @@ export default function VolumeEditorialCard({
         );
     }
 
-    // Modo 2: Edição ou Criação (Formulário Completo)
+    // Modo Edição ou Criação (Formulário Completo)
     return (
         <>
             <CommentaryModal
@@ -288,7 +286,7 @@ export default function VolumeEditorialCard({
 
             <li
                 className="bg-white shadow-lg border border-gray-200 rounded-lg"
-                style={{ width: '98%', margin: '10px 1%', padding: '1.5rem' }} // Padding maior
+                style={{ width: '98%', margin: '10px 1%', padding: '1.5rem' }}
             >
                 {loadingData && <p>Carregando dados da edição...</p>}
 
@@ -455,7 +453,7 @@ export default function VolumeEditorialCard({
                         Descartar
                     </button>
                     <button
-                        onClick={() => setIsModalOpen(true)} // Abre o modal de justificativa
+                        onClick={() => setIsModalOpen(true)}
                         disabled={loading}
                         className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-bold shadow hover:bg-emerald-700 transition"
                     >

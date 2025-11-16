@@ -84,7 +84,7 @@ export default function Header({
     const handleProfile = () => router.push('/profile');
 
     const handleLogout = () => {
-        logout(); // O hook useAuth agora limpa tudo
+        logout();
         setIsStaff(false);
         router.push('/');
     };
@@ -206,7 +206,7 @@ export default function Header({
                 </div>
             )}
 
-            {/* Barra de Navegação Principal (agora condicional) */}
+            {/* Barra de Navegação Principal (condicional) */}
             <div className="border-t border-gray-200">
                 <nav className="max-w-7xl mx-auto px-4 py-6 hidden md:block">
                     <ul className="flex gap-6 items-center text-sm">

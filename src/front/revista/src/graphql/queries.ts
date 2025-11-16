@@ -6,6 +6,9 @@ export const GET_HOME_PAGE_DATA = gql`
       id
       titulo
       resumo
+      status
+      tipo
+      permitirComentario
       midiaDestaque {
         url
         textoAlternativo
@@ -30,6 +33,8 @@ export const GET_MEUS_ARTIGOS = gql`
       titulo
       resumo
       status
+      tipo
+      permitirComentario
       midiaDestaque {
         url
         textoAlternativo
@@ -38,7 +43,6 @@ export const GET_MEUS_ARTIGOS = gql`
   }
 `;
 
-// Esta é a query de busca PÚBLICA (para a página /search)
 export const SEARCH_ARTICLES = gql`
   query SearchArticles(
     $searchTerm: String!
@@ -55,9 +59,9 @@ export const SEARCH_ARTICLES = gql`
       id
       titulo
       resumo
-      status # Adicionado após a atualização do DTO
-      tipo # Adicionado após a atualização do DTO
-      permitirComentario # Adicionado após a atualização do DTO
+      status
+      tipo
+      permitirComentario
       midiaDestaque {
         url
         textoAlternativo
@@ -71,9 +75,9 @@ export const SEARCH_ARTICLES = gql`
       id
       titulo
       resumo
-      status # Adicionado após a atualização do DTO
-      tipo # Adicionado após a atualização do DTO
-      permitirComentario # Adicionado após a atualização do DTO
+      status
+      tipo
+      permitirComentario
       midiaDestaque {
         url
         textoAlternativo
@@ -141,10 +145,6 @@ export const GET_VOLUME_VIEW = gql`
         id
         titulo
         resumo
-        midiaDestaque {
-          url
-          textoAlternativo
-        }
       }
     }
   }
@@ -155,8 +155,6 @@ export const VERIFICAR_STAFF = gql`
     verificarStaff
   }
 `;
-
-// --- Fragmento e Queries da Página de Artigo ---
 
 const COMMENT_FIELDS = gql`
   fragment CommentFields on Interaction {
@@ -235,8 +233,6 @@ export const GET_COMENTARIOS_PUBLICOS = gql`
   ${COMMENT_FIELDS}
 `;
 
-// --- Mutações de Comentário ---
-
 export const CRIAR_COMENTARIO_PUBLICO = gql`
   mutation CriarComentarioPublico(
     $artigoId: ID!
@@ -279,8 +275,6 @@ export const DELETAR_INTERACAO = gql`
   }
 `;
 
-// --- Mutação de Submissão de Artigo ---
-
 export const CRIAR_ARTIGO = gql`
   mutation CriarArtigo($input: CreateArtigoInput!, $commentary: String!) {
     criarArtigo(input: $input, commentary: $commentary) {
@@ -293,8 +287,6 @@ export const CRIAR_ARTIGO = gql`
     }
   }
 `;
-
-// --- Queries e Mutações da Sala Editorial ---
 
 export const OBTER_STAFF_LIST = gql`
   query ObterStaffList($page: Int!, $pageSize: Int!) {
@@ -414,7 +406,6 @@ export const OBTER_ARTIGOS_POR_STATUS = gql`
   ${EDITORIAL_CARD_FIELDS}
 `;
 
-// (NOVA)
 export const OBTER_ARTIGOS_EDITORIAL_POR_TIPO = gql`
   query ObterArtigosEditorialPorTipo(
     $tipo: TipoArtigo!
@@ -432,7 +423,6 @@ export const OBTER_ARTIGOS_EDITORIAL_POR_TIPO = gql`
   ${EDITORIAL_CARD_FIELDS}
 `;
 
-// (NOVA)
 export const SEARCH_ARTIGOS_EDITORIAL_BY_TITLE = gql`
   query SearchArtigosEditorialByTitle(
     $searchTerm: String!
@@ -450,7 +440,6 @@ export const SEARCH_ARTIGOS_EDITORIAL_BY_TITLE = gql`
   ${EDITORIAL_CARD_FIELDS}
 `;
 
-// (NOVA)
 export const SEARCH_ARTIGOS_EDITORIAL_BY_AUTOR_IDS = gql`
   query SearchArtigosEditorialByAutorIds(
     $idsAutor: [ID!]!
@@ -495,7 +484,6 @@ const VOLUME_CARD_FIELDS = gql`
   }
 `;
 
-// Query para buscar volumes recentes (formato card)
 export const OBTER_VOLUMES = gql`
   query ObterVolumes($pagina: Int!, $tamanho: Int!) {
     obterVolumes(pagina: $pagina, tamanho: $tamanho) {
@@ -505,7 +493,6 @@ export const OBTER_VOLUMES = gql`
   ${VOLUME_CARD_FIELDS}
 `;
 
-// Query para buscar volumes por status (formato card)
 export const OBTER_VOLUMES_POR_STATUS = gql`
   query ObterVolumesPorStatus(
     $status: StatusVolume!
@@ -523,7 +510,6 @@ export const OBTER_VOLUMES_POR_STATUS = gql`
   ${VOLUME_CARD_FIELDS}
 `;
 
-// Query para buscar volumes por ano (retorna o tipo Volume completo)
 export const OBTER_VOLUMES_POR_ANO = gql`
   query ObterVolumesPorAno($ano: Int!, $pagina: Int!, $tamanho: Int!) {
     obterVolumesPorAno(ano: $ano, pagina: $pagina, tamanho: $tamanho) {
@@ -534,13 +520,10 @@ export const OBTER_VOLUMES_POR_ANO = gql`
         url
         textoAlternativo
       }
-      # Nota: Esta query na verdade retorna o tipo 'Volume' completo,
-      # mas para o card, só precisamos destes campos.
     }
   }
 `;
 
-// Query para obter UM volume pelo ID (query de Staff)
 export const OBTER_VOLUME_POR_ID = gql`
   query ObterVolumePorId($idVolume: ID!) {
     obterVolumePorId(idVolume: $idVolume) {
@@ -562,7 +545,6 @@ export const OBTER_VOLUME_POR_ID = gql`
   }
 `;
 
-// Mutação para criar um novo volume
 export const CRIAR_VOLUME = gql`
   mutation CriarVolume($input: CreateVolumeInputType!, $commentary: String!) {
     criarVolume(input: $input, commentary: $commentary) {
@@ -573,7 +555,6 @@ export const CRIAR_VOLUME = gql`
   }
 `;
 
-// Mutação para atualizar um volume
 export const ATUALIZAR_METADADOS_VOLUME = gql`
   mutation AtualizarMetadadosVolume(
     $volumeId: ID!
@@ -588,3 +569,173 @@ export const ATUALIZAR_METADADOS_VOLUME = gql`
   }
 `;
 
+const STAFF_COMMENT_FIELDS = gql`
+  fragment StaffCommentFields on StaffComentario {
+    id
+    usuarioId
+    data
+    parent
+    comment
+  }
+`;
+
+const EDITORIAL_TEAM_FIELDS = gql`
+  fragment EditorialTeamFields on EditorialTeam {
+    initialAuthorId
+    editorId
+    reviewerIds
+    correctorIds
+  }
+`;
+
+export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
+  query ObterArtigoEditorialView($artigoId: ID!) {
+    obterArtigoEditorialView(artigoId: $artigoId) {
+      id
+      titulo
+      resumo
+      tipo
+      status
+      autorIds
+      permitirComentario
+      editorialId
+      # Dados aninhados resolvidos
+      editorial {
+        position
+        currentHistoryId
+        team {
+          ...EditorialTeamFields
+        }
+      }
+      
+      conteudoAtual {
+        version
+        content
+        midias {
+          idMidia
+          url
+          textoAlternativo
+        }
+        staffComentarios {
+          ...StaffCommentFields
+        }
+      }
+      
+      interacoes(page: 0, pageSize: 999) { # Apenas comentários editoriais
+        comentariosEditoriais {
+          ...CommentFields
+        }
+      }
+    }
+  }
+  ${COMMENT_FIELDS}
+  ${STAFF_COMMENT_FIELDS}
+  ${EDITORIAL_TEAM_FIELDS}
+`;
+
+export const ATUALIZAR_CONTEUDO_ARTIGO = gql`
+  mutation AtualizarConteudoArtigo(
+    $artigoId: ID!
+    $newContent: String!
+    $midias: [MidiaEntryInputType!]!
+    $commentary: String!
+  ) {
+    atualizarConteudoArtigo(
+      artigoId: $artigoId
+      newContent: $newContent
+      midias: $midias
+      commentary: $commentary
+    )
+  }
+`;
+
+export const ATUALIZAR_EQUIPE_EDITORIAL = gql`
+  mutation AtualizarEquipeEditorial(
+    $artigoId: ID!
+    $teamInput: EditorialTeamInputType!
+    $commentary: String!
+  ) {
+    atualizarEquipeEditorial(
+      artigoId: $artigoId
+      teamInput: $teamInput
+      commentary: $commentary
+    ) {
+      team {
+        ...EditorialTeamFields
+      }
+    }
+  }
+  ${EDITORIAL_TEAM_FIELDS}
+`;
+
+export const CRIAR_COMENTARIO_EDITORIAL = gql`
+  mutation CriarComentarioEditorial(
+    $artigoId: ID!
+    $content: String!
+    $usuarioNome: String!
+  ) {
+    criarComentarioEditorial(
+      artigoId: $artigoId
+      content: $content
+      usuarioNome: $usuarioNome
+    ) {
+      ...CommentFields
+    }
+  }
+  ${COMMENT_FIELDS}
+`;
+
+export const ADD_STAFF_COMENTARIO = gql`
+  mutation AddStaffComentario(
+    $historyId: ID!
+    $comment: String!
+    $parent: ID
+  ) {
+    addStaffComentario(
+      historyId: $historyId
+      comment: $comment
+      parent: $parent
+    ) {
+      staffComentarios {
+        ...StaffCommentFields
+      }
+    }
+  }
+  ${STAFF_COMMENT_FIELDS}
+`;
+
+export const UPDATE_STAFF_COMENTARIO = gql`
+  mutation UpdateStaffComentario(
+    $historyId: ID!
+    $comentarioId: ID!
+    $newContent: String!
+  ) {
+    updateStaffComentario(
+      historyId: $historyId
+      comentarioId: $comentarioId
+      newContent: $newContent
+    ) {
+      staffComentarios {
+        ...StaffCommentFields
+      }
+    }
+  }
+  ${STAFF_COMMENT_FIELDS}
+`;
+
+export const DELETE_STAFF_COMENTARIO = gql`
+  mutation DeleteStaffComentario(
+    $historyId: ID!
+    $comentarioId: ID!
+  ) {
+    deleteStaffComentario(
+      historyId: $historyId
+      comentarioId: $comentarioId
+    ) {
+      staffComentarios {
+        ...StaffCommentFields
+      }
+    }
+  }
+  ${STAFF_COMMENT_FIELDS}
+`;

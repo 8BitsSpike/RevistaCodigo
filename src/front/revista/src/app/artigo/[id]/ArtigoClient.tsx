@@ -66,19 +66,19 @@ export default function ArtigoClient() {
     const [nomeUsuario, setNomeUsuario] = useState("Leitor");
 
     useEffect(() => {
-        // (MODIFICADO) Busca o nome do usuário do localStorage (do hook useAuth)
+        // Busca o nome do usuário do localStorage
         const storedName = localStorage.getItem('userName');
         if (storedName) {
             setNomeUsuario(storedName);
         }
     }, [user]);
 
-    // --- Query 1: Dados Principais do Artigo ---
+    // --- Query Dados Principais do Artigo ---
     const {
         data: artigoData,
         loading: loadingArtigo,
         error: errorArtigo,
-        refetch: refetchArtigoView // (NOVO) Função para recarregar a query principal
+        refetch: refetchArtigoView // Função para recarregar a query principal
     } = useQuery<ArtigoViewQueryData>(GET_ARTIGO_VIEW, {
         variables: { artigoId },
         skip: !artigoId,
@@ -89,13 +89,13 @@ export default function ArtigoClient() {
 
     const artigo = artigoData?.obterArtigoView;
 
-    // --- Query 2: Comentários Públicos Paginados ---
+    // --- Query Comentários Públicos Paginados ---
     const {
         data: comentariosData,
         loading: loadingComentarios,
         error: errorComentarios,
         fetchMore,
-        refetch: refetchComentarios // (NOVO) Função para recarregar comentários
+        refetch: refetchComentarios // Função para recarregar comentários
     } = useQuery<ComentariosPublicosQueryData>(GET_COMENTARIOS_PUBLICOS, {
         variables: { artigoId, page: 0, pageSize: 20 }, // Carga inicial de 20
         skip: !artigoId,
@@ -140,7 +140,6 @@ export default function ArtigoClient() {
         return <Layout><p className="text-center mt-20">Carregando artigo...</p></Layout>;
     }
 
-    // (MODIFICADO) O erro agora é tratado pelo toast
     if (errorArtigo && !artigo) {
         return <Layout><p className="text-center mt-20 text-red-600">Artigo não pôde ser carregado.</p></Layout>;
     }
@@ -171,7 +170,6 @@ export default function ArtigoClient() {
         window.print();
     };
 
-    // (NOVO) Função unificada para recarregar tudo
     const refetchAll = () => {
         refetchArtigoView();
         refetchComentarios();
@@ -282,7 +280,6 @@ export default function ArtigoClient() {
                                     artigoId={artigoId}
                                     isPublic={false}
                                     permitirRespostas={false}
-                                    // Prop 'onCommentDeleted' alterada para 'onCommentAction'
                                     onCommentAction={refetchAll}
                                 />
                             ))}

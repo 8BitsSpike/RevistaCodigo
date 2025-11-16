@@ -8,7 +8,7 @@ import Layout from '@/components/Layout';
 import ArticleCard from '@/components/ArticleCard';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-// Tipos para os dados da nossa query
+// Tipos para os dados da query
 interface ArtigoSearchResult {
     id: string;
     titulo: string;

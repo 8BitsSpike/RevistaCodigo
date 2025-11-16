@@ -25,6 +25,8 @@ namespace Artigo.API.GraphQL.Inputs
                 .Description("Atualiza o status do ciclo de vida do artigo (ex: Publicado, Arquivado).");
             descriptor.Field(f => f.PermitirComentario).Type<BooleanType>()
                 .Description("Habilita ou desabilita comentários públicos neste artigo.");
+            descriptor.Field(f => f.Posicao).Type<EnumType<PosicaoEditorial>>()
+                .Description("Atualiza a posição do artigo no fluxo de trabalho editorial (ex: EmRevisao, ProntoParaPublicar).");
         }
     }
 }

@@ -1,6 +1,8 @@
 export interface AuthResponseSuccess {
     jwtToken: string;
-    id: string; // O ID (ObjectId) do MongoDB como string
+    id: string;
+    name: string;
+    sobrenome: string;
 }
 export interface UserCredentials {
     email: string;
@@ -8,32 +10,40 @@ export interface UserCredentials {
 }
 
 export type User = {
-  id: string;
-  name: string;
-  email?: string;
-  role?: 'admin' | 'reader';
+    id: string;
+    name: string;
+    email?: string;
+    role?: 'admin' | 'reader';
 };
 
 export type Post = {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt?: string;
-  content?: string;
-  publishedAt?: string;
-  authorId?: string;
+    id: string;
+    title: string;
+    slug: string;
+    excerpt?: string;
+    content?: string;
+    publishedAt?: string;
+    authorId?: string;
 };
 
 export type Edition = {
-  id: string;
-  slug: string;
-  title: string;
-  publishedAt?: string;
+    id: string;
+    slug: string;
+    title: string;
+    publishedAt?: string;
 };
 
 export type Review = {
-  id: string;
-  postId: string;
-  reviewerId: string;
-  verdict?: string;
+    id: string;
+    postId: string;
+    reviewerId: string;
+    verdict?: string;
 };
+export interface StaffComentario {
+    id: string;
+    usuarioId: string;
+    data: string;
+    parent: string | null;
+    comment: string;
+    __typename: "StaffComentario";
+}

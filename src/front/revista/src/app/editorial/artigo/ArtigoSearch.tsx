@@ -28,7 +28,7 @@ interface ArtigoSearchProps {
     loading: boolean;
 }
 
-// Interface para o usuário buscado na UsuarioAPI
+// Interface para o usuário buscados na UsuarioAPI
 interface UsuarioBusca {
     id: string; // Do UsuarioAPI
     name: string;

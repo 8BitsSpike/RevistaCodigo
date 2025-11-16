@@ -2,7 +2,6 @@
 
 import { useState, Suspense } from 'react';
 import { useQuery } from '@apollo/client/react';
-
 import { useSearchParams } from 'next/navigation';
 import { GET_ARTIGOS_POR_TIPO } from '@/graphql/queries';
 import Layout from '@/components/Layout';

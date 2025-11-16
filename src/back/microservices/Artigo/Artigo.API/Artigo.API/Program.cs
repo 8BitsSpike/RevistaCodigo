@@ -16,6 +16,8 @@ using Artigo.API.GraphQL.Inputs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var _myAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
 // =========================================================================
 // 1. CONFIGURAÇÃO DO MONGODB
 // =========================================================================
@@ -36,6 +38,16 @@ builder.Services.AddSingleton<Artigo.DbContext.Interfaces.IMongoDbContext>(sp =>
     return new MongoDbContext(client, databaseName);
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: _myAllowSpecificOrigins,
+                      policy =>
+                      {
+                          policy.WithOrigins("http://localhost:3000")
+                                .AllowAnyHeader()
+                                .AllowAnyMethod();
+                      });
+});
 
 // =========================================================================
 // 2. CONFIGURAÇÃO DO AUTOMAPPER
@@ -183,6 +195,10 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(_myAllowSpecificOrigins);
+}
 // =========================================================================
 // 6. MIDDLEWARE PIPELINE
 // =========================================================================

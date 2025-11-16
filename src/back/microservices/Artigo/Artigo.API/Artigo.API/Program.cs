@@ -45,7 +45,8 @@ builder.Services.AddCors(options =>
                       {
                           policy.WithOrigins("http://localhost:3000")
                                 .AllowAnyHeader()
-                                .AllowAnyMethod();
+                                .AllowAnyMethod()
+                                .AllowCredentials();
                       });
 });
 
@@ -194,15 +195,10 @@ builder.Services.AddAuthorization();
 
 
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors(_myAllowSpecificOrigins);
-}
 // =========================================================================
 // 6. MIDDLEWARE PIPELINE
 // =========================================================================
-
+app.UseCors(_myAllowSpecificOrigins);
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -38,7 +38,7 @@ interface CriarArtigoData {
     };
 }
 
-const API_USUARIO_BASE = 'https://localhost:44387/api/Usuario';
+const API_USUARIO_BASE = 'https://localhost:54868/api/Usuario';
 
 export default function SubmitArtigoClient() {
     const router = useRouter();
@@ -74,7 +74,7 @@ export default function SubmitArtigoClient() {
         onCompleted: (data) => {
             if (data?.criarArtigo?.id) {
                 toast.success('Artigo enviado com sucesso!');
-                router.push('/sessoes-especiais');
+                router.push('/professores');
             } else {
                 toast.error('Falha ao enviar artigo. Resposta inesperada.');
             }
@@ -98,11 +98,11 @@ export default function SubmitArtigoClient() {
                 return;
             }
 
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/Search?name=${authorSearchQuery}`, {
+                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?nome=${authorSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -291,7 +291,7 @@ export default function SubmitArtigoClient() {
     const handleDelete = () => {
         if (confirm("Tem certeza? Isso apagará todo o progresso.")) {
             toast.success('Rascunho deletado.');
-            router.push('/sessoes-especiais');
+            router.push('/professores');
         }
     };
 
@@ -378,7 +378,7 @@ export default function SubmitArtigoClient() {
                         <div className="flex flex-wrap gap-3 mt-4">
                             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-full">
                                 <div className="w-8 h-8 relative rounded-full overflow-hidden bg-gray-200">
-                                    {user?.foto && <Image src={user.foto} alt="Eu" fill className="object-cover" />}
+                                    {localStorage.userFoto && <Image src={localStorage.userFoto} alt="Eu" fill className="object-cover" />}
                                 </div>
                                 <span className="text-sm font-medium text-emerald-800">Você (Autor Principal)</span>
                             </div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { User, FileText } from 'lucide-react';
 
 // URL da UsuarioAPI
-const API_BASE = 'https://localhost:44387/api/Usuario';
+const API_BASE = 'https://localhost:54868/api/Usuario';
 
 // Props que o componente recebe da página (da query GET_ARTIGO_VIEW)
 interface AuthorCardProps {
@@ -27,7 +27,7 @@ export default function AuthorCard({ usuarioId, nome, urlFoto }: AuthorCardProps
 
     useEffect(() => {
         const fetchAutorProfile = async () => {
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!usuarioId || !token) {
                 setLoading(false);
                 return;
@@ -35,7 +35,7 @@ export default function AuthorCard({ usuarioId, nome, urlFoto }: AuthorCardProps
 
             try {
                 setLoading(true);
-                const res = await fetch(`${API_BASE}/${usuarioId}`, {
+                const res = await fetch(`${API_BASE}/${usuarioId}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 

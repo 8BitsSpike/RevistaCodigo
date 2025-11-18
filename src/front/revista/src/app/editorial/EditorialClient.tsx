@@ -29,7 +29,7 @@ interface CriarStaffData {
     criarNovoStaff: StaffMember;
 }
 
-const API_USUARIO_BASE = 'https://localhost:44387/api/Usuario';
+const API_USUARIO_BASE = 'https://localhost:54868/api/Usuario';
 const PAGE_SIZE = 50;
 
 export default function EditorialClient() {
@@ -87,11 +87,11 @@ export default function EditorialClient() {
                 setUserSearchResults([]);
                 return;
             }
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/Search?name=${userSearchQuery}`, {
+                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?name=${userSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

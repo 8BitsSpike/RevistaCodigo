@@ -85,7 +85,7 @@ export default function CreateCommentCard({
     );
 
     const loading = loadingPublic || loadingEditorial; // Combina o estado de loading
-    const usuarioNome = user?.name || "Usuário";
+    const usuarioNome = localStorage.userName || "Usuário";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

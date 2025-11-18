@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { User, ArrowLeft, Building2, Trash2, Briefcase } from 'lucide-react';
 
-const API_BASE = 'https://localhost:44387/api/Usuario';
+const API_BASE = 'https://localhost:54868/api/Usuario';
 
 interface InfoInstitucional {
     instituicao?: string;
@@ -63,7 +63,7 @@ export default function ProfileEditPage() {
     // Carregar perfil
     useEffect(() => {
         const id = localStorage.getItem('userId');
-        const token = localStorage.getItem('jwtToken');
+        const token = localStorage.getItem('userToken');
 
         if (!id || !token) {
             router.push('/login');
@@ -72,7 +72,7 @@ export default function ProfileEditPage() {
 
         const fetchProfile = async () => {
             try {
-                const res = await fetch(`${API_BASE}/${id}`, {
+                const res = await fetch(`${API_BASE}/${id}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error('Erro ao carregar o perfil');
@@ -176,11 +176,13 @@ export default function ProfileEditPage() {
         }
 
         setSaving(true);
-
+        if (usuario.foto && usuario.foto != localStorage.userFoto) {
+            localStorage.setItem('userFoto', usuario.foto ?? '');
+        };
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             const id = usuario._id || usuario.id;
-            const res = await fetch(`${API_BASE}/${id}`, {
+            const res = await fetch(`${API_BASE}/${id}?token=${token}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

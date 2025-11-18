@@ -10,8 +10,9 @@ import { GraduationCap, Mail, Calendar, Building2, FileText, Briefcase, BookMark
 import { useQuery } from "@apollo/client/react";
 import { GET_MEUS_ARTIGOS, GET_AUTOR_VIEW, GET_ARTIGOS_BY_IDS } from "@/graphql/queries";
 import ArticleCard from '@/components/ArticleCard';
+import { Console } from 'console';
 
-const API_BASE = 'https://localhost:44387/api/Usuario';
+const API_BASE = 'https://localhost:54868/api/Usuario';
 
 
 interface InfoInstitucional {
@@ -104,6 +105,7 @@ function ProfilePageContent() {
     // Define se esta é a página "Minha Conta" ou a página pública "Autor"
     const viewingOwnProfile = !urlId || urlId === loggedInUserId;
     setIsMyProfile(viewingOwnProfile);
+    console.log(viewingOwnProfile, "eu?");
     setAuthChecked(true);
   }, [urlId]);
 
@@ -138,14 +140,19 @@ function ProfilePageContent() {
 
   useEffect(() => {
     // Só roda depois que a verificação de auth foi feita
+    console.log("Estou autenticado:", authChecked);
+
     if (!authChecked) return;
 
     let targetId: string | null = null;
     let token: string | null = null;
 
     if (isMyProfile) {
-      targetId = localStorage.getItem('userId');
-      token = localStorage.getItem('jwtToken');
+      targetId = localStorage.userId;
+      token = localStorage.userToken;
+
+      console.log(targetId, token);
+
       if (!targetId || !token) {
         router.push('/login');
         return;
@@ -167,7 +174,7 @@ function ProfilePageContent() {
     const fetchProfile = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/${targetId}`, {
+        const res = await fetch(`${API_BASE}/${targetId}?token=${token}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error('Erro ao carregar o perfil');

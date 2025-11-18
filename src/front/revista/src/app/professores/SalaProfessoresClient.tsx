@@ -10,7 +10,7 @@ import Layout from '@/components/Layout';
 import ArticleCard from '@/components/ArticleCard';
 import { PenSquare, BookMarked } from 'lucide-react';
 
-const API_BASE = 'https://localhost:44387/api/Usuario';
+const API_BASE = 'https://localhost:54868/api/Usuario';
 
 interface ArtigoCardData {
     id: string;
@@ -54,7 +54,7 @@ export default function SalaProfessoresClient() {
             return;
         }
 
-        const token = localStorage.getItem('jwtToken'); // Token da UsuarioAPI
+        const token = localStorage.getItem('userToken'); // Token da UsuarioAPI
         if (!token) {
             router.push('/login');
             return;
@@ -63,7 +63,7 @@ export default function SalaProfessoresClient() {
         const fetchProfileBio = async () => {
             try {
                 setLoadingBio(true);
-                const res = await fetch(`${API_BASE}/${user.id}`, {
+                const res = await fetch(`${API_BASE}/${user.id}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error('Erro ao carregar dados do perfil');
@@ -117,7 +117,7 @@ export default function SalaProfessoresClient() {
 
                     <div className="flex flex-col items-start">
                         <Link
-                            href="/escreverArtigo"
+                            href="/professores/criarartigo"
                             aria-disabled={!canSubmit}
                             className={`
                 px-5 py-2 rounded-lg shadow-md text-white font-medium

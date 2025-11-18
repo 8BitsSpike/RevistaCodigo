@@ -36,7 +36,7 @@ interface UsuarioBusca {
     foto?: string;
 }
 
-const API_USUARIO_BASE = 'https://localhost:44387/api/Usuario';
+const API_USUARIO_BASE = 'https://localhost:54868/api/Usuario';
 
 // --- Componente ---
 
@@ -64,11 +64,11 @@ export default function ArtigoSearch({ staffList, onSearch, loading }: ArtigoSea
         }
 
         const delayDebounceFn = setTimeout(async () => {
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/Search?name=${authorSearchQuery}`, {
+                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?nome=${authorSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

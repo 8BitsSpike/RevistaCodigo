@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const RECOVER_API_URL = 'https://localhost:44387/api/Usuario/RequestPasswordReset';
+const RECOVER_API_URL = 'https://localhost:54868/api/Usuario/RequestPasswordReset';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
     const [error, setError] = useState('');
 
     const router = useRouter();
-    
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -101,11 +101,10 @@ export default function ForgotPasswordPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium transition duration-200 ease-in-out transform ${
-                                loading
+                            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium transition duration-200 ease-in-out transform ${loading
                                     ? 'bg-emerald-400 cursor-not-allowed'
                                     : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 hover:scale-[1.01]'
-                            } text-white`}
+                                } text-white`}
                         >
                             {loading ? (
                                 <div className="flex items-center space-x-2">

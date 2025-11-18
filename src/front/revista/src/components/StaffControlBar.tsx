@@ -49,7 +49,7 @@ interface UsuarioBusca {
     foto?: string;
 }
 
-const API_USUARIO_BASE = 'https://localhost:44387/api/Usuario';
+const API_USUARIO_BASE = 'https://localhost:54868/api/Usuario';
 
 // Tipos de Papel separados
 type ListTeamRole = 'initialAuthorId' | 'reviewerIds' | 'correctorIds';
@@ -77,11 +77,11 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
                 setResults([]);
                 return;
             }
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/Search?name=${query}`, {
+                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?name=${query}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -165,10 +165,10 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
         // Mesma lógica de busca do TeamSearchBox
         const delayDebounceFn = setTimeout(async () => {
             if (query.length < 3) { setResults([]); return; }
-            const token = localStorage.getItem('jwtToken');
+            const token = localStorage.getItem('userToken');
             if (!token) return;
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/Search?name=${query}`, {
+                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?name=${query}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

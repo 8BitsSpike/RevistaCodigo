@@ -7,6 +7,7 @@ import { AuthResponseSuccess, UserCredentials } from '@/types';
 import client from '@/lib/apolloClient';
 import { VERIFICAR_STAFF } from '@/graphql/queries';
 import toast from 'react-hot-toast';
+import { User } from 'lucide-react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -26,27 +27,31 @@ const EyeOffIcon = (props: IconProps) => (
   </svg>
 );
 
-const AUTH_API_URL = 'https://localhost:44387/api/Usuario/Authenticate';
-const USER_API_URL = 'https://localhost:44387/api/Usuario';
+const AUTH_API_URL = 'https://localhost:54868/api/Usuario/Authenticate';
+const USER_API_URL = 'https://localhost:54868/api/Usuario';
 
 interface VerificarStaffData {
   verificarStaff: boolean;
 }
 
 interface UserProfileData {
+  name: string;
+  sobrenome: string;
+  fullName: string;
   foto?: string;
   // ...outros campos do perfil
 }
 
+
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
 
   const redirectToHome = () => router.push('/');
 
@@ -83,28 +88,7 @@ export default function LoginPage() {
           ...data,
           id: data._id || data.id,
           jwtToken: data.jwtToken,
-          name: data.name,
-          sobrenome: data.sobrenome,
         };
-
-        localStorage.setItem('userToken', userData.jwtToken);
-        localStorage.setItem('userId', userData.id);
-
-        // --- ETAPA Buscar a foto do perfil ---
-        let userFoto: string | null = null;
-        try {
-          const profileResponse = await fetch(`${USER_API_URL}/${userData.id}`, {
-            headers: {
-              'Authorization': `Bearer ${userData.jwtToken}`,
-            },
-          });
-          if (profileResponse.ok) {
-            const profileData: UserProfileData = await profileResponse.json();
-            userFoto = profileData.foto || null;
-          }
-        } catch (profileError) {
-          console.error('Falha ao buscar foto do perfil:', profileError);
-        }
 
         // --- ETAPA Verificar o status de Staff na ArtigoAPI ---
         let isStaff = false;
@@ -114,22 +98,44 @@ export default function LoginPage() {
             query: VERIFICAR_STAFF,
           });
           isStaff = staffData?.verificarStaff || false;
+          if (isStaff === true) localStorage.setItem('isStaff', 'true');
+          else localStorage.setItem('isStaff', 'false');
         } catch (staffError) {
           console.error('Falha ao verificar status de staff:', staffError);
         }
 
-        localStorage.setItem('isStaff', isStaff.toString());
+        localStorage.setItem('userIsStaff', isStaff.toString());
 
-        // --- ETAPA Chamar o hook 'login' com todos os dados ---
+        // --- ETAPA Chamar o hook 'login' ---
         login({
           id: userData.id,
           jwtToken: userData.jwtToken,
-          name: userData.name,
-          sobrenome: userData.sobrenome,
-          foto: userFoto,
         });
 
-        toast.success(`Bem-vindo(a), ${userData.name}!`, { id: loginToast });
+        // --- ETAPA de consulta com UsuarioAPI para coleta de dados ---
+        try {
+          console.log(userData, userData.jwtToken);
+          const profileResponse = await fetch(`${USER_API_URL}/${userData.id}?token=${userData.jwtToken}`, {
+            headers: {
+              'Authorization': `Bearer ${userData.jwtToken}`,
+            },
+          });
+          if (profileResponse.ok) {
+            let profileData: UserProfileData = await profileResponse.json();
+            let userFullname: string = `${profileData.name} ${profileData.sobrenome}`.trim();
+            let userFoto: string | null = profileData.foto || null;
+            localStorage.setItem('userName', profileData.name);
+            localStorage.setItem('userSobrenome', profileData.sobrenome);
+            localStorage.setItem('userFullname', userFullname);
+            localStorage.setItem('userFoto', userFoto ?? '');
+          }
+        } catch (profileError) {
+          console.error('Falha ao buscar foto do perfil:', profileError);
+        }
+        console.log(localStorage);
+
+        toast.success(`Bem-vindo(a), ${localStorage.userFullname}!`, { id: loginToast });
+
         redirectToHome();
 
       } else {

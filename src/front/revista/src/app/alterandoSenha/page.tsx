@@ -38,7 +38,7 @@ const CheckCircleIcon = ({ isMet }: { isMet: boolean }) => (
   </svg>
 );
 
-const RESET_API_URL = 'https://localhost:44387/api/Usuario/ResetPassword';
+const RESET_API_URL = 'https://localhost:54868/api/Usuario/ResetPassword';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -204,11 +204,10 @@ export default function ResetPasswordPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`block w-full pr-10 px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition duration-150 ${
-                  confirmPassword.length > 0 && password !== confirmPassword
+                className={`block w-full pr-10 px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition duration-150 ${confirmPassword.length > 0 && password !== confirmPassword
                     ? 'border-red-500'
                     : 'border-gray-300'
-                }`}
+                  }`}
                 placeholder="********"
                 disabled={loading}
               />
@@ -234,9 +233,8 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading || password !== confirmPassword}
-            className={`w-full flex justify-center py-3 px-4 rounded-lg text-white font-medium transition ${
-              loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
-            }`}
+            className={`w-full flex justify-center py-3 px-4 rounded-lg text-white font-medium transition ${loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
           >
             {loading ? 'Redefinindo...' : 'Redefinir Senha'}
           </button>

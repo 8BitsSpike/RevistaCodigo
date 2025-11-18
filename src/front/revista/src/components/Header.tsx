@@ -148,9 +148,9 @@ export default function Header({
                                 title="Ver Perfil"
                             >
                                 <div className="relative h-10 w-10 rounded-full overflow-hidden bg-gray-200 border border-emerald-600">
-                                    {user.foto ? (
+                                    {localStorage.userFoto ? (
                                         <Image
-                                            src={user.foto}
+                                            src={localStorage.userFoto}
                                             alt="Foto de perfil"
                                             fill
                                             className="object-cover"
@@ -160,7 +160,7 @@ export default function Header({
                                     )}
                                 </div>
                                 <span className="text-sm font-medium text-gray-700">
-                                    {user.name}
+                                    {localStorage.userName}
                                 </span>
                             </div>
 

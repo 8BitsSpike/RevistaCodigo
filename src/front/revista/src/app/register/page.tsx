@@ -43,7 +43,7 @@ const CheckCircleIcon = ({ isMet }: { isMet: boolean }) => (
 );
 
 
-const REGISTER_API_URL = 'https://localhost:44387/api/Usuario/Register';
+const REGISTER_API_URL = 'https://localhost:54868/api/Usuario/Register';
 
 export default function RegisterPage() {
 
@@ -359,8 +359,8 @@ export default function RegisterPage() {
                             type="submit"
                             disabled={loading || !passwordValidationChecks.minLength || password !== passwordConfirm}
                             className={`${buttonBaseStyle} ${(loading || !passwordValidationChecks.minLength || password !== passwordConfirm)
-                                    ? buttonLoadingStyle
-                                    : buttonActiveStyle
+                                ? buttonLoadingStyle
+                                : buttonActiveStyle
                                 }`}
                         >
                             {loading ? (

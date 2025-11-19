@@ -34,12 +34,12 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<Pending?> GetByIdAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return null;
+            if (string.IsNullOrEmpty(id)) return null;
             var session = GetSession(sessionHandle);
 
             var find = (session != null)
-                ? _pendings.Find(session, p => p.Id == objectId.ToString())
-                : _pendings.Find(p => p.Id == objectId.ToString());
+                ? _pendings.Find(session, p => p.Id == id)
+                : _pendings.Find(p => p.Id == id);
 
             var model = await find.FirstOrDefaultAsync();
             return _mapper.Map<Pending>(model);
@@ -148,26 +148,26 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<bool> UpdateAsync(Pending pending, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(pending.Id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(pending.Id)) return false;
             var session = GetSession(sessionHandle);
 
             var model = _mapper.Map<PendingModel>(pending);
 
             var result = (session != null)
-                ? await _pendings.ReplaceOneAsync(session, p => p.Id == objectId.ToString(), model)
-                : await _pendings.ReplaceOneAsync(p => p.Id == objectId.ToString(), model);
+                ? await _pendings.ReplaceOneAsync(session, p => p.Id == pending.Id, model)
+                : await _pendings.ReplaceOneAsync(p => p.Id == pending.Id, model);
 
             return result.IsAcknowledged && result.ModifiedCount == 1;
         }
 
         public async Task<bool> DeleteAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(id)) return false;
             var session = GetSession(sessionHandle);
 
             var result = (session != null)
-                ? await _pendings.DeleteOneAsync(session, p => p.Id == objectId.ToString())
-                : await _pendings.DeleteOneAsync(p => p.Id == objectId.ToString());
+                ? await _pendings.DeleteOneAsync(session, p => p.Id == id)
+                : await _pendings.DeleteOneAsync(p => p.Id == id);
 
             return result.IsAcknowledged && result.DeletedCount == 1;
         }

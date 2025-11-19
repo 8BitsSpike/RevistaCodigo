@@ -3,7 +3,6 @@ using Artigo.Intf.Enums;
 using Artigo.Intf.Interfaces;
 using Artigo.Intf.Inputs;
 using AutoMapper;
-using System.Security.Claims;
 using System.Collections.Generic;
 using System.Linq;
 using System;
@@ -12,7 +11,8 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Text.Json;
 using System.Text.Encodings.Web;
-using System.Text.Json.Serialization; 
+using System.Text.Json.Serialization;
+using System.Security.Claims;
 
 namespace Artigo.Server.Services
 {
@@ -23,7 +23,6 @@ namespace Artigo.Server.Services
     public class ArtigoService : IArtigoService
     {
         private readonly IUnitOfWork _uow;
-
         private readonly IArtigoRepository _artigoRepository;
         private readonly IAutorRepository _autorRepository;
         private readonly IStaffRepository _staffRepository;
@@ -35,12 +34,12 @@ namespace Artigo.Server.Services
         private readonly IVolumeRepository _volumeRepository;
 
         /// <sumario>
-        ///  Opções de serialização JSON atualizadas.
+        /// Opções de serialização JSON atualizadas.
         /// </sumario>
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            // Converte Enums para Strings (ex: PosicaoEditorial.AguardandoRevisao -> "AguardandoRevisao")
+            // Converte Enums para Strings
             Converters = { new JsonStringEnumConverter() }
         };
 
@@ -146,9 +145,12 @@ namespace Artigo.Server.Services
             return staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.Administrador;
         }
 
-        // ----------------------------------------------------
-        // II. Metodos de Leitura (Queries)
-        // ----------------------------------------------------
+
+        // -------------------------------------------------------------------------
+        // II. ARTIGO CORE MANAGEMENT
+        // Acesso: Público (se Publicado) ou Autor/Staff (se em edição)
+        // -------------------------------------------------------------------------
+
         public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoPublicadoAsync(string id)
         {
             var artigo = await _artigoRepository.GetByIdAsync(id);
@@ -192,184 +194,6 @@ namespace Artigo.Server.Services
             return artigos;
         }
 
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListAsync(int pagina, int tamanho)
-        {
-            return await _artigoRepository.ObterArtigosCardListAsync(pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho)
-        {
-            return await _artigoRepository.ObterArtigosCardListPorTipoAsync(tipo, pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTituloAsync(string searchTerm, int pagina, int tamanho)
-        {
-            return await _artigoRepository.SearchArtigosCardListByTitleAsync(searchTerm, pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorNomeAutorAsync(string searchTerm, int pagina, int tamanho)
-        {
-            int skip = pagina * tamanho;
-
-            var autoresRegistrados = await _autorRepository.SearchAutoresByNameAsync(searchTerm);
-            var autorIds = autoresRegistrados.Select(a => a.Id).ToList().AsReadOnly();
-
-            Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresRegistrados;
-            if (autorIds.Count > 0)
-            {
-                taskAutoresRegistrados = _artigoRepository.SearchArtigosCardListByAutorIdsAsync(autorIds);
-            }
-            else
-            {
-                taskAutoresRegistrados = Task.FromResult<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(new List<Artigo.Intf.Entities.Artigo>());
-            }
-
-            Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresReferencia = _artigoRepository.SearchArtigosCardListByAutorReferenceAsync(searchTerm);
-
-            await Task.WhenAll(taskAutoresRegistrados, taskAutoresReferencia);
-
-            var artigosPorId = taskAutoresRegistrados.Result;
-            var artigosPorReferencia = taskAutoresReferencia.Result;
-
-            var artigosCombinados = new Dictionary<string, Artigo.Intf.Entities.Artigo>();
-
-            foreach (var artigo in artigosPorId)
-            {
-                artigosCombinados[artigo.Id] = artigo;
-            }
-            foreach (var artigo in artigosPorReferencia)
-            {
-                artigosCombinados[artigo.Id] = artigo;
-            }
-
-            return artigosCombinados.Values
-                .OrderByDescending(a => a.DataCriacao)
-                .Skip(skip)
-                .Take(tamanho)
-                .ToList()
-                .AsReadOnly();
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorListaIdsAsync(IReadOnlyList<string> ids)
-        {
-            var artigos = await _artigoRepository.GetByIdsAsync(ids);
-            return artigos.Where(a => a.Status == StatusArtigo.Publicado).ToList();
-        }
-
-        public async Task<Autor?> ObterAutorCardAsync(string autorId)
-        {
-            return await _autorRepository.GetByIdAsync(autorId);
-        }
-
-        public async Task<Volume?> ObterVolumeCardAsync(string volumeId)
-        {
-            return await _volumeRepository.GetByIdAsync(volumeId);
-        }
-
-        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoViewAsync(string artigoId)
-        {
-            var artigo = await _artigoRepository.GetByIdAsync(artigoId);
-            if (artigo == null || artigo.Status != StatusArtigo.Publicado)
-            {
-                return null;
-            }
-            return artigo;
-        }
-
-        public async Task<Volume?> ObterVolumeViewAsync(string volumeId)
-        {
-            var volume = await _volumeRepository.GetByIdAsync(volumeId);
-            if (volume == null || volume.Status != StatusVolume.Publicado)
-            {
-                return null;
-            }
-            return volume;
-        }
-
-        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoEditorialViewAsync(string artigoId, string currentUsuarioId)
-        {
-            var artigo = await _artigoRepository.GetByIdAsync(artigoId);
-            if (artigo == null) return null;
-
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-
-            if (staff != null && (staff.Job == FuncaoTrabalho.Administrador || staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.EditorBolsista))
-            {
-                return artigo;
-            }
-
-            var editorial = await _editorialRepository.GetByIdAsync(artigo.EditorialId);
-            if (editorial == null)
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para visualizar os dados editoriais deste artigo.");
-            }
-
-            var team = editorial.Team;
-            var allowedUsuarioIds = team.InitialAuthorId
-                .Concat(team.ReviewerIds)
-                .Concat(team.CorrectorIds)
-                .ToList();
-
-            if (allowedUsuarioIds.Contains(currentUsuarioId))
-            {
-                return artigo;
-            }
-
-            throw new UnauthorizedAccessException("Usuário não tem permissão para visualizar os dados editoriais deste artigo.");
-        }
-
-        public async Task<IReadOnlyList<Volume>> ObterVolumesListAsync(int pagina, int tamanho)
-        {
-            return await _volumeRepository.ObterVolumesListAsync(pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterMeusArtigosCardListAsync(string currentUsuarioId)
-        {
-            var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (autor == null || autor.ArtigoWorkIds == null || !autor.ArtigoWorkIds.Any())
-            {
-                return new List<Artigo.Intf.Entities.Artigo>();
-            }
-            var artigos = await _artigoRepository.ObterArtigosCardListPorAutorIdAsync(autor.Id);
-            return artigos;
-        }
-
-        // --- (MÉTODOS PARA STAFF) ---
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
-            }
-            return await _artigoRepository.ObterArtigosEditorialPorTipoAsync(tipo, pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
-            }
-            return await _artigoRepository.SearchArtigosEditorialByTitleAsync(searchTerm, pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
-            }
-            return await _artigoRepository.SearchArtigosEditorialByAutorIdsAsync(autorIds, pagina, tamanho);
-        }
-
-
-        // ----------------------------------------------------
-        // III. Metodos de Escrita (Mutations)
-        // ----------------------------------------------------
         public async Task<Artigo.Intf.Entities.Artigo> CreateArtigoAsync(Artigo.Intf.Entities.Artigo artigo, string conteudoInicial, List<MidiaEntry> midiasCompletas, List<Autor> autores, string currentUsuarioId, string commentary)
         {
             await _uow.StartTransactionAsync();
@@ -698,11 +522,327 @@ namespace Artigo.Server.Services
             throw new UnauthorizedAccessException("Usuário não tem permissão para modificar a equipe editorial.");
         }
 
-        // ----------------------------------------------------
-        // IV. Metodos de Interacao e Workflow
-        // ----------------------------------------------------
+        // -------------------------------------------------------------------------
+        // III. ARTIGO QUERY FORMATS
+        // Acesso: Público ou Staff/Autor (para MeusArtigos/EditorialView)
+        // -------------------------------------------------------------------------
 
-        public async Task<Artigo.Intf.Entities.Interaction> CriarComentarioPublicoAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string? parentCommentId)
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListAsync(int pagina, int tamanho)
+        {
+            return await _artigoRepository.ObterArtigosCardListAsync(pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho)
+        {
+            return await _artigoRepository.ObterArtigosCardListPorTipoAsync(tipo, pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorTituloAsync(string searchTerm, int pagina, int tamanho)
+        {
+            return await _artigoRepository.SearchArtigosCardListByTitleAsync(searchTerm, pagina, tamanho);
+        }
+
+        public async Task<Autor?> ObterAutorCardAsync(string autorId)
+        {
+            return await _autorRepository.GetByIdAsync(autorId);
+        }
+
+        public async Task<Volume?> ObterVolumeCardAsync(string volumeId)
+        {
+            return await _volumeRepository.GetByIdAsync(volumeId);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosCardListPorNomeAutorAsync(string searchTerm, int pagina, int tamanho)
+        {
+            int skip = pagina * tamanho;
+
+            var autoresRegistrados = await _autorRepository.SearchAutoresByNameAsync(searchTerm);
+            var autorIds = autoresRegistrados.Select(a => a.Id).ToList().AsReadOnly();
+
+            Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresRegistrados;
+            if (autorIds.Count > 0)
+            {
+                taskAutoresRegistrados = _artigoRepository.SearchArtigosCardListByAutorIdsAsync(autorIds);
+            }
+            else
+            {
+                taskAutoresRegistrados = Task.FromResult<IReadOnlyList<Artigo.Intf.Entities.Artigo>>(new List<Artigo.Intf.Entities.Artigo>());
+            }
+
+            Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> taskAutoresReferencia = _artigoRepository.SearchArtigosCardListByAutorReferenceAsync(searchTerm);
+
+            await Task.WhenAll(taskAutoresRegistrados, taskAutoresReferencia);
+
+            var artigosPorId = taskAutoresRegistrados.Result;
+            var artigosPorReferencia = taskAutoresReferencia.Result;
+
+            var artigosCombinados = new Dictionary<string, Artigo.Intf.Entities.Artigo>();
+
+            foreach (var artigo in artigosPorId)
+            {
+                artigosCombinados[artigo.Id] = artigo;
+            }
+            foreach (var artigo in artigosPorReferencia)
+            {
+                artigosCombinados[artigo.Id] = artigo;
+            }
+
+            return artigosCombinados.Values
+                .OrderByDescending(a => a.DataCriacao)
+                .Skip(skip)
+                .Take(tamanho)
+                .ToList()
+                .AsReadOnly();
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosPorListaIdsAsync(IReadOnlyList<string> ids)
+        {
+            var artigos = await _artigoRepository.GetByIdsAsync(ids);
+            return artigos.Where(a => a.Status == StatusArtigo.Publicado).ToList();
+        }
+
+        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoViewAsync(string artigoId)
+        {
+            var artigo = await _artigoRepository.GetByIdAsync(artigoId);
+            if (artigo == null || artigo.Status != StatusArtigo.Publicado)
+            {
+                return null;
+            }
+            return artigo;
+        }
+
+        public async Task<Artigo.Intf.Entities.Artigo?> ObterArtigoEditorialViewAsync(string artigoId, string currentUsuarioId)
+        {
+            var artigo = await _artigoRepository.GetByIdAsync(artigoId);
+            if (artigo == null) return null;
+
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+
+            if (staff != null && (staff.Job == FuncaoTrabalho.Administrador || staff.Job == FuncaoTrabalho.EditorChefe || staff.Job == FuncaoTrabalho.EditorBolsista))
+            {
+                return artigo;
+            }
+
+            var editorial = await _editorialRepository.GetByIdAsync(artigo.EditorialId);
+            if (editorial == null)
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para visualizar os dados editoriais deste artigo.");
+            }
+
+            var team = editorial.Team;
+            var allowedUsuarioIds = team.InitialAuthorId
+                .Concat(team.ReviewerIds)
+                .Concat(team.CorrectorIds)
+                .ToList();
+
+            if (allowedUsuarioIds.Contains(currentUsuarioId))
+            {
+                return artigo;
+            }
+
+            throw new UnauthorizedAccessException("Usuário não tem permissão para visualizar os dados editoriais deste artigo.");
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterMeusArtigosCardListAsync(string currentUsuarioId)
+        {
+            var autor = await _autorRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (autor == null || autor.ArtigoWorkIds == null || !autor.ArtigoWorkIds.Any())
+            {
+                return new List<Artigo.Intf.Entities.Artigo>();
+            }
+            var artigos = await _artigoRepository.ObterArtigosCardListPorAutorIdAsync(autor.Id);
+            return artigos;
+        }
+
+        // --- Métodos de Busca Editorial (Staff) ---
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.ObterArtigosEditorialPorTipoAsync(tipo, pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.SearchArtigosEditorialByTitleAsync(searchTerm, pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosEditorialByAutorIdsAsync(IReadOnlyList<string> autorIds, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para esta busca.");
+            }
+            return await _artigoRepository.SearchArtigosEditorialByAutorIdsAsync(autorIds, pagina, tamanho);
+        }
+
+
+        // -------------------------------------------------------------------------
+        // IV. VOLUME MANAGEMENT
+        // Acesso: Público (ObterVolumesListAsync/ObterVolumeViewAsync) ou Staff (Busca e Mutação)
+        // -------------------------------------------------------------------------
+
+        public async Task<IReadOnlyList<Volume>> ObterVolumesListAsync(int pagina, int tamanho)
+        {
+            return await _volumeRepository.ObterVolumesListAsync(pagina, tamanho);
+        }
+
+        public async Task<Volume?> ObterVolumeViewAsync(string volumeId)
+        {
+            var volume = await _volumeRepository.GetByIdAsync(volumeId);
+            if (volume == null || volume.Status != StatusVolume.Publicado)
+            {
+                return null;
+            }
+            return volume;
+        }
+
+        public async Task<Volume> CriarVolumeAsync(Volume novoVolume, string currentUsuarioId, string commentary)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+
+            novoVolume.Status = StatusVolume.EmRevisao;
+
+            if (staff?.Job == FuncaoTrabalho.EditorBolsista)
+            {
+                var parameters = JsonSerializer.Serialize(novoVolume, _jsonSerializerOptions);
+                var pending = new Pending
+                {
+                    TargetEntityId = "N/A",
+                    TargetType = TipoEntidadeAlvo.Volume,
+                    CommandType = "CreateVolume",
+                    CommandParametersJson = parameters,
+                    Commentary = commentary,
+                    RequesterUsuarioId = currentUsuarioId
+                };
+                await _pendingRepository.AddAsync(pending);
+                return novoVolume;
+            }
+
+            if (!CanEditVolume(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para criar novos volumes.");
+            }
+
+            await _volumeRepository.AddAsync(novoVolume);
+            return novoVolume;
+        }
+
+        public async Task<bool> AtualizarMetadadosVolumeAsync(string volumeId, UpdateVolumeMetadataInput input, string currentUsuarioId, string commentary)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+
+            if (staff?.Job == FuncaoTrabalho.EditorBolsista)
+            {
+                var parameters = JsonSerializer.Serialize(input, _jsonSerializerOptions);
+                var pending = new Pending
+                {
+                    TargetEntityId = volumeId,
+                    TargetType = TipoEntidadeAlvo.Volume,
+                    CommandType = "UpdateVolume",
+                    CommandParametersJson = parameters,
+                    Commentary = commentary,
+                    RequesterUsuarioId = currentUsuarioId
+                };
+                await _pendingRepository.AddAsync(pending);
+                return true;
+            }
+
+            if (!CanEditVolume(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para atualizar os metadados do volume.");
+            }
+
+            var existingVolume = await _volumeRepository.GetByIdAsync(volumeId);
+            if (existingVolume == null)
+            {
+                throw new KeyNotFoundException($"Volume com ID {volumeId} não encontrado.");
+            }
+
+            ApplyVolumeMetadataUpdates(existingVolume, input);
+
+            return await _volumeRepository.UpdateAsync(existingVolume);
+        }
+
+        private void ApplyVolumeMetadataUpdates(Volume existingVolume, UpdateVolumeMetadataInput input)
+        {
+            if (input.Edicao.HasValue)
+                existingVolume.Edicao = input.Edicao.Value;
+            if (input.VolumeTitulo != null)
+                existingVolume.VolumeTitulo = input.VolumeTitulo;
+            if (input.VolumeResumo != null)
+                existingVolume.VolumeResumo = input.VolumeResumo;
+            if (input.M.HasValue)
+                existingVolume.M = input.M.Value;
+            if (input.N.HasValue)
+                existingVolume.N = input.N.Value;
+            if (input.Year.HasValue)
+                existingVolume.Year = input.Year.Value;
+            if (input.Status.HasValue)
+                existingVolume.Status = input.Status.Value;
+            if (input.ImagemCapa != null)
+                existingVolume.ImagemCapa = input.ImagemCapa;
+            if (input.ArtigoIds != null)
+                existingVolume.ArtigoIds = input.ArtigoIds;
+        }
+
+        public async Task<IReadOnlyList<Volume>> ObterVolumesAsync(int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes.");
+            }
+            return await _volumeRepository.GetAllAsync(pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Volume>> ObterVolumesPorAnoAsync(int ano, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes por ano.");
+            }
+            return await _volumeRepository.GetByYearAsync(ano, pagina, tamanho);
+        }
+
+        public async Task<IReadOnlyList<Volume>> ObterVolumesPorStatusAsync(StatusVolume status, int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes por status.");
+            }
+            return await _volumeRepository.ObterVolumesPorStatusAsync(status, pagina, tamanho);
+        }
+
+        public async Task<Volume?> ObterVolumePorIdAsync(string idVolume, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (!IsStaff(staff))
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para buscar um volume.");
+            }
+            return await _volumeRepository.GetByIdAsync(idVolume);
+        }
+
+
+        // -------------------------------------------------------------------------
+        // V. INTERACTION & STAFF COMMENT MANAGEMENT
+        // Acesso: Autenticado, Staff ou Membro da Equipe Editorial
+        // -------------------------------------------------------------------------
+
+        public async Task<Interaction> CriarComentarioPublicoAsync(string artigoId, Interaction newComment, string? parentCommentId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
             if (artigo == null)
@@ -737,7 +877,7 @@ namespace Artigo.Server.Services
             return newComment;
         }
 
-        public async Task<Artigo.Intf.Entities.Interaction> CriarComentarioEditorialAsync(string artigoId, Artigo.Intf.Entities.Interaction newComment, string currentUsuarioId)
+        public async Task<Interaction> CriarComentarioEditorialAsync(string artigoId, Interaction newComment, string currentUsuarioId)
         {
             var artigo = await _artigoRepository.GetByIdAsync(artigoId);
             if (artigo == null) throw new KeyNotFoundException("Artigo não encontrado.");
@@ -814,6 +954,8 @@ namespace Artigo.Server.Services
         {
             return await _interactionRepository.GetPublicCommentsAsync(artigoId, pagina, tamanho);
         }
+
+        // --- Métodos StaffComentario (para ArtigoHistory) ---
 
         public async Task<ArtigoHistory> AddStaffComentarioAsync(string historyId, string usuarioId, string comment, string? parent)
         {
@@ -895,7 +1037,13 @@ namespace Artigo.Server.Services
             return history;
         }
 
-        public async Task<Artigo.Intf.Entities.Pending> CriarRequisicaoPendenteAsync(Artigo.Intf.Entities.Pending newRequest, string currentUsuarioId)
+
+        // -------------------------------------------------------------------------
+        // VI. PENDING (FLUXO DE APROVAÇÃO) MANAGEMENT
+        // Acesso: Staff (Criação - Bolsista, Resolução - Admin/Chefe)
+        // -------------------------------------------------------------------------
+
+        public async Task<Pending> CriarRequisicaoPendenteAsync(Pending newRequest, string currentUsuarioId)
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
 
@@ -1121,152 +1269,11 @@ namespace Artigo.Server.Services
             return await _pendingRepository.BuscarPendenciaPorRequisitanteId(requesterUsuarioId);
         }
 
-        // --- Volume Methods ---
 
-        public async Task<Volume> CriarVolumeAsync(Volume novoVolume, string currentUsuarioId, string commentary)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-
-            novoVolume.Status = StatusVolume.EmRevisao;
-
-            if (staff?.Job == FuncaoTrabalho.EditorBolsista)
-            {
-                var parameters = JsonSerializer.Serialize(novoVolume, _jsonSerializerOptions);
-                var pending = new Pending
-                {
-                    TargetEntityId = "N/A",
-                    TargetType = TipoEntidadeAlvo.Volume,
-                    CommandType = "CreateVolume",
-                    CommandParametersJson = parameters,
-                    Commentary = commentary,
-                    RequesterUsuarioId = currentUsuarioId
-                };
-                await _pendingRepository.AddAsync(pending);
-                return novoVolume;
-            }
-
-            if (!CanEditVolume(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para criar novos volumes.");
-            }
-
-            await _volumeRepository.AddAsync(novoVolume);
-            return novoVolume;
-        }
-
-        public async Task<bool> AtualizarMetadadosVolumeAsync(string volumeId, UpdateVolumeMetadataInput input, string currentUsuarioId, string commentary)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-
-            if (staff?.Job == FuncaoTrabalho.EditorBolsista)
-            {
-                var parameters = JsonSerializer.Serialize(input, _jsonSerializerOptions);
-                var pending = new Pending
-                {
-                    TargetEntityId = volumeId,
-                    TargetType = TipoEntidadeAlvo.Volume,
-                    CommandType = "UpdateVolume",
-                    CommandParametersJson = parameters,
-                    Commentary = commentary,
-                    RequesterUsuarioId = currentUsuarioId
-                };
-                await _pendingRepository.AddAsync(pending);
-                return true;
-            }
-
-            if (!CanEditVolume(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para atualizar os metadados do volume.");
-            }
-
-            var existingVolume = await _volumeRepository.GetByIdAsync(volumeId);
-            if (existingVolume == null)
-            {
-                throw new KeyNotFoundException($"Volume com ID {volumeId} não encontrado.");
-            }
-
-            ApplyVolumeMetadataUpdates(existingVolume, input);
-
-            return await _volumeRepository.UpdateAsync(existingVolume);
-        }
-
-        private void ApplyVolumeMetadataUpdates(Volume existingVolume, UpdateVolumeMetadataInput input)
-        {
-            if (input.Edicao.HasValue)
-                existingVolume.Edicao = input.Edicao.Value;
-            if (input.VolumeTitulo != null)
-                existingVolume.VolumeTitulo = input.VolumeTitulo;
-            if (input.VolumeResumo != null)
-                existingVolume.VolumeResumo = input.VolumeResumo;
-            if (input.M.HasValue)
-                existingVolume.M = input.M.Value;
-            if (input.N.HasValue)
-                existingVolume.N = input.N.Value;
-            if (input.Year.HasValue)
-                existingVolume.Year = input.Year.Value;
-            if (input.Status.HasValue)
-                existingVolume.Status = input.Status.Value;
-            if (input.ImagemCapa != null)
-                existingVolume.ImagemCapa = input.ImagemCapa;
-            if (input.ArtigoIds != null)
-                existingVolume.ArtigoIds = input.ArtigoIds;
-        }
-
-        public async Task<IReadOnlyList<Volume>> ObterVolumesAsync(int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes.");
-            }
-            return await _volumeRepository.GetAllAsync(pagina, tamanho);
-        }
-
-        public async Task<IReadOnlyList<Volume>> ObterVolumesPorAnoAsync(int ano, int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes por ano.");
-            }
-            return await _volumeRepository.GetByYearAsync(ano, pagina, tamanho);
-        }
-
-
-
-        public async Task<IReadOnlyList<Volume>> ObterVolumesPorStatusAsync(StatusVolume status, int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para listar volumes por status.");
-            }
-            return await _volumeRepository.ObterVolumesPorStatusAsync(status, pagina, tamanho);
-        }
-
-        public async Task<Volume?> ObterVolumePorIdAsync(string idVolume, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (!IsStaff(staff))
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para buscar um volume.");
-            }
-            return await _volumeRepository.GetByIdAsync(idVolume);
-        }
-
-        // =========================================================================
-        // STAFF MANAGEMENT
-        // =========================================================================
-
-        public async Task<IReadOnlyList<Autor>> ObterAutoresAsync(int pagina, int tamanho, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (staff == null)
-            {
-                throw new UnauthorizedAccessException("Usuário não tem permissão para listar todos os autores.");
-            }
-            return await _autorRepository.GetAllAsync(pagina, tamanho);
-        }
+        // -------------------------------------------------------------------------
+        // VII. STAFF & AUTOR MANAGEMENT
+        // Acesso: Staff (Busca) ou Dono (Busca de próprio Autor/Staff)
+        // -------------------------------------------------------------------------
 
         public async Task<Staff> CriarNovoStaffAsync(Staff novoStaff, string currentUsuarioId, string commentary)
         {
@@ -1376,6 +1383,38 @@ namespace Artigo.Server.Services
             return staffToUpdate;
         }
 
+        public async Task<IReadOnlyList<Autor>> ObterAutoresAsync(int pagina, int tamanho, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (staff == null)
+            {
+                throw new UnauthorizedAccessException("Usuário não tem permissão para listar todos os autores.");
+            }
+            return await _autorRepository.GetAllAsync(pagina, tamanho);
+        }
+
+        public async Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId)
+        {
+            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
+            if (IsStaff(staff))
+            {
+                return await _autorRepository.GetByIdAsync(idAutor);
+            }
+
+            var autor = await _autorRepository.GetByIdAsync(idAutor);
+            if (autor == null)
+            {
+                return null;
+            }
+
+            if (autor.UsuarioId == currentUsuarioId)
+            {
+                return autor;
+            }
+
+            throw new UnauthorizedAccessException("Usuário deve ser Staff ou o próprio autor para buscar este registro.");
+        }
+
         public async Task<Staff?> ObterStaffPorIdAsync(string staffId, string currentUsuarioId)
         {
             var requestingStaff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
@@ -1400,28 +1439,6 @@ namespace Artigo.Server.Services
         {
             var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
             return IsStaff(staff);
-        }
-
-        public async Task<Autor?> ObterAutorPorIdAsync(string idAutor, string currentUsuarioId)
-        {
-            var staff = await _staffRepository.GetByUsuarioIdAsync(currentUsuarioId);
-            if (IsStaff(staff))
-            {
-                return await _autorRepository.GetByIdAsync(idAutor);
-            }
-
-            var autor = await _autorRepository.GetByIdAsync(idAutor);
-            if (autor == null)
-            {
-                return null;
-            }
-
-            if (autor.UsuarioId == currentUsuarioId)
-            {
-                return autor;
-            }
-
-            throw new UnauthorizedAccessException("Usuário deve ser Staff ou o próprio autor para buscar este registro.");
         }
     }
 }

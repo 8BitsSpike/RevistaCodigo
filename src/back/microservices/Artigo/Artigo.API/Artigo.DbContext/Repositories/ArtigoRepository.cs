@@ -38,20 +38,19 @@ namespace Artigo.DbContext.Repositories
                 .Include(a => a.Resumo)
                 .Include(a => a.DataCriacao)
                 .Include(a => a.MidiaDestaque)
-                .Include(a => a.Status) 
-                .Include(a => a.Tipo)  
-                .Include(a => a.PermitirComentario); 
+                .Include(a => a.Status)
+                .Include(a => a.Tipo)
+                .Include(a => a.PermitirComentario);
 
         // --- Implementação dos Métodos da Interface ---
 
         public async Task<Artigo.Intf.Entities.Artigo?> GetByIdAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return null;
             var session = GetSession(sessionHandle);
 
             var find = (session != null)
-                ? _artigos.Find(session, a => a.Id == objectId.ToString())
-                : _artigos.Find(a => a.Id == objectId.ToString());
+                ? _artigos.Find(session, a => a.Id == id)
+                : _artigos.Find(a => a.Id == id);
 
             var model = await find.FirstOrDefaultAsync();
             return _mapper.Map<Artigo.Intf.Entities.Artigo>(model);
@@ -149,22 +148,24 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<bool> UpdateAsync(Artigo.Intf.Entities.Artigo artigo, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(artigo.Id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(artigo.Id)) return false;
             var session = GetSession(sessionHandle);
             var model = _mapper.Map<ArtigoModel>(artigo);
 
             var result = (session != null)
-                ? await _artigos.ReplaceOneAsync(session, a => a.Id == objectId.ToString(), model)
-                : await _artigos.ReplaceOneAsync(a => a.Id == objectId.ToString(), model);
+                ? await _artigos.ReplaceOneAsync(session, a => a.Id == artigo.Id, model)
+                // Usando artigo.Id diretamente
+                : await _artigos.ReplaceOneAsync(a => a.Id == artigo.Id, model);
 
             return result.IsAcknowledged && result.ModifiedCount == 1;
         }
 
         public async Task<bool> UpdateMetricsAsync(string id, int totalComentarios, int totalInteracoes, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(id)) return false;
             var session = GetSession(sessionHandle);
-            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Id, objectId.ToString());
+            var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Id, id);
+            // Usando id diretamente
 
             var update = Builders<ArtigoModel>.Update
                 .Set(a => a.TotalComentarios, totalComentarios)
@@ -179,12 +180,13 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<bool> DeleteAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(id)) return false;
             var session = GetSession(sessionHandle);
 
             var result = (session != null)
-                ? await _artigos.DeleteOneAsync(session, a => a.Id == objectId.ToString())
-                : await _artigos.DeleteOneAsync(a => a.Id == objectId.ToString());
+                ? await _artigos.DeleteOneAsync(session, a => a.Id == id)
+                // Usando id diretamente
+                : await _artigos.DeleteOneAsync(a => a.Id == id);
 
             return result.IsAcknowledged && result.DeletedCount == 1;
         }
@@ -263,17 +265,17 @@ namespace Artigo.DbContext.Repositories
         public async Task<IReadOnlyList<Artigo.Intf.Entities.Artigo>> SearchArtigosCardListByAutorReferenceAsync(string searchTerm, object? sessionHandle = null)
         {
             var session = GetSession(sessionHandle);
+            string fullMatchRegex = $"^{System.Text.RegularExpressions.Regex.Escape(searchTerm)}$";
 
             // 1. Filtro (Publicado E Regex no AutorReference)
             var filter = Builders<ArtigoModel>.Filter.Eq(a => a.Status, StatusArtigo.Publicado) &
-                         Builders<ArtigoModel>.Filter.Regex(a => a.AutorReference, new BsonRegularExpression(searchTerm, "i"));
+                         Builders<ArtigoModel>.Filter.Regex(a => a.AutorReference, new BsonRegularExpression(fullMatchRegex, "i"));
 
             var find = (session != null)
                 ? _artigos.Find(session, filter)
                 : _artigos.Find(filter);
 
             var models = await find
-                // Ordenar ANTES de projetar
                 .SortByDescending(a => a.DataCriacao)
                 .Project<ArtigoModel>(_cardProjection)
                 .ToListAsync();
@@ -341,7 +343,6 @@ namespace Artigo.DbContext.Repositories
             int skip = pagina * tamanho;
             var session = GetSession(sessionHandle);
 
-            // Apenas filtra por AutorIds
             var filter = Builders<ArtigoModel>.Filter.AnyIn(a => a.AutorIds, autorIds);
 
             var find = (session != null)

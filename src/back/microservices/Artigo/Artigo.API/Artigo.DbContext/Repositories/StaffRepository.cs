@@ -42,13 +42,13 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<Staff?> GetByIdAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return null;
+            if (string.IsNullOrEmpty(id)) return null;
             var session = GetSession(sessionHandle);
 
-            // Adicionada verificação de sessão nula
+            // verificação de sessão nula
             var find = (session != null)
-                ? _staff.Find(session, s => s.Id == objectId.ToString())
-                : _staff.Find(s => s.Id == objectId.ToString());
+                ? _staff.Find(session, s => s.Id == id)
+                : _staff.Find(s => s.Id == id);
 
             var model = await find.FirstOrDefaultAsync();
 
@@ -59,7 +59,7 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // Adicionada verificação de sessão nula
+            // verificação de sessão nula
             var find = (session != null)
                 ? _staff.Find(session, s => s.UsuarioId == usuarioId)
                 : _staff.Find(s => s.UsuarioId == usuarioId);
@@ -73,7 +73,7 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
-            // Adicionada verificação de sessão nula
+            // verificação de sessão nula
             var find = (session != null)
                 ? _staff.Find(session, s => s.Job == role)
                 : _staff.Find(s => s.Job == role);
@@ -126,26 +126,26 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<bool> UpdateAsync(Staff staffMember, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(staffMember.Id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(staffMember.Id)) return false;
             var session = GetSession(sessionHandle);
 
             var model = _mapper.Map<StaffModel>(staffMember);
 
             var result = (session != null)
-                ? await _staff.ReplaceOneAsync(session, s => s.Id == objectId.ToString(), model)
-                : await _staff.ReplaceOneAsync(s => s.Id == objectId.ToString(), model);
+                ? await _staff.ReplaceOneAsync(session, s => s.Id == staffMember.Id, model)
+                : await _staff.ReplaceOneAsync(s => s.Id == staffMember.Id, model);
 
             return result.IsAcknowledged && result.ModifiedCount == 1;
         }
 
         public async Task<bool> DeleteAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(id)) return false;
             var session = GetSession(sessionHandle);
 
             var result = (session != null)
-                ? await _staff.DeleteOneAsync(session, s => s.Id == objectId.ToString())
-                : await _staff.DeleteOneAsync(s => s.Id == objectId.ToString());
+                ? await _staff.DeleteOneAsync(session, s => s.Id == id)
+                : await _staff.DeleteOneAsync(s => s.Id == id);
 
             return result.IsAcknowledged && result.DeletedCount == 1;
         }

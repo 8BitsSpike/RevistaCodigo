@@ -10,12 +10,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+
 namespace Artigo.API.GraphQL.Mutations
 {
-    /// <summary>
-    /// Define os métodos de modificação de dados (Mutations), utilizando Constructor Injection.
-    /// Esta classe é mapeada manually em ArtigoMutationType.cs para evitar erros.
-    /// </summary>
     public class ArtigoMutation
     {
         private readonly IArtigoService _artigoService;
@@ -27,18 +24,19 @@ namespace Artigo.API.GraphQL.Mutations
             _mapper = mapper;
         }
 
+        // =========================================================================
+        // ARTIGO CORE MUTATIONS
+        // =========================================================================
+
         public async Task<ArtigoDTO> CreateArtigoAsync(
             CreateArtigoRequest input,
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
 
-            // Mapeia DTOs para Entidades antes de chamar o serviço
             var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(input);
             var autores = _mapper.Map<List<Autor>>(input.Autores);
-
-            // Mapeia a lista completa de DTOs de mídia para entidades de mídia
             var midiasCompletas = _mapper.Map<List<MidiaEntry>>(input.Midias);
 
             var createdArtigo = await _artigoService.CreateArtigoAsync(newArtigo, input.Conteudo, midiasCompletas, autores, currentUsuarioId, commentary);
@@ -51,10 +49,8 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
 
-            // Passa o DTO de input diretamente para o serviço.
-            // O serviço irá lidar com a lógica de atualização parcial (Bug Fix).
             var success = await _artigoService.AtualizarMetadadosArtigoAsync(id, input, currentUsuarioId, commentary);
 
             if (success)
@@ -63,52 +59,34 @@ namespace Artigo.API.GraphQL.Mutations
                                        ?? throw new InvalidOperationException("Artigo atualizado, mas falha ao recuperá-lo.");
                 return _mapper.Map<ArtigoDTO>(updatedEntity);
             }
-
-            throw new InvalidOperationException("Falha ao atualizar metadados do artigo. Verifique a ID ou permissões.");
+            throw new InvalidOperationException("Falha ao atualizar metadados do artigo.");
         }
 
-        /// <summary>
-        /// Atualiza o conteúdo e a lista de mídias de um artigo.
-        /// </summary>
         public async Task<bool> AtualizarConteudoArtigoAsync(
             string artigoId,
             string newContent,
-            List<MidiaEntryInputDTO> midias, // Recebe DTOs de input
+            List<MidiaEntryInputDTO> midias,
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            // Mapeia os DTOs de input para entidades
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             var midiasEntidades = _mapper.Map<List<MidiaEntry>>(midias);
-
-            return await _artigoService.AtualizarConteudoArtigoAsync(
-                artigoId,
-                newContent,
-                midiasEntidades, // Passa a lista de entidades
-                currentUsuarioId,
-                commentary
-            );
+            return await _artigoService.AtualizarConteudoArtigoAsync(artigoId, newContent, midiasEntidades, currentUsuarioId, commentary);
         }
 
-        /// <summary>
-        /// Atualiza a equipe editorial (revisores, corretores) de um artigo.
-        /// </summary>
         public async Task<Editorial> AtualizarEquipeEditorialAsync(
             string artigoId,
-            EditorialTeam teamInput, // Recebe a entidade EditorialTeam mapeada do InputType
+            EditorialTeam teamInput,
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            return await _artigoService.AtualizarEquipeEditorialAsync(
-                artigoId,
-                teamInput,
-                currentUsuarioId,
-                commentary
-            );
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            return await _artigoService.AtualizarEquipeEditorialAsync(artigoId, teamInput, currentUsuarioId, commentary);
         }
+
+        // =========================================================================
+        // INTERACTION MUTATIONS
+        // =========================================================================
 
         public async Task<Interaction> CreatePublicCommentAsync(
             string artigoId,
@@ -117,8 +95,7 @@ namespace Artigo.API.GraphQL.Mutations
             string? parentCommentId,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
@@ -127,7 +104,6 @@ namespace Artigo.API.GraphQL.Mutations
                 Type = TipoInteracao.ComentarioPublico,
                 ParentCommentId = parentCommentId
             };
-
             return await _artigoService.CriarComentarioPublicoAsync(artigoId, newComment, parentCommentId);
         }
 
@@ -137,8 +113,7 @@ namespace Artigo.API.GraphQL.Mutations
             string usuarioNome,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
@@ -147,115 +122,30 @@ namespace Artigo.API.GraphQL.Mutations
                 Type = TipoInteracao.ComentarioEditorial,
                 ParentCommentId = null
             };
-
             return await _artigoService.CriarComentarioEditorialAsync(artigoId, newComment, currentUsuarioId);
         }
 
-        /// <summary>
-        /// Atualiza o conteúdo de uma interação (comentário).
-        /// </summary>
         public async Task<Interaction> AtualizarInteracaoAsync(
             string interacaoId,
             string newContent,
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.AtualizarInteracaoAsync(interacaoId, newContent, currentUsuarioId, commentary);
         }
 
-        /// <summary>
-        /// Deleta uma interação (comentário).
-        /// </summary>
         public async Task<bool> DeletarInteracaoAsync(
             string interacaoId,
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.DeletarInteracaoAsync(interacaoId, currentUsuarioId, commentary);
         }
 
-        /// <summary>
-        /// Metodo para criar um novo registro de Staff para um usuário e define sua função de trabalho.
-        /// </summary>
-        public async Task<Staff> CriarNovoStaffAsync(
-            CreateStaffRequest input,
-            string commentary,
-            ClaimsPrincipal claims)
-        {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            // Mapeia DTO para Entidade
-            var novoStaff = _mapper.Map<Staff>(input);
-
-            return await _artigoService.CriarNovoStaffAsync(
-                novoStaff,
-                currentUsuarioId,
-                commentary
-            );
-        }
-
-        /// <summary>
-        /// (NOVO) Metodo para atualizar o registro de um Staff (promover, demover, aposentar).
-        /// </summary>
-        public async Task<StaffViewDTO> AtualizarStaffAsync(
-            UpdateStaffInput input,
-            string commentary,
-            ClaimsPrincipal claims)
-        {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            var updatedStaffEntity = await _artigoService.AtualizarStaffAsync(
-                input,
-                currentUsuarioId,
-                commentary
-            );
-
-            // Mapeia a entidade Staff (retornada pelo serviço) para o DTO de visualização
-            return _mapper.Map<StaffViewDTO>(updatedStaffEntity);
-        }
-
-        /// <summary>
-        /// Metodo para criar um novo registro de Volume (Edição de revista).
-        /// </summary>
-        public async Task<Volume> CriarVolumeAsync(
-            CreateVolumeRequest input,
-            string commentary,
-            ClaimsPrincipal claims)
-        {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            var novoVolume = _mapper.Map<Volume>(input);
-
-            return await _artigoService.CriarVolumeAsync(
-                novoVolume,
-                currentUsuarioId,
-                commentary
-            );
-        }
-
-        /// <summary>
-        /// Metodo para atualizar os metadados de um Volume (Edição de revista).
-        /// </summary>
-        public async Task<bool> AtualizarMetadadosVolumeAsync(
-            string volumeId,
-            UpdateVolumeMetadataInput input,
-            string commentary,
-            ClaimsPrincipal claims)
-        {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            return await _artigoService.AtualizarMetadadosVolumeAsync(
-                volumeId,
-                input,
-                currentUsuarioId,
-                commentary
-            );
-        }
-
         // =========================================================================
-        // *** MUTAÇÕES (StaffComentario) ***
+        // STAFF COMMENT MUTATIONS
         // =========================================================================
 
         public async Task<ArtigoHistory> AddStaffComentarioAsync(
@@ -264,7 +154,7 @@ namespace Artigo.API.GraphQL.Mutations
             string? parent,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.AddStaffComentarioAsync(historyId, currentUsuarioId, comment, parent);
         }
 
@@ -274,7 +164,7 @@ namespace Artigo.API.GraphQL.Mutations
             string newContent,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.UpdateStaffComentarioAsync(historyId, comentarioId, newContent, currentUsuarioId);
         }
 
@@ -283,36 +173,77 @@ namespace Artigo.API.GraphQL.Mutations
             string comentarioId,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.DeleteStaffComentarioAsync(historyId, comentarioId, currentUsuarioId);
         }
 
+
         // =========================================================================
-        // *** MÉTODO (Manual Pending) ***
+        // STAFF MANAGEMENT MUTATIONS
         // =========================================================================
 
-        /// <summary>
-        /// Cria manually uma nova requisição pendente (Admin).
-        /// </summary>
+        public async Task<Staff> CriarNovoStaffAsync(
+            CreateStaffRequest input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var novoStaff = _mapper.Map<Staff>(input);
+            return await _artigoService.CriarNovoStaffAsync(novoStaff, currentUsuarioId, commentary);
+        }
+
+        public async Task<StaffViewDTO> AtualizarStaffAsync(
+            UpdateStaffInput input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var updatedStaffEntity = await _artigoService.AtualizarStaffAsync(input, currentUsuarioId, commentary);
+            return _mapper.Map<StaffViewDTO>(updatedStaffEntity);
+        }
+
+        // =========================================================================
+        // VOLUME MANAGEMENT MUTATIONS
+        // =========================================================================
+
+        public async Task<Volume> CriarVolumeAsync(
+            CreateVolumeRequest input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var novoVolume = _mapper.Map<Volume>(input);
+            return await _artigoService.CriarVolumeAsync(novoVolume, currentUsuarioId, commentary);
+        }
+
+        public async Task<bool> AtualizarMetadadosVolumeAsync(
+            string volumeId,
+            UpdateVolumeMetadataInput input,
+            string commentary,
+            ClaimsPrincipal claims)
+        {
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            return await _artigoService.AtualizarMetadadosVolumeAsync(volumeId, input, currentUsuarioId, commentary);
+        }
+
+        // =========================================================================
+        // PENDING MANAGEMENT MUTATIONS
+        // =========================================================================
+
         public async Task<Pending> CriarRequisicaoPendenteAsync(
             Pending input,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            // O input já é a entidade 'Pending'
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.CriarRequisicaoPendenteAsync(input, currentUsuarioId);
         }
 
-        /// <summary>
-        /// (NOVO) Resolve uma requisição pendente (Aprova ou Rejeita).
-        /// </summary>
         public async Task<bool> ResolverRequisicaoPendenteAsync(
             string pendingId,
             bool isApproved,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
             return await _artigoService.ResolverRequisicaoPendenteAsync(pendingId, isApproved, currentUsuarioId);
         }
     }

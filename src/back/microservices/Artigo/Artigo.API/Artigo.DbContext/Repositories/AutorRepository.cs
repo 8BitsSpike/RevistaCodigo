@@ -32,12 +32,13 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<Autor?> GetByIdAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return null;
+            if (string.IsNullOrEmpty(id)) return null;
+
             var session = GetSession(sessionHandle);
 
             var find = (session != null)
-                ? _autores.Find(session, a => a.Id == objectId.ToString())
-                : _autores.Find(a => a.Id == objectId.ToString());
+                ? _autores.Find(session, a => a.Id == id)
+                : _autores.Find(a => a.Id == id);
 
             var model = await find.FirstOrDefaultAsync();
             return _mapper.Map<Autor>(model);
@@ -108,7 +109,8 @@ namespace Artigo.DbContext.Repositories
                 .Set(a => a.ArtigoWorkIds, model.ArtigoWorkIds)
                 .Set(a => a.Contribuicoes, model.Contribuicoes)
                 // Define quais campos serão criados apenas na inserção ($setOnInsert)
-                .SetOnInsert(a => a.Id, ObjectId.GenerateNewId().ToString()) // Gera ID apenas se for novo
+                // Mantemos o ObjectId.GenerateNewId().ToString() aqui pois o campo Id no model é vazio na criação
+                .SetOnInsert(a => a.Id, ObjectId.GenerateNewId().ToString())
                 .SetOnInsert(a => a.UsuarioId, model.UsuarioId);
 
             var options = new UpdateOptions { IsUpsert = true };
@@ -127,12 +129,12 @@ namespace Artigo.DbContext.Repositories
 
         public async Task<bool> DeleteAsync(string id, object? sessionHandle = null)
         {
-            if (!ObjectId.TryParse(id, out var objectId)) return false;
+            if (string.IsNullOrEmpty(id)) return false;
             var session = GetSession(sessionHandle);
 
             var result = (session != null)
-                ? await _autores.DeleteOneAsync(session, a => a.Id == objectId.ToString())
-                : await _autores.DeleteOneAsync(a => a.Id == objectId.ToString());
+                ? await _autores.DeleteOneAsync(session, a => a.Id == id)
+                : await _autores.DeleteOneAsync(a => a.Id == id);
 
             return result.IsAcknowledged && result.DeletedCount == 1;
         }
@@ -144,8 +146,10 @@ namespace Artigo.DbContext.Repositories
         {
             var session = GetSession(sessionHandle);
 
+            string fullMatchRegex = $"^{System.Text.RegularExpressions.Regex.Escape(searchTerm)}$";
+
             // Filtro de busca (Regex no Nome, case-insensitive)
-            var filter = Builders<AutorModel>.Filter.Regex(a => a.Nome, new BsonRegularExpression(searchTerm, "i"));
+            var filter = Builders<AutorModel>.Filter.Regex(a => a.Nome, new BsonRegularExpression(fullMatchRegex, "i"));
 
             var find = (session != null)
                 ? _autores.Find(session, filter)

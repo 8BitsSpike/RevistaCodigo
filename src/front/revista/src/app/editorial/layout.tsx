@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ApolloWrapper } from "@/components/ApolloWrapper";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
@@ -25,25 +24,23 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-            <body
-                suppressHydrationWarning
-                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-            >
-                <ApolloWrapper>
-                    <Toaster
-                        position="top-right" // Posição
-                        toastOptions={{
-                            duration: 4000, // 4 segundos
-                            style: {
-                                background: '#333',
-                                color: '#fff',
-                            },
-                        }}
-                    />
-                    {children}
-                </ApolloWrapper>
-            </body>
-        </html>
+        <body
+            suppressHydrationWarning
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+            <ApolloWrapper>
+                <Toaster
+                    position="top-right" // Posição
+                    toastOptions={{
+                        duration: 4000, // 4 segundos
+                        style: {
+                            background: '#333',
+                            color: '#fff',
+                        },
+                    }}
+                />
+                {children}
+            </ApolloWrapper>
+        </body>
     );
 }

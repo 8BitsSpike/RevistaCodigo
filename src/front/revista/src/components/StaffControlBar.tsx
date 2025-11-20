@@ -1,21 +1,20 @@
 'use client';
 
 import { useState, useEffect, ChangeEvent } from 'react';
-import { useMutation, useLazyQuery } from '@apollo/client';
+import { useMutation } from '@apollo/client';
 import {
     ATUALIZAR_METADADOS_ARTIGO,
     ATUALIZAR_EQUIPE_EDITORIAL,
 } from '@/graphql/queries';
-import useAuth from '@/hooks/useAuth';
+import { USER_API_BASE } from '@/lib/fetcher';
 import CommentaryModal from './CommentaryModal';
 import { StatusArtigo, PosicaoEditorial, TipoArtigo } from '@/types/enums';
 import { StaffMember } from '@/components/StaffCard';
-import { X, Search, User } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 // --- Tipos ---
-
 interface EditorialTeamData {
     initialAuthorId: string[];
     editorId: string;
@@ -49,9 +48,6 @@ interface UsuarioBusca {
     foto?: string;
 }
 
-const API_USUARIO_BASE = 'https://localhost:54868/api/Usuario';
-
-// Tipos de Papel separados
 type ListTeamRole = 'initialAuthorId' | 'reviewerIds' | 'correctorIds';
 type SingleTeamRole = 'editorId';
 
@@ -70,7 +66,6 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UsuarioBusca[]>([]);
 
-    // Busca na UsuarioAPI
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (query.length < 3) {
@@ -81,7 +76,8 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?name=${query}?token=${token}`, {
+                // Use USER_API_BASE
+                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${query}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -162,18 +158,17 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
     const [results, setResults] = useState<UsuarioBusca[]>([]);
 
     useEffect(() => {
-        // Mesma lógica de busca do TeamSearchBox
         const delayDebounceFn = setTimeout(async () => {
             if (query.length < 3) { setResults([]); return; }
             const token = localStorage.getItem('userToken');
             if (!token) return;
             try {
-                const res = await fetch(`${API_USUARIO_BASE}/UserSearch?name=${query}?token=${token}`, {
+                // Use USER_API_BASE
+                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${query}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
                     const data: UsuarioBusca[] = await res.json();
-                    // Filtra o usuário atual e autores
                     const filtered = data.filter(u => u.id !== currentId && !authorIds.includes(u.id));
                     setResults(filtered);
                 }
@@ -211,7 +206,6 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
                     </ul>
                 )}
             </div>
-            {/* Mostra o usuário selecionado ou um placeholder */}
             <div className="mt-2 h-[120px] overflow-y-auto border bg-gray-50 rounded-md p-2 space-y-2">
                 {!member ? (
                     <p className="text-xs text-gray-400 text-center p-4">Nenhum editor definido</p>
@@ -234,7 +228,6 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
 // --- Componente Principal (StaffControlBar) ---
 
 export default function StaffControlBar({ artigoId, editorialId, currentData, staffList, onUpdate }: StaffControlBarProps) {
-
     const [formData, setFormData] = useState({
         status: currentData.status,
         posicao: currentData.editorial.position,
@@ -250,9 +243,6 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
 
     const loading = loadingMeta || loadingTeam;
 
-    // --- (HANDLERS CORRIGIDOS) ---
-
-    // Para listas (Autores, Revisores, Corretores)
     const handleTeamAdd = (role: ListTeamRole, userId: string) => {
         setTeamData(prev => ({
             ...prev,
@@ -263,16 +253,14 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
     const handleTeamRemove = (role: ListTeamRole, userId: string) => {
         setTeamData(prev => ({
             ...prev,
-            // O 'filter' agora só opera em arrays (ListTeamRole)
             [role]: prev[role].filter((id: string) => id !== userId)
         }));
     };
 
-    // Handler para campos de string única (EditorId)
     const handleTeamSet = (role: SingleTeamRole, userId: string) => {
         setTeamData(prev => ({
             ...prev,
-            [role]: userId // Define a string diretamente
+            [role]: userId
         }));
     };
 
@@ -300,14 +288,12 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
         setIsModalOpen(true);
     };
 
-    // Chamado pelo modal
     const handleConfirmSave = async (commentary: string) => {
         const toastId = toast.loading("Salvando alterações...");
 
         try {
             const mutationsToRun = [];
 
-            // Mutação de Metadados
             const metaInput = {
                 status: formData.status !== currentData.status ? formData.status : null,
                 tipo: formData.tipo !== currentData.tipo ? formData.tipo : null,
@@ -326,7 +312,6 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                 );
             }
 
-            // 2. Mutação de Equipe
             if (JSON.stringify(teamData) !== JSON.stringify(currentData.editorial.team)) {
                 mutationsToRun.push(
                     atualizarEquipe({
@@ -371,7 +356,6 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                     boxShadow: '0 6px 10px rgba(0,0,0,0.4)',
                 }}
             >
-                {/* --- Formulário Superior (Metadados) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div>
                         <label className="block text-sm font-semibold">Status do Artigo</label>
@@ -404,14 +388,11 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                     </div>
                 </div>
 
-                {/* --- Divisor --- */}
                 <div className="w-[70%] h-px bg-gray-300 my-6 mx-auto"></div>
 
-                {/* --- Formulário Inferior (Equipe) --- */}
                 <div>
                     <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">Equipe Editorial</h3>
                     <div className="flex flex-wrap gap-4">
-
                         <TeamSearchBox
                             title="Autores:"
                             role="initialAuthorId"
@@ -439,8 +420,6 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
-
-                        {/* Renderiza o novo componente para EditorId */}
                         <SingleUserSearchBox
                             title="Editor Chefe:"
                             role="editorId"
@@ -449,11 +428,9 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                             authorIds={teamData.initialAuthorId}
                             onSet={handleTeamSet}
                         />
-
                     </div>
                 </div>
 
-                {/* --- Botões de Ação (Salvar/Cancelar) --- */}
                 <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-200">
                     <button
                         onClick={handleCancel}

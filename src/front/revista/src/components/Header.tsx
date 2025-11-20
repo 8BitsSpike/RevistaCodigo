@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, FormEvent, useRef, useEffect } from 'react';
-import { Menu, X, Search, User, LogOut, ListFilter, Check, FileCheck, FileCog, Presentation } from 'lucide-react'; // (NOVO) Ícones editoriais
+import { Menu, X, Search, User, LogOut, ListFilter, Check, FileCheck, FileCog, Presentation } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 
 export type HeaderProps = {
@@ -26,33 +26,28 @@ export default function Header({
     const [searchMenuOpen, setSearchMenuOpen] = useState(false);
     const [showHint, setShowHint] = useState(false);
     const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     const [isStaff, setIsStaff] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const staffStatus = localStorage.getItem('isStaff') === 'true';
-            setIsStaff(staffStatus);
+        if (user) {
+            setIsStaff(user.isStaff);
         }
     }, [user]);
 
-    // Menu de Navegação Padrão
     const secondary = [
         { label: 'Edições Especiais', href: '/volume' },
         { label: 'Artigos', href: '/artigo/tipos?tipo=Artigo' },
         { label: 'Opinião', href: '/artigo/tipos?tipo=Opiniao' },
         { label: 'Indicação', href: '/artigo/tipos?tipo=Indicacao' },
         { label: 'Entrevistas', href: '/artigo/tipos?tipo=Entrevistas' },
-        { label: 'Vídeos', href: '/artigo/tipos?tipo=Videos' },
+        { label: 'Vídeos', href: '/artigo/tipos?tipo=Video' },
         { label: 'Blog da Editoria', href: '/artigo/tipos?tipo=Blog' },
         { label: 'Sala dos Professores', href: '/professores' }
     ];
 
-    // Menu de Navegação Editorial
     const editorialNavLinks = [
         { label: 'Controle de pendências', href: '/editorial/pendencias', icon: <FileCheck size={14} /> },
-        { label: 'Controle de artigos', href: '/editorial/artigos', icon: <FileCog size={14} /> },
+        { label: 'Controle de artigos', href: '/editorial/artigo', icon: <FileCog size={14} /> },
         { label: 'Sala de imprensa', href: '/editorial/imprensa', icon: <Presentation size={14} /> },
     ];
 
@@ -63,16 +58,6 @@ export default function Header({
         { label: 'Apoio', href: '/apoio' },
         { label: 'Parceiros', href: '/parceiros' }
     ];
-
-    const clearCloseTimeout = () => {
-        if (closeTimeout.current) clearTimeout(closeTimeout.current as unknown as number);
-        closeTimeout.current = null;
-    };
-
-    const scheduleClose = (delay = 150) => {
-        clearCloseTimeout();
-        closeTimeout.current = setTimeout(() => setSubmenuOpen(false), delay);
-    };
 
     const handleSearch = (e: FormEvent) => {
         e.preventDefault();
@@ -110,12 +95,10 @@ export default function Header({
         }
     };
 
-    // Determina qual menu exibir
     const navLinks = pageType === 'editorial' ? editorialNavLinks : secondary;
 
     return (
         <header id="site-header" className="w-full bg-white sticky top-0 z-40 shadow-sm">
-            {/* Barra Superior (Logo, Links Topo, Login) */}
             <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
                 <Link href="/" className="flex items-center gap-4">
                     <div className="w-16 h-15 rounded overflow-hidden bg-transparent flex items-center justify-center">
@@ -167,7 +150,7 @@ export default function Header({
                             <button
                                 aria-label="Sair"
                                 onClick={handleLogout}
-                                className="p-2 rounded-md hover:bg-gray-50 text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#F69A73] cursor-pointer"
+                                className="btn-icon"
                                 title="Sair"
                             >
                                 <LogOut size={18} />
@@ -176,7 +159,7 @@ export default function Header({
                     ) : (
                         <Link
                             href="/login"
-                            className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                            className="btn-primary"
                         >
                             Login
                         </Link>
@@ -199,22 +182,19 @@ export default function Header({
                 <div className="max-w-6xl mx-auto px-6 pb-4 flex justify-start">
                     <button
                         onClick={() => router.push('/editorial')}
-                        className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm font-medium"
+                        className="btn-primary"
                     >
                         Sala Editorial
                     </button>
                 </div>
             )}
 
-            {/* Barra de Navegação Principal (condicional) */}
             <div className="border-t border-gray-200">
                 <nav className="max-w-7xl mx-auto px-4 py-6 hidden md:block">
                     <ul className="flex gap-6 items-center text-sm">
 
-                        {/* Renderiza o menu correto (editorial ou padrão) */}
                         {navLinks.map((item) => {
                             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-
                             return (
                                 <li key={item.href}>
                                     <Link
@@ -224,14 +204,13 @@ export default function Header({
                                             : 'text-gray-700 hover:text-[#F69A73]'
                                             } transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#F69A73]`}
                                     >
-                                        {(item as any).icon} {/* Adiciona o ícone se ele existir */}
+                                        {(item as any).icon}
                                         {item.label}
                                     </Link>
                                 </li>
                             );
                         })}
 
-                        {/* A Busca só aparece no menu padrão */}
                         {pageType === 'default' && (
                             <li className="ml-4 relative">
                                 <form onSubmit={handleSearch} className="flex items-center">
@@ -247,7 +226,9 @@ export default function Header({
 
                                     <div className="relative flex-grow">
                                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"><Search /></span>
+                                        <label htmlFor="header-search" className="sr-only">Pesquisar artigos</label>
                                         <input
+                                            id="header-search"
                                             aria-label="Pesquisar"
                                             value={query}
                                             onChange={(e) => setQuery(e.target.value)}
@@ -299,12 +280,10 @@ export default function Header({
                     </ul>
                 </nav>
 
-                {/*  Menu Mobile Condicional */}
                 {open && (
                     <div className="md:hidden border-t bg-white">
                         <div className="px-4 py-3">
                             <div className="flex flex-col gap-3">
-
                                 {navLinks.map((s) => (
                                     <div key={s.href}>
                                         <Link href={s.href} className="text-gray-800 font-medium py-2 block" onClick={() => setOpen(false)}>
@@ -313,11 +292,12 @@ export default function Header({
                                     </div>
                                 ))}
 
-                                {/* Busca Mobile (apenas no modo 'default') */}
                                 {pageType === 'default' && (
                                     <form onSubmit={handleSearch} className="pt-2 relative">
                                         <span className="absolute left-3 top-3 text-gray-400"><Search /></span>
+                                        <label htmlFor="mobile-search" className="sr-only">Pesquisar</label>
                                         <input
+                                            id="mobile-search"
                                             aria-label="Pesquisar"
                                             value={query}
                                             onChange={(e) => setQuery(e.target.value)}
@@ -327,12 +307,11 @@ export default function Header({
                                     </form>
                                 )}
 
-                                {/* Mobile login/logout/staff */}
                                 <div className="pt-4 space-y-3">
                                     {isStaff && (
                                         <button
                                             onClick={() => { router.push('/editorial'); setOpen(false); }}
-                                            className="w-full px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                                            className="btn-primary w-full"
                                         >
                                             Sala Editorial
                                         </button>
@@ -347,7 +326,7 @@ export default function Header({
                                     ) : (
                                         <Link
                                             href="/login"
-                                            className="w-full block text-center px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                                            className="btn-primary w-full block text-center"
                                             onClick={() => setOpen(false)}
                                         >
                                             Login

@@ -2,31 +2,24 @@
 
 import { Suspense } from 'react';
 import { useQuery } from '@apollo/client/react';
-import { useParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation'; // FIX: useSearchParams
 import { GET_VOLUME_VIEW } from '@/graphql/queries';
 import Layout from '@/components/Layout';
 import ArticleCard from '@/components/ArticleCard';
-import { BookMarked } from 'lucide-react';
-
+import { BookMarked, Loader2 } from 'lucide-react';
 
 interface ArtigoCardData {
     id: string;
     titulo: string;
     resumo?: string;
-    midiaDestaque?: {
-        url: string;
-        textoAlternativo: string;
-    };
+    midiaDestaque?: { url: string; textoAlternativo: string; };
 }
 
 interface VolumeViewData {
     id: string;
     volumeTitulo: string;
     volumeResumo: string;
-    imagemCapa?: {
-        url: string;
-        textoAlternativo: string;
-    };
+    imagemCapa?: { url: string; textoAlternativo: string; };
     artigos: ArtigoCardData[];
 }
 
@@ -34,55 +27,34 @@ interface VolumeViewQueryData {
     obterVolumeView: VolumeViewData;
 }
 
-
 function VolumePageContent() {
-    const params = useParams();
-    const volumeId = params.id as string;
+    const searchParams = useSearchParams();
+    const volumeId = searchParams.get('id'); // FIX: Get ID from query param
 
     const { data, loading, error } = useQuery<VolumeViewQueryData>(
         GET_VOLUME_VIEW,
         {
             variables: { volumeId },
-            skip: !volumeId, // Pula a query se o ID não estiver presente
+            skip: !volumeId,
         }
     );
 
     const volume = data?.obterVolumeView;
 
-    if (loading) {
-        return (
-            <Layout>
-                <p className="text-center mt-20 text-gray-600">Carregando Volume...</p>
-            </Layout>
-        );
-    }
-
-    if (error) {
-        return (
-            <Layout>
-                <p className="text-center mt-20 text-red-600">Erro ao carregar o volume: {error.message}</p>
-            </Layout>
-        );
-    }
-
-    if (!volume) {
-        return (
-            <Layout>
-                <p className="text-center mt-20 text-gray-600">Volume não encontrado.</p>
-            </Layout>
-        );
-    }
+    if (loading) return <Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div></Layout>;
+    if (error) return <Layout><div className="text-center mt-20 text-red-600">Erro ao carregar o volume.</div></Layout>;
+    if (!volumeId) return <Layout><div className="text-center mt-20 text-gray-600">Nenhum volume selecionado.</div></Layout>;
+    if (!volume) return <Layout><div className="text-center mt-20 text-gray-600">Volume não encontrado.</div></Layout>;
 
     return (
         <Layout>
             <div className="w-full mx-auto mb-[5vh]">
-
                 <ul className="w-full flex flex-col items-center">
                     <ArticleCard
                         id={volume.id}
                         title={volume.volumeTitulo}
                         excerpt={volume.volumeResumo}
-                        href={`/volume/${volume.id}`}
+                        href={`/volume?id=${volume.id}`} // Keep consistent
                         imagem={volume.imagemCapa ? {
                             url: volume.imagemCapa.url,
                             textoAlternativo: volume.imagemCapa.textoAlternativo
@@ -90,7 +62,6 @@ function VolumePageContent() {
                     />
                 </ul>
 
-                {/* Lista de Artigos no Volume */}
                 <div className="mt-12 w-[90%] mx-auto">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-2">
                         <BookMarked className="text-emerald-600" />
@@ -126,7 +97,7 @@ function VolumePageContent() {
 
 export default function VolumePageWrapper() {
     return (
-        <Suspense fallback={<Layout><p className="text-center mt-20 text-gray-600">Carregando...</p></Layout>}>
+        <Suspense fallback={<Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div></Layout>}>
             <VolumePageContent />
         </Suspense>
     );

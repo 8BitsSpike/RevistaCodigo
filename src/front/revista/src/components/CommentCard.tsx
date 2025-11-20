@@ -7,8 +7,7 @@ import { DELETAR_INTERACAO, ATUALIZAR_INTERACAO } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
 import CreateCommentCard from './CreateCommentCard';
 import toast from 'react-hot-toast';
-
-// --- Tipos de Dados ---
+import { formatDate } from '@/lib/dateUtils';
 
 export interface Comment {
     id: string;
@@ -94,8 +93,6 @@ export default function CommentCard({
         },
     });
 
-    // --- Handlers ---
-
     const handleUpdate = () => {
         if (!editedContent.trim()) return;
         updateInteraction({
@@ -107,28 +104,20 @@ export default function CommentCard({
         });
     };
 
-    const formattedDate = new Date(comment.dataCriacao).toLocaleDateString('pt-BR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-
     return (
         <div
-            className={`bg-white shadow border border-gray-100 rounded-lg ${comment.parentCommentId ? 'ml-[2%]' : ''}`}
+            className={`card-std ${comment.parentCommentId ? 'ml-[2%]' : ''}`}
             style={{
                 width: comment.parentCommentId ? '98%' : '100%',
                 margin: '10px 1%',
                 padding: '20px 0.5%',
             }}
         >
-            {/* Card Principal */}
             <div className="px-4">
-                {/* Header do Card: Nome, Data e Botões de Ação */}
                 <div className="flex justify-between items-start mb-2">
                     <div>
                         <span className="font-semibold text-gray-800">{comment.usuarioNome}</span>
-                        <span className="text-xs text-gray-500 ml-2">{formattedDate}</span>
+                        <span className="text-xs text-gray-500 ml-2">{formatDate(comment.dataCriacao)}</span>
                     </div>
 
                     {(isAuthor || isStaff) && !isEditing && (
@@ -153,13 +142,12 @@ export default function CommentCard({
                     )}
                 </div>
 
-                {/* Corpo do Card: Conteúdo ou Textarea de Edição */}
                 {isEditing ? (
                     <div className="mt-2">
                         <textarea
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
-                            className="w-full h-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="input-std h-24"
                         />
                         <div className="flex justify-end gap-3 mt-2">
                             <button
@@ -198,7 +186,6 @@ export default function CommentCard({
                     </div>
                 )}
 
-                {/* Footer do Card: Botão Responder */}
                 {isPublic && permitirRespostas && !isEditing && (
                     <div className="flex justify-end mt-3">
                         <button
@@ -212,7 +199,6 @@ export default function CommentCard({
                 )}
             </div>
 
-            {/* Seção de Resposta (CreateCommentCard) */}
             {isReplying && (
                 <div className="mt-4 px-2">
                     <CreateCommentCard
@@ -227,7 +213,6 @@ export default function CommentCard({
                 </div>
             )}
 
-            {/* Seção de Respostas (Recursiva) */}
             {comment.replies && comment.replies.length > 0 && (
                 <div className="mt-0 border-t border-gray-100 pt-2">
                     {comment.replies.map(reply => (

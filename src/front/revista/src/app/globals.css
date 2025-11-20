@@ -21,20 +21,63 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Esta seção define como a página deve parecer ao ser impressa */
+/* --- CLASSES UTILITÁRIAS CENTRALIZADAS --- */
+
+@layer components {
+  /* Acessibilidade / Edge Friendly 
+     Esconde o elemento visualmente, mas mantém acessível para leitores de tela.
+  */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Inputs e Selects Padronizados */
+  .input-std {
+    @apply w-full p-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200;
+  }
+
+  /* Botões Padronizados */
+  .btn-primary {
+    @apply px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg shadow-sm hover:bg-emerald-700 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2 border border-gray-200;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors disabled:opacity-50;
+  }
+
+  /* Cards Padronizados */
+  .card-std {
+    @apply bg-white shadow border border-gray-100 rounded-lg overflow-hidden;
+  }
+}
+
+/* --- ESTILOS DE IMPRESSÃO --- */
 @media print {
-  /* Oculta tudo por padrão */
   body * {
     visibility: hidden;
   }
 
-  /* Define a área de impressão */
   .print-container,
   .print-container * {
     visibility: visible;
   }
 
-  /* Remove margens da área de impressão */
   .print-container {
     position: absolute;
     left: 0;
@@ -44,17 +87,14 @@ body {
     margin: 0;
   }
 
-  /* Oculta elementos desnecessários */
   .print-hide {
     display: none !important;
   }
 
-  /* Garante que o conteúdo do artigo seja exibido corretamente */
   .print-show {
     display: block !important;
   }
 
-  /* Estilização do conteúdo impresso */
   .print-title {
     font-size: 24pt;
     font-weight: bold;
@@ -75,7 +115,7 @@ body {
   }
 
   .print-content img {
-    max-width: 100% !important; /* Garante que as imagens do conteúdo caibam */
+    max-width: 100% !important;
     display: block;
     margin: 10px 0;
   }
@@ -87,14 +127,12 @@ body {
     border-top: 1px solid #ccc;
   }
 
-  /* Impede que links apareçam no PDF */
   a,
   a:visited {
     text-decoration: none;
     color: #000;
   }
 
-  /* Impede que o URL apareça após os links */
   a[href]:after {
     content: none !important;
   }

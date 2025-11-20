@@ -6,7 +6,6 @@ import HeroCarousel, { Slide } from "@/components/HeroCarousel";
 import EditionList, { Edition } from "@/components/EditionList";
 import Layout from "@/components/Layout";
 
-
 interface ArticleCardData {
     id: string;
     titulo: string;
@@ -32,14 +31,13 @@ interface HomePageQueryData {
     latestVolumes: VolumeCardData[];
 }
 
-// O nome da função mudou de 'Home' para 'HomePageClient'
 export default function HomePageClient() {
     const { data, loading, error } = useQuery<HomePageQueryData>(GET_HOME_PAGE_DATA);
 
     if (loading) {
         return (
             <Layout>
-                <div className="text-center">
+                <div className="text-center mt-20">
                     <p>Carregando...</p>
                 </div>
             </Layout>
@@ -49,9 +47,9 @@ export default function HomePageClient() {
     if (error) {
         return (
             <Layout>
-                <div className="p-4 text-red-700 bg-red-100 border border-red-300 rounded-md">
+                <div className="p-4 text-red-700 bg-red-100 border border-red-300 rounded-md mt-10 mx-auto max-w-2xl">
                     <h2>Erro ao carregar os dados</h2>
-                    <pre className="mt-2 whitespace-pre-wrap">{error.message}</pre>
+                    <pre className="mt-2 whitespace-pre-wrap text-xs">{error.message}</pre>
                 </div>
             </Layout>
         );
@@ -63,8 +61,8 @@ export default function HomePageClient() {
     if (latestArticles.length === 0 && latestVolumes.length === 0) {
         return (
             <Layout>
-                <div className="text-center">
-                    <p>Não há nada para ser carregado no momento.</p>
+                <div className="text-center mt-20">
+                    <p>Não há conteúdo para ser carregado no momento.</p>
                 </div>
             </Layout>
         );
@@ -74,7 +72,8 @@ export default function HomePageClient() {
         title: art.titulo,
         excerpt: art.resumo,
         href: `/artigo/${art.id}`,
-        image: art.midiaDestaque?.url,
+        // FIX: Handle missing image gracefully
+        image: art.midiaDestaque?.url || undefined,
     }));
 
     const volumeEditions: Edition[] = latestVolumes.map((vol) => ({
@@ -88,10 +87,10 @@ export default function HomePageClient() {
     }));
 
     return (
-        <Layout hero={<HeroCarousel slides={carouselSlides} />}>
+        <Layout hero={carouselSlides.length > 0 ? <HeroCarousel slides={carouselSlides} /> : undefined}>
 
             {latestVolumes.length > 0 && (
-                <section className="mt-12">
+                <section className="mt-12 mb-20">
                     <h2 className="text-2xl font-semibold mb-6 text-center">Últimas Edições</h2>
                     <EditionList editions={volumeEditions} />
                 </section>

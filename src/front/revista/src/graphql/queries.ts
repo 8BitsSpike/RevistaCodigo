@@ -10,6 +10,7 @@ export const GET_HOME_PAGE_DATA = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -19,6 +20,7 @@ export const GET_HOME_PAGE_DATA = gql`
       volumeTitulo
       volumeResumo
       imagemCapa {
+        idMidia
         url
         textoAlternativo
       }
@@ -36,6 +38,7 @@ export const GET_MEUS_ARTIGOS = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -63,6 +66,7 @@ export const SEARCH_ARTICLES = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -79,6 +83,7 @@ export const SEARCH_ARTICLES = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -92,7 +97,8 @@ export const GET_AUTOR_VIEW = gql`
       usuarioId
       nome
       url
-      artigoWorkIds
+      # ArtigoWorkIds removido se não existir no AutorViewType, verifique seu schema.
+      # Se existir, mantenha. Baseado no DTO, não existe ArtigoWorkIds no AutorViewDTO.
     }
   }
 `;
@@ -107,6 +113,7 @@ export const GET_ARTIGOS_BY_IDS = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -124,6 +131,7 @@ export const GET_ARTIGOS_POR_TIPO = gql`
       tipo
       permitirComentario
       midiaDestaque {
+        idMidia
         url
         textoAlternativo
       }
@@ -138,6 +146,7 @@ export const GET_VOLUME_VIEW = gql`
       volumeTitulo
       volumeResumo
       imagemCapa {
+        idMidia
         url
         textoAlternativo
       }
@@ -184,14 +193,10 @@ export const GET_ARTIGO_VIEW = gql`
       titulo
       tipo
       permitirComentario
-      totalComentarios: totalComentariosPublicos 
-      midiaDestaque { 
-        url
-        textoAlternativo
-      }
       conteudoAtual { 
         content
         midias {
+          idMidia
           url
           textoAlternativo
         }
@@ -207,9 +212,11 @@ export const GET_ARTIGO_VIEW = gql`
         volumeResumo
       }
       interacoes(page: 0, pageSize: 999) { 
-        comentariosEditoriais {
+        comentariosEditoriais { // Mantido: Comentários Editoriais
           ...CommentFields
         }
+        # comentariosPublicos (lista) removido: será buscado separadamente via paginação
+        totalComentariosPublicos // Mantido: Total de comentários públicos para guiar paginação
       }
     }
   }
@@ -291,8 +298,7 @@ export const CRIAR_ARTIGO = gql`
 export const OBTER_STAFF_LIST = gql`
   query ObterStaffList($page: Int!, $pageSize: Int!) {
     obterStaffList(pagina: $page, tamanho: $pageSize) {
-      id 
-      usuarioId
+      usuarioId # ID de usuário externo (StaffViewDTO não tem 'id' local)
       nome
       url
       job
@@ -334,10 +340,10 @@ export const OBTER_PENDENTES = gql`
   query ObterPendentes(
     $pagina: Int!
     $tamanho: Int!
-    $status: StatusPendente
-    $targetEntityId: ID
-    $targetType: TipoEntidadeAlvo
-    $requesterUsuarioId: ID
+    $status: StatusPendente 
+    $targetEntityId: String
+    $targetType: TipoEntidadeAlvo 
+    $requesterUsuarioId: String
   ) {
     obterPendentes(
       pagina: $pagina
@@ -383,6 +389,7 @@ const EDITORIAL_CARD_FIELDS = gql`
     tipo
     permitirComentario
     midiaDestaque {
+      idMidia
       url
       textoAlternativo
     }
@@ -478,6 +485,7 @@ const VOLUME_CARD_FIELDS = gql`
     volumeTitulo
     volumeResumo
     imagemCapa {
+      idMidia
       url
       textoAlternativo
     }
@@ -517,6 +525,7 @@ export const OBTER_VOLUMES_POR_ANO = gql`
       volumeTitulo
       volumeResumo
       imagemCapa {
+        idMidia
         url
         textoAlternativo
       }
@@ -536,11 +545,17 @@ export const OBTER_VOLUME_POR_ID = gql`
       year
       status
       imagemCapa {
-        midiaID
+        idMidia
         url
-        alt
+        textoAlternativo
       }
-      artigoIds
+      # O campo 'artigoIds' é ignorado/não exposto pelo VolumeType no backend.
+      # Substituindo pelo campo resolvido 'artigos' para obter os IDs para roteamento (Instrução 2).
+      artigos {
+        id
+        titulo
+        resumo
+      }
     }
   }
 `;

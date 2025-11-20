@@ -1,24 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
-import { User, ArrowLeft, Building2, Trash2, Briefcase } from 'lucide-react';
+import useAuth from '@/hooks/useAuth';
+import { USER_API_BASE } from '@/lib/fetcher';
+import { ArrowLeft, Save, Plus, X, Upload, Edit, Trash2, Calendar } from 'lucide-react';
+import toast from 'react-hot-toast';
+import Image from 'next/image';
+import { formatDate } from '@/lib/dateUtils';
 
-const API_BASE = 'https://localhost:54868/api/Usuario';
-
-interface InfoInstitucional {
-    instituicao?: string;
-    curso?: string;
-    dataInicio?: string;
-    dataFim?: string;
-    descricaoCurso?: string;
-    informacoesAdd?: string;
-}
-
-// Estrutura para Atuação Profissional (Experiência)
-interface Atuacao {
-    instituicao?: string;
+interface InstituicaoInfo {
+    instituicao: string;
     areaAtuacao?: string;
     dataInicio?: string;
     dataFim?: string;
@@ -26,558 +18,263 @@ interface Atuacao {
     informacoesAdd?: string;
 }
 
-interface Usuario {
-    _id?: string;
-    id?: string;
-    tipo?: string;
-    name?: string;
-    sobrenome?: string;
-    email?: string;
-    foto?: string;
-    password?: string;
-    biografia?: string;
-    infoInstitucionais?: InfoInstitucional[];
-    atuacoes?: Atuacao[];
-}
-
 export default function ProfileEditPage() {
-    const [usuario, setUsuario] = useState<Usuario>({});
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [showToast, setShowToast] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [showCancelModal, setShowCancelModal] = useState(false);
-
-    // Estados para remoção de Info Institucional
-    const [removeInfoIndex, setRemoveInfoIndex] = useState<number | null>(null);
-    const [showRemoveInfoModal, setShowRemoveInfoModal] = useState(false);
-
-    // Estados para remoção de Atuação Profissional
-    const [removeAtuacaoIndex, setRemoveAtuacaoIndex] = useState<number | null>(null);
-    const [showRemoveAtuacaoModal, setShowRemoveAtuacaoModal] = useState(false);
-
-    const [fieldErrors, setFieldErrors] = useState<{ name?: string; sobrenome?: string; email?: string }>({});
-
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
 
-    // Carregar perfil
+    const [formData, setFormData] = useState({
+        name: '',
+        sobrenome: '',
+        email: '',
+        biografia: '',
+        endereco: '',
+        foto: '',
+    });
+
+    const [infoList, setInfoList] = useState<InstituicaoInfo[]>([]);
+    const [atuacaoList, setAtuacaoList] = useState<InstituicaoInfo[]>([]);
+
+    const [newEdu, setNewEdu] = useState<InstituicaoInfo>({
+        instituicao: '', areaAtuacao: '', contribuicao: '', informacoesAdd: '', dataInicio: '', dataFim: ''
+    });
+    const [newAtuacao, setNewAtuacao] = useState<InstituicaoInfo>({
+        instituicao: '', areaAtuacao: '', contribuicao: '', informacoesAdd: '', dataInicio: '', dataFim: ''
+    });
+
+    const [loadingData, setLoadingData] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    // Helper to convert ISO date (from API) to YYYY-MM-DD (for Input)
+    const toInputDate = (isoString?: string) => {
+        if (!isoString) return '';
+        return isoString.split('T')[0];
+    };
+
     useEffect(() => {
-        const id = localStorage.getItem('userId');
-        const token = localStorage.getItem('userToken');
-
-        if (!id || !token) {
+        if (authLoading) return;
+        if (!user) {
             router.push('/login');
             return;
         }
 
         const fetchProfile = async () => {
             try {
-                const res = await fetch(`${API_BASE}/${id}?token=${token}`, {
+                const token = localStorage.getItem('userToken');
+                const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!res.ok) throw new Error('Erro ao carregar o perfil');
+                if (!res.ok) throw new Error('Erro ao carregar perfil');
                 const data = await res.json();
-                setUsuario({
-                    ...data,
-                    infoInstitucionais: data.infoInstitucionais || [],
-                    atuacoes: data.atuacoes || [],
+
+                setFormData({
+                    name: data.name || '',
+                    sobrenome: data.sobrenome || '',
+                    email: data.email || '',
+                    biografia: data.biografia || '',
+                    endereco: data.endereco || '',
+                    foto: data.foto || '',
                 });
-            } catch {
-                setError('Não foi possível carregar seu perfil.');
+                setInfoList(data.infoInstitucionais || []);
+                setAtuacaoList(data.atuacoes || []);
+            } catch (err) {
+                toast.error('Falha ao carregar dados.');
             } finally {
-                setLoading(false);
+                setLoadingData(false);
             }
         };
 
         fetchProfile();
-    }, [router]);
+    }, [user, authLoading, router]);
 
-    // Alteração dos campos
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setUsuario((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    //HANDLERS INFO INSTITUCIONAL
-    const handleInfoChange = (index: number, field: string, value: string) => {
-        const infos = [...(usuario.infoInstitucionais || [])];
-        infos[index] = { ...infos[index], [field]: value };
-        setUsuario((prev) => ({ ...prev, infoInstitucionais: infos }));
-    };
-
-    const addInfo = () => {
-        setUsuario((prev) => ({
-            ...prev,
-            infoInstitucionais: [...(prev.infoInstitucionais || []), {}],
-        }));
-    };
-
-    const confirmRemoveInfo = (index: number) => {
-        setRemoveInfoIndex(index);
-        setShowRemoveInfoModal(true);
-    };
-
-    const removeInfo = () => {
-        if (removeInfoIndex !== null) {
-            const infos = [...(usuario.infoInstitucionais || [])];
-            infos.splice(removeInfoIndex, 1);
-            setUsuario((prev) => ({ ...prev, infoInstitucionais: infos }));
-            setRemoveInfoIndex(null);
-            setShowRemoveInfoModal(false);
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, foto: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
         }
     };
 
-    // HANDLERS ATUAÇÃO PROFISSIONAL
-    const handleAtuacaoChange = (index: number, field: string, value: string) => {
-        const atuacoes = [...(usuario.atuacoes || [])];
-        atuacoes[index] = { ...atuacoes[index], [field]: value };
-        setUsuario((prev) => ({ ...prev, atuacoes: atuacoes }));
+    const addEducation = () => {
+        if (newEdu.instituicao) {
+            setInfoList([...infoList, newEdu]);
+            setNewEdu({ instituicao: '', areaAtuacao: '', contribuicao: '', informacoesAdd: '', dataInicio: '', dataFim: '' });
+        } else {
+            toast.error("Nome da Instituição é obrigatório");
+        }
+    };
+
+    const removeEducation = (index: number) => {
+        if (confirm("Remover esta formação?")) {
+            setInfoList(infoList.filter((_, i) => i !== index));
+        }
     };
 
     const addAtuacao = () => {
-        setUsuario((prev) => ({
-            ...prev,
-            atuacoes: [...(prev.atuacoes || []), {}],
-        }));
-    };
-
-    const confirmRemoveAtuacao = (index: number) => {
-        setRemoveAtuacaoIndex(index);
-        setShowRemoveAtuacaoModal(true);
-    };
-
-    const removeAtuacao = () => {
-        if (removeAtuacaoIndex !== null) {
-            const atuacoes = [...(usuario.atuacoes || [])];
-            atuacoes.splice(removeAtuacaoIndex, 1);
-            setUsuario((prev) => ({ ...prev, atuacoes: atuacoes }));
-            setRemoveAtuacaoIndex(null);
-            setShowRemoveAtuacaoModal(false);
+        if (newAtuacao.instituicao) {
+            setAtuacaoList([...atuacaoList, newAtuacao]);
+            setNewAtuacao({ instituicao: '', areaAtuacao: '', contribuicao: '', informacoesAdd: '', dataInicio: '', dataFim: '' });
+        } else {
+            toast.error("Nome da Instituição/Empresa é obrigatório");
         }
     };
 
-    // Validação e salvamento
-    const handleSave = async (e: React.FormEvent) => {
+    const removeAtuacao = (index: number) => {
+        if (confirm("Remover esta atuação?")) {
+            setAtuacaoList(atuacaoList.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
-        setFieldErrors({});
-
-        const errors: typeof fieldErrors = {};
-        if (!usuario.name?.trim()) errors.name = 'O campo Nome é obrigatório.';
-        if (!usuario.sobrenome?.trim()) errors.sobrenome = 'O campo Sobrenome é obrigatório.';
-        if (!usuario.email?.trim()) errors.email = 'O campo Email é obrigatório.';
-        else {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(usuario.email)) errors.email = 'Digite um email válido.';
-        }
-
-        if (Object.keys(errors).length > 0) {
-            setFieldErrors(errors);
-            return;
-        }
+        if (!user) return;
+        if (!formData.name.trim() || !formData.sobrenome.trim()) return toast.error('Nome e Sobrenome são obrigatórios.');
 
         setSaving(true);
-        if (usuario.foto && usuario.foto != localStorage.userFoto) {
-            localStorage.setItem('userFoto', usuario.foto ?? '');
-        };
-        try {
-            const token = localStorage.getItem('userToken');
-            const id = usuario._id || usuario.id;
-            const res = await fetch(`${API_BASE}/${id}?token=${token}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(usuario),
-            });
+        const token = localStorage.getItem('userToken');
 
-            if (!res.ok) throw new Error('Erro ao salvar');
-            setShowToast(true);
-            setTimeout(() => router.push('/profile'), 2000);
-        } catch {
-            setError('Não foi possível salvar as alterações.');
+        const payload = {
+            id: user.id,
+            ...formData,
+            infoInstitucionais: infoList,
+            atuacoes: atuacaoList
+        };
+
+        try {
+            const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Falha ao atualizar');
+
+            toast.success('Perfil atualizado!');
+            localStorage.setItem('userName', formData.name);
+            localStorage.setItem('userFoto', formData.foto);
+            router.push('/profile');
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao salvar.');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleCancel = () => setShowCancelModal(true);
-
-    const handleBack = () => {
-        if (window.confirm('Tem certeza que deseja voltar? As alterações não salvas serão perdidas.')) {
-            router.push('/profile');
-        }
-    };
-
-    if (loading)
-        return (
-            <Layout>
-                <p className="text-center mt-20 text-gray-600">Carregando...</p>
-            </Layout>
-        );
+    if (loadingData) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
 
     return (
-        <Layout>
-            <div className="max-w-5xl mx-auto mt-10 bg-white rounded-2xl shadow-lg p-10 relative">
-                {/* BOTÃO DE VOLTAR */}
-                <button
-                    onClick={handleBack}
-                    className="absolute top-6 left-6 flex items-center gap-2 text-gray-600 hover:text-emerald-700 transition"
-                >
-                    <ArrowLeft className="w-5 h-5" /> Voltar
-                </button>
+        <div className="min-h-screen bg-gray-50 py-10">
+            <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="bg-emerald-600 px-6 py-4 flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-white flex items-center gap-2"><Edit size={20} /> Editar Perfil</h1>
+                    <button onClick={() => { if (confirm("Descartar?")) router.back(); }} className="text-emerald-100 hover:text-white text-sm font-medium flex items-center gap-1"><ArrowLeft size={16} /> Voltar</button>
+                </div>
 
-                <h1 className="text-3xl font-bold text-gray-800 mb-10 flex items-center justify-center gap-2">
-                    <User className="text-emerald-600 w-8 h-8" /> Editar Perfil
-                </h1>
-
-                {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
-
-                <form onSubmit={handleSave} className="space-y-10">
-                    {/* FOTO */}
-                    <div className="flex flex-col items-center gap-6">
-                        <img
-                            src={usuario.foto || '/default-avatar.png'}
-                            alt="Foto de perfil"
-                            className="w-36 h-36 rounded-full border-4 border-emerald-600 shadow-md object-cover"
-                        />
-                        <div className="text-center">
-                            <input
-                                placeholder='Escolha sua imagem de perfil'
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                            setUsuario((prev) => ({ ...prev, foto: reader.result as string }));
-                                        };
-                                        reader.readAsDataURL(file);
-                                    }
-                                }}
-                                className="w-full border rounded-lg p-2"
-                            />
-                            <p className="text-sm text-gray-500 mt-1">Escolha uma nova imagem para seu perfil</p>
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                    <div className="flex flex-col items-center">
+                        <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-md mb-4">
+                            {/* FIX: Image fallback */}
+                            <Image src={formData.foto || '/faviccon.png'} alt="Preview" fill className="object-cover" />
                         </div>
+                        <label className="cursor-pointer bg-emerald-50 text-emerald-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-100 transition flex items-center gap-2">
+                            <Upload size={16} /> Alterar Foto
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </label>
                     </div>
 
-                    {/* DADOS PESSOAIS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Nome */}
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} className="input-std" required /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Sobrenome *</label><input type="text" name="sobrenome" value={formData.sobrenome} onChange={handleInputChange} className="input-std" required /></div>
+                        <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" name="email" value={formData.email} className="input-std bg-gray-50" disabled /></div>
+                        <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label><input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} className="input-std" /></div>
+                        <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Biografia</label><textarea name="biografia" value={formData.biografia} onChange={handleInputChange} rows={4} className="input-std resize-none" /></div>
+                    </div>
+
+                    <div className="space-y-6 border-t pt-6">
                         <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Nome</label>
-                            <input
-                                placeholder='Primeiro nome'
-                                name="name"
-                                value={usuario.name || ''}
-                                onChange={handleChange}
-                                className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none ${fieldErrors.name ? 'border-red-600' : ''
-                                    }`}
-                            />
-                            {fieldErrors.name && <p className="text-red-600 text-sm mt-1">{fieldErrors.name}</p>}
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Informações Institucionais</label>
+                            <div className="bg-gray-50 p-4 rounded-lg border mb-4 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input type="text" placeholder="Instituição" value={newEdu.instituicao} onChange={e => setNewEdu({ ...newEdu, instituicao: e.target.value })} className="input-std text-sm" />
+                                    <input type="text" placeholder="Curso" value={newEdu.areaAtuacao || ''} onChange={e => setNewEdu({ ...newEdu, areaAtuacao: e.target.value })} className="input-std text-sm" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input type="date" placeholder="Início" value={toInputDate(newEdu.dataInicio)} onChange={e => setNewEdu({ ...newEdu, dataInicio: e.target.value })} className="input-std text-sm" />
+                                    <input type="date" placeholder="Fim" value={toInputDate(newEdu.dataFim)} onChange={e => setNewEdu({ ...newEdu, dataFim: e.target.value })} className="input-std text-sm" />
+                                </div>
+                                <input type="text" placeholder="Contribuição" value={newEdu.contribuicao || ''} onChange={e => setNewEdu({ ...newEdu, contribuicao: e.target.value })} className="input-std text-sm" />
+                                <textarea placeholder="Informações Adicionais" value={newEdu.informacoesAdd || ''} onChange={e => setNewEdu({ ...newEdu, informacoesAdd: e.target.value })} className="input-std text-sm h-16 resize-none" />
+                                <button type="button" onClick={addEducation} className="btn-primary text-sm w-full"><Plus size={16} /> Adicionar Formação</button>
+                            </div>
+
+                            <ul className="space-y-2">
+                                {infoList.map((item, idx) => (
+                                    <li key={idx} className="flex justify-between items-center bg-white p-3 rounded border shadow-sm">
+                                        <div>
+                                            <p className="font-semibold text-sm text-gray-800">{item.instituicao}</p>
+                                            <p className="text-xs text-gray-600">{item.areaAtuacao}</p>
+                                            {/* FIX: Show formatted date in list */}
+                                            {(item.dataInicio || item.dataFim) && (
+                                                <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+                                                    <Calendar size={12} />
+                                                    {formatDate(item.dataInicio || '')} - {item.dataFim ? formatDate(item.dataFim) : 'Atual'}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button type="button" onClick={() => removeEducation(idx)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
 
-                        {/* Sobrenome */}
                         <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Sobrenome</label>
-                            <input
-                                placeholder='Sobre nome'
-                                name="sobrenome"
-                                value={usuario.sobrenome || ''}
-                                onChange={handleChange}
-                                className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none ${fieldErrors.sobrenome ? 'border-red-600' : ''
-                                    }`}
-                            />
-                            {fieldErrors.sobrenome && <p className="text-red-600 text-sm mt-1">{fieldErrors.sobrenome}</p>}
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Áreas de Atuação</label>
+                            <div className="flex gap-2 mb-2">
+                                <div className="w-full space-y-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="text" placeholder="Empresa/Instituição" value={newAtuacao.instituicao} onChange={e => setNewAtuacao({ ...newAtuacao, instituicao: e.target.value })} className="input-std text-sm" />
+                                        <input type="text" placeholder="Cargo/Função" value={newAtuacao.areaAtuacao || ''} onChange={e => setNewAtuacao({ ...newAtuacao, areaAtuacao: e.target.value })} className="input-std text-sm" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="date" placeholder="Início" value={toInputDate(newAtuacao.dataInicio)} onChange={e => setNewAtuacao({ ...newAtuacao, dataInicio: e.target.value })} className="input-std text-sm" />
+                                        <input type="date" placeholder="Fim" value={toInputDate(newAtuacao.dataFim)} onChange={e => setNewAtuacao({ ...newAtuacao, dataFim: e.target.value })} className="input-std text-sm" />
+                                    </div>
+                                    <button type="button" onClick={addAtuacao} className="btn-primary text-sm w-full"><Plus size={16} /> Adicionar Atuação</button>
+                                </div>
+                            </div>
+
+                            <ul className="space-y-2">
+                                {atuacaoList.map((item, idx) => (
+                                    <li key={idx} className="flex justify-between items-center bg-white p-3 rounded border shadow-sm">
+                                        <div>
+                                            <p className="font-semibold text-sm text-gray-800">{item.instituicao}</p>
+                                            <p className="text-xs text-gray-600">{item.areaAtuacao}</p>
+                                            {(item.dataInicio || item.dataFim) && (
+                                                <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+                                                    <Calendar size={12} />
+                                                    {formatDate(item.dataInicio || '')} - {item.dataFim ? formatDate(item.dataFim) : 'Atual'}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button type="button" onClick={() => removeAtuacao(idx)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
 
-                    {/* Email */}
-                    <div>
-                        <label className="block text-sm font-semibold mb-1 text-gray-700">Email</label>
-                        <input
-                            placeholder='E-mail'
-                            type="email"
-                            name="email"
-                            value={usuario.email || ''}
-                            onChange={handleChange}
-                            className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none ${fieldErrors.email ? 'border-red-600' : ''
-                                }`}
-                        />
-                        {fieldErrors.email && <p className="text-red-600 text-sm mt-1">{fieldErrors.email}</p>}
-                    </div>
-
-                    {/*CAMPO BIOGRAFIA */}
-                    <div className="mb-12">
-                        <label className="block text-sm font-semibold mb-1 text-gray-700">Biografia</label>
-                        <textarea
-                            name="biografia"
-                            value={usuario.biografia || ''}
-                            onChange={handleChange}
-                            rows={4}
-                            maxLength={2300}
-                            placeholder="Escreva uma breve biografia sobre você..."
-                            className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                        />
-                        <p className="text-sm text-gray-500 text-right mt-1">
-                            {usuario.biografia?.length || 0}/2300 caracteres
-                        </p>
-                    </div>
-
-                    {/*ATUAÇÃO PROFISSIONAL (Experiência)*/}
-                    <div>
-                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-800 border-b border-gray-200 pb-2">
-                            <Briefcase className="text-emerald-600" /> Atuação Profissional
-                        </h2>
-
-                        {(usuario.atuacoes ?? []).map((atuacao, i) => (
-                            <div
-                                key={`atuacao-${i}`}
-                                className="border border-gray-200 p-6 rounded-xl mb-4 bg-gray-50 shadow-sm space-y-3"
-                            >
-                                <div className="flex justify-between items-center mb-2">
-                                    <h3 className="font-bold text-gray-700">Atuação {i + 1}</h3>
-                                    <button
-                                        type="button"
-                                        onClick={() => confirmRemoveAtuacao(i)}
-                                        className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm"
-                                    >
-                                        <Trash2 className="w-4 h-4" /> Remover
-                                    </button>
-                                </div>
-
-                                <input
-                                    type="text"
-                                    placeholder="Instituição/Empresa"
-                                    value={atuacao.instituicao || ''}
-                                    onChange={(e) => handleAtuacaoChange(i, 'instituicao', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Área de Atuação/Cargo"
-                                    value={atuacao.areaAtuacao || ''}
-                                    onChange={(e) => handleAtuacaoChange(i, 'areaAtuacao', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input
-                                        type="date"
-                                        placeholder="Data Início"
-                                        value={atuacao.dataInicio || ''}
-                                        onChange={(e) => handleAtuacaoChange(i, 'dataInicio', e.target.value)}
-                                        className="w-full border rounded p-2"
-                                    />
-                                    {/* Campo Data Fim*/}
-                                    <input
-                                        type="date"
-                                        placeholder="Data Fim (Atual se vazio)"
-                                        value={atuacao.dataFim || ''}
-                                        onChange={(e) => handleAtuacaoChange(i, 'dataFim', e.target.value)}
-                                        className="w-full border rounded p-2"
-                                    />
-                                </div>
-                                <textarea
-                                    placeholder="Contribuições e Descrição das Atividades"
-                                    value={atuacao.contribuicao || ''}
-                                    onChange={(e) => handleAtuacaoChange(i, 'contribuicao', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <textarea
-                                    placeholder="Informações adicionais"
-                                    value={atuacao.informacoesAdd || ''}
-                                    onChange={(e) => handleAtuacaoChange(i, 'informacoesAdd', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                            </div>
-                        ))}
-
-                        <button
-                            type="button"
-                            onClick={addAtuacao}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition"
-                        >
-                            + Adicionar Atuação
-                        </button>
-                    </div>
-
-                    {/*INFO INSTITUCIONAIS*/}
-                    <div>
-                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-800 border-b border-gray-200 pb-2">
-                            <Building2 className="text-emerald-600" /> Informações Institucionais
-                        </h2>
-
-                        {(usuario.infoInstitucionais ?? []).map((info, i) => (
-                            <div
-                                key={`institucional-${i}`}
-                                className="border border-gray-200 p-6 rounded-xl mb-4 bg-gray-50 shadow-sm space-y-3"
-                            >
-                                <div className="flex justify-between items-center mb-2">
-                                    <h3 className="font-bold text-gray-700">Instituição {i + 1}</h3>
-                                    <button
-                                        type="button"
-                                        onClick={() => confirmRemoveInfo(i)}
-                                        className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm"
-                                    >
-                                        <Trash2 className="w-4 h-4" /> Remover
-                                    </button>
-                                </div>
-
-                                <input
-                                    type="text"
-                                    placeholder="Instituição"
-                                    value={info.instituicao || ''}
-                                    onChange={(e) => handleInfoChange(i, 'instituicao', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Curso"
-                                    value={info.curso || ''}
-                                    onChange={(e) => handleInfoChange(i, 'curso', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input
-                                        type="date"
-                                        placeholder="Data Início"
-                                        value={info.dataInicio || ''}
-                                        onChange={(e) => handleInfoChange(i, 'dataInicio', e.target.value)}
-                                        className="w-full border rounded p-2"
-                                    />
-                                    {/* Campo Data Fim*/}
-                                    <input
-                                        type="date"
-                                        placeholder="Data Fim (Atual se vazio)"
-                                        value={info.dataFim || ''}
-                                        onChange={(e) => handleInfoChange(i, 'dataFim', e.target.value)}
-                                        className="w-full border rounded p-2"
-                                    />
-                                </div>
-                                <textarea
-                                    placeholder="Descrição do curso"
-                                    value={info.descricaoCurso || ''}
-                                    onChange={(e) => handleInfoChange(i, 'descricaoCurso', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                                <textarea
-                                    placeholder="Informações adicionais"
-                                    value={info.informacoesAdd || ''}
-                                    onChange={(e) => handleInfoChange(i, 'informacoesAdd', e.target.value)}
-                                    className="w-full border rounded p-2"
-                                />
-                            </div>
-                        ))}
-
-                        <button
-                            type="button"
-                            onClick={addInfo}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition"
-                        >
-                            + Adicionar informação
-                        </button>
-                    </div>
-
-                    {/* BOTÕES SALVAR E CANCELAR */}
-                    <div className="flex justify-center gap-6 pt-4">
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-semibold"
-                        >
-                            {saving ? 'Salvando...' : 'Salvar Alterações'}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-400 transition font-semibold"
-                        >
-                            Cancelar
-                        </button>
+                    <div className="flex justify-end pt-6 border-t">
+                        <button type="submit" disabled={saving} className="btn-primary px-6 py-3">{saving ? 'Salvando...' : <><Save size={18} /> Salvar Alterações</>}</button>
                     </div>
                 </form>
             </div>
-
-            {/* TOAST */}
-            {showToast && (
-                <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fadeIn">
-                    ✅ Perfil atualizado com sucesso!
-                </div>
-            )}
-
-            {/* MODAL CANCELAR */}
-            {showCancelModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 max-w-md w-full text-center shadow-lg">
-                        <h2 className="text-xl font-semibold mb-4">Cancelar Atualização?</h2>
-                        <p className="mb-6">As alterações não salvas serão perdidas.</p>
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={() => setShowCancelModal(false)}
-                                className="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-                            >
-                                Voltar
-                            </button>
-                            <button
-                                onClick={() => router.push('/profile')}
-                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                            >
-                                Confirmar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL REMOVER INFO INSTITUCIONAL */}
-            {showRemoveInfoModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 max-w-md w-full text-center shadow-lg">
-                        <h2 className="text-xl font-semibold mb-4">Remover Informação Institucional?</h2>
-                        <p className="mb-6">Tem certeza? Isso será removido permanentemente.</p>
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={() => setShowRemoveInfoModal(false)}
-                                className="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={removeInfo}
-                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                            >
-                                Remover
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL REMOVER ATUAÇÃO PROFISSIONAL */}
-            {showRemoveAtuacaoModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 max-w-md w-full text-center shadow-lg">
-                        <h2 className="text-xl font-semibold mb-4">Remover Atuação Profissional?</h2>
-                        <p className="mb-6">Tem certeza? Isso será removido permanentemente.</p>
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={() => setShowRemoveAtuacaoModal(false)}
-                                className="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={removeAtuacao}
-                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                            >
-                                Remover
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </Layout>
+        </div>
     );
 }

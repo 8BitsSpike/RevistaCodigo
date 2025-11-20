@@ -4,35 +4,27 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { StatusVolume } from '@/types/enums';
 
-// --- Tipos ---
-
-// Define os tipos de busca
 type SearchType = 'recentes' | 'ano' | 'status';
 
-// Define os valores que o componente de busca retorna
 export interface VolumeSearchVariables {
     searchType: SearchType;
-    searchTerm?: string | number; // Usado para 'ano'
+    searchTerm?: string | number;
     searchStatus?: StatusVolume;
     pageSize: number;
 }
 
-// Props que o componente recebe
 interface VolumeSearchProps {
     onSearch: (variables: VolumeSearchVariables) => void;
     loading: boolean;
 }
 
 export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
-
-    // --- Estados do Formulário ---
     const [searchType, setSearchType] = useState<SearchType>('recentes');
-    const [pageSize, setPageSize] = useState(10); // Mínimo de 10
+    const [pageSize, setPageSize] = useState(10);
 
     const [textTerm, setTextTerm] = useState(new Date().getFullYear().toString());
     const [selectedStatus, setSelectedStatus] = useState<StatusVolume>(StatusVolume.EmRevisao);
 
-    // --- Submissão da Busca ---
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -46,7 +38,6 @@ export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
             pageSize: finalPageSize,
         };
 
-        // Adiciona os termos corretos
         switch (searchType) {
             case 'ano':
                 variables.searchTerm = Number(textTerm) || new Date().getFullYear();
@@ -56,38 +47,44 @@ export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
                 break;
             case 'recentes':
             default:
-                // Não precisa de mais nada
                 break;
         }
 
         onSearch(variables);
     };
 
-    // Renderiza o input de busca apropriado
     const renderSearchInput = () => {
         switch (searchType) {
             case 'ano':
                 return (
-                    <input
-                        type="number"
-                        value={textTerm}
-                        onChange={(e) => setTextTerm(e.target.value)}
-                        placeholder="Ano da busca:"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
+                    <>
+                        <label htmlFor="search-ano" className="sr-only">Ano da busca</label>
+                        <input
+                            id="search-ano"
+                            type="number"
+                            value={textTerm}
+                            onChange={(e) => setTextTerm(e.target.value)}
+                            placeholder="Ano da busca:"
+                            className="input-std"
+                        />
+                    </>
                 );
 
             case 'status':
                 return (
-                    <select
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value as StatusVolume)}
-                        className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-                    >
-                        {Object.values(StatusVolume).map(status => (
-                            <option key={status} value={status}>{status}</option>
-                        ))}
-                    </select>
+                    <>
+                        <label htmlFor="search-status" className="sr-only">Status da Edição</label>
+                        <select
+                            id="search-status"
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value as StatusVolume)}
+                            className="input-std"
+                        >
+                            {Object.values(StatusVolume).map(status => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
+                    </>
                 );
 
             case 'recentes':
@@ -98,13 +95,13 @@ export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
     return (
         <form onSubmit={handleSubmit} className="p-4 bg-gray-50 rounded-lg shadow-sm border">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                {/* 1. Tipo de Busca */}
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Buscar por:</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="search-type">Buscar por:</label>
                     <select
+                        id="search-type"
                         value={searchType}
                         onChange={(e) => setSearchType(e.target.value as SearchType)}
-                        className="w-full p-3 border border-gray-300 rounded-lg bg-white"
+                        className="input-std"
                     >
                         <option value="recentes">Edições recentes</option>
                         <option value="ano">Busca por ano</option>
@@ -112,7 +109,6 @@ export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
                     </select>
                 </div>
 
-                {/* 2. Input Condicional */}
                 <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         {searchType === 'recentes' ? 'Configuração' : 'Termo da Busca'}
@@ -120,24 +116,25 @@ export default function VolumeSearch({ onSearch, loading }: VolumeSearchProps) {
                     {renderSearchInput()}
                 </div>
 
-                {/* 3. Paginação e Submit */}
                 <div className="flex gap-2">
                     <div className="flex-1">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Por página:</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="page-size">Por página:</label>
                         <input
+                            id="page-size"
                             type="number"
                             min="10"
                             max="50"
                             value={pageSize}
                             onChange={(e) => setPageSize(Number(e.target.value))}
-                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            className="input-std"
                             placeholder="10-50"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading}
-                        className="self-end px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:bg-gray-400"
+                        className="self-end btn-primary"
+                        aria-label="Buscar"
                     >
                         <Search size={20} />
                     </button>

@@ -9,6 +9,7 @@ using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace Artigo.DbContext.Repositories
 {
@@ -102,14 +103,11 @@ namespace Artigo.DbContext.Repositories
 
             var filter = Builders<AutorModel>.Filter.Eq(a => a.UsuarioId, autor.UsuarioId);
 
-            // Define quais campos serão atualizados ($set)
             var update = Builders<AutorModel>.Update
                 .Set(a => a.Nome, model.Nome)
                 .Set(a => a.Url, model.Url)
                 .Set(a => a.ArtigoWorkIds, model.ArtigoWorkIds)
                 .Set(a => a.Contribuicoes, model.Contribuicoes)
-                // Define quais campos serão criados apenas na inserção ($setOnInsert)
-                // Mantemos o ObjectId.GenerateNewId().ToString() aqui pois o campo Id no model é vazio na criação
                 .SetOnInsert(a => a.Id, ObjectId.GenerateNewId().ToString())
                 .SetOnInsert(a => a.UsuarioId, model.UsuarioId);
 
@@ -119,11 +117,8 @@ namespace Artigo.DbContext.Repositories
                 await _autores.UpdateOneAsync(session, filter, update, options);
             else
                 await _autores.UpdateOneAsync(filter, update, options);
-
-            // Busca o modelo atualizado/criado para retornar a entidade completa
             var upsertedModel = await GetByUsuarioIdAsync(autor.UsuarioId, sessionHandle);
 
-            // O '!' é seguro pois acabou de fazer o upsert.
             return upsertedModel!;
         }
 
@@ -145,11 +140,8 @@ namespace Artigo.DbContext.Repositories
         public async Task<IReadOnlyList<Autor>> SearchAutoresByNameAsync(string searchTerm, object? sessionHandle = null)
         {
             var session = GetSession(sessionHandle);
-
-            string fullMatchRegex = $"^{System.Text.RegularExpressions.Regex.Escape(searchTerm)}$";
-
-            // Filtro de busca (Regex no Nome, case-insensitive)
-            var filter = Builders<AutorModel>.Filter.Regex(a => a.Nome, new BsonRegularExpression(fullMatchRegex, "i"));
+            string escapedSearchTerm = System.Text.RegularExpressions.Regex.Escape(searchTerm);
+            var filter = Builders<AutorModel>.Filter.Regex(a => a.Nome, new BsonRegularExpression($".*{escapedSearchTerm}.*", "i"));
 
             var find = (session != null)
                 ? _autores.Find(session, filter)

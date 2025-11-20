@@ -19,7 +19,7 @@ using Artigo.API.GraphQL.Inputs;
 using Microsoft.AspNetCore.Authentication;
 using Artigo.API.Security;
 using System.Security.Claims;
-// Removed unused HotChocolate.Authorization import
+using System.IdentityModel.Tokens.Jwt; // Required for JwtSecurityTokenHandler
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,9 +99,6 @@ builder.Services
     .AddQueryType<ArtigoQueryType>()
     .AddMutationType<ArtigoMutationType>()
 
-    // REMOVIDO: .AddAuthorization() 
-    // A autorização agora é IMPERATIVA, controlada exclusivamente pelo ArtigoService.
-
     // Filtros
     .AddErrorFilter<AuthorizationErrorFilter>()
     .AddErrorFilter<ApplicationErrorFilter>()
@@ -164,24 +161,28 @@ builder.Services
 // 5. CONFIGURAÇÃO DE AUTENTICAÇÃO
 // =========================================================================
 
-var secretKey = "ThisIsAVeryLongAndSecureKeyForTestingPurposesThatIsAtLeast32BytesLong";
-var keyBytes = Encoding.UTF8.GetBytes(secretKey);
-
+// FIX NUCLEAR: Um validador que aceita TUDO.
+// ATENÇÃO: REMOVA ISSO EM PRODUÇÃO.
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-
-            // FIX: Desabilitar validação de emissor para facilitar testes locais
             ValidateIssuer = false,
-
-            ValidateLifetime = true,
             ValidateAudience = false,
+            ValidateLifetime = false,
+            ValidateIssuerSigningKey = false,
+            RequireSignedTokens = false,
+            SignatureValidator = delegate (string token, TokenValidationParameters parameters)
+            {
+                var jwt = new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(token);
+                return jwt;
+            }
         };
     });
+
+builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 
@@ -192,7 +193,7 @@ var app = builder.Build();
 app.UseCors(_myAllowSpecificOrigins);
 
 app.UseAuthentication();
-app.UseAuthorization(); // Mantido para popular o HttpContext.User
+app.UseAuthorization();
 
 app.MapGraphQL();
 

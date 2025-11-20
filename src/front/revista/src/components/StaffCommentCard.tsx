@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation } from '@apollo/client/react';
 import {
     ADD_STAFF_COMENTARIO,
@@ -12,8 +12,7 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, MessageSquareReply, X, Send } from 'lucide-react';
 import { StaffComentario } from '@/types/index';
 import { StaffMember } from './StaffCard';
-
-// --- Tipos ---
+import { formatDateTime } from '@/lib/dateUtils';
 
 interface StaffCommentCardProps {
     comment: StaffComentario;
@@ -45,8 +44,6 @@ export default function StaffCommentCard({
             setIsStaff(localStorage.getItem('isStaff') === 'true');
         }
     }, [user]);
-
-    // --- Mutações com Toasts ---
 
     const [deleteComment, { loading: loadingDelete }] = useMutation(DELETE_STAFF_COMENTARIO, {
         variables: {
@@ -80,8 +77,6 @@ export default function StaffCommentCard({
         onError: (err) => toast.error(`Erro ao responder: ${err.message}`)
     });
 
-    // --- Handlers ---
-
     const handleUpdate = () => {
         if (!editedContent.trim()) return;
         updateComment({
@@ -110,11 +105,6 @@ export default function StaffCommentCard({
         });
     };
 
-    const formattedDate = new Date(comment.data).toLocaleDateString('pt-BR', {
-        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-    });
-
-    // Busca o nome do staff na lista
     const author = staffList.find(s => s.usuarioId === comment.usuarioId);
     const authorName = author ? author.nome : `ID: ${comment.usuarioId.substring(0, 5)}...`;
 
@@ -135,21 +125,19 @@ export default function StaffCommentCard({
                 <X size={16} />
             </button>
 
-            {/* Header do Card */}
             <div className="flex justify-between items-start mb-2">
                 <div>
                     <span className="font-semibold text-sm text-gray-800">{authorName}</span>
-                    <span className="text-xs text-gray-500 ml-2">{formattedDate}</span>
+                    <span className="text-xs text-gray-500 ml-2">{formatDateTime(comment.data)}</span>
                 </div>
             </div>
 
-            {/* Corpo (Edição ou Leitura) */}
             {isEditing ? (
                 <div className="mt-2">
                     <textarea
                         value={editedContent}
                         onChange={(e) => setEditedContent(e.target.value)}
-                        className="w-full h-24 p-2 text-sm border border-gray-300 rounded-md"
+                        className="input-std h-24 text-sm"
                     />
                     <div className="flex justify-end gap-2 mt-2">
                         <button onClick={() => setIsEditing(false)} className="px-2 py-1 text-xs" disabled={loadingUpdate}>Cancelar</button>
@@ -174,7 +162,6 @@ export default function StaffCommentCard({
                 </div>
             )}
 
-            {/* Footer (Ações) */}
             {!isEditing && (
                 <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
                     <button
@@ -207,14 +194,13 @@ export default function StaffCommentCard({
                 </div>
             )}
 
-            {/* Formulário de Resposta */}
             {isReplying && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                     <textarea
                         value={replyContent}
                         onChange={(e) => setReplyContent(e.target.value)}
                         placeholder="Escreva sua resposta..."
-                        className="w-full h-20 p-2 text-sm border border-gray-300 rounded-md"
+                        className="input-std h-20 text-sm"
                     />
                     <div className="flex justify-end gap-2 mt-2">
                         <button onClick={() => setIsReplying(false)} className="px-2 py-1 text-xs" disabled={loadingReply}>Cancelar</button>

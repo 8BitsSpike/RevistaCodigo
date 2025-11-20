@@ -7,6 +7,7 @@ using Artigo.Intf.Interfaces;
 using AutoMapper;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -200,7 +201,8 @@ namespace Artigo.DbContext.Repositories
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                var searchFilter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression(searchTerm, "i"));
+                string escapedSearchTerm = System.Text.RegularExpressions.Regex.Escape(searchTerm);
+                var searchFilter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression($".*{escapedSearchTerm}.*", "i"));
                 filter &= searchFilter;
             }
 
@@ -319,7 +321,8 @@ namespace Artigo.DbContext.Repositories
             var session = GetSession(sessionHandle);
 
             // Apenas filtra por Título
-            var filter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression(searchTerm, "i"));
+            string escapedSearchTerm = System.Text.RegularExpressions.Regex.Escape(searchTerm);
+            var filter = Builders<ArtigoModel>.Filter.Regex(a => a.Titulo, new BsonRegularExpression($".*{escapedSearchTerm}.*", "i"));
 
             var find = (session != null)
                 ? _artigos.Find(session, filter)

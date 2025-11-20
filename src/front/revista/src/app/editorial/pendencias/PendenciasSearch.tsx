@@ -5,11 +5,8 @@ import { useLazyQuery } from '@apollo/client/react';
 import { OBTER_PENDENTES } from '@/graphql/queries';
 import { StaffMember } from '@/components/StaffCard';
 import PendingCard, { PendingItem } from '@/components/PendingCard';
-import { Search, X, User } from 'lucide-react';
-import Image from 'next/image';
+import { Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// --- Tipos ---
 
 type SearchFilter = 'tipoPendencia' | 'solicitante' | 'responsavel' | 'statusAprovado' | 'statusRecusado' | 'statusArquivado' | 'statusAguardando';
 type StatusPendente = 'AguardandoRevisao' | 'Aprovado' | 'Rejeitado' | 'Arquivado';
@@ -49,7 +46,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
     const [commandQuery, setCommandQuery] = useState('');
     const [commandResults, setCommandResults] = useState<string[]>([]);
 
-    const [runSearch, { data: searchData, loading: searchLoading, error: searchError, refetch }] = useLazyQuery<PendingQueryData>(OBTER_PENDENTES, {
+    const [runSearch, { data: searchData, loading: searchLoading, refetch }] = useLazyQuery<PendingQueryData>(OBTER_PENDENTES, {
         fetchPolicy: 'network-only',
         onCompleted: (data) => {
             if (data.obterPendentes.length === 0) {
@@ -109,7 +106,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                 variables = { pagina: 0, tamanho: numericValue, status };
                 break;
             case 'statusArquivado':
-                status = 'Rejeitado'; // Fallback
+                status = 'Rejeitado';
                 variables = { pagina: 0, tamanho: numericValue, status };
                 break;
             case 'solicitante':
@@ -125,7 +122,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
 
         toast.loading('Buscando pendências...', { id: 'search-toast' });
         runSearch({ variables }).finally(() => {
-            toast.dismiss('search-toast'); // Limpa o toast
+            toast.dismiss('search-toast');
         });
         setHasSearched(true);
     };
@@ -146,13 +143,13 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
             className="bg-gray-50 rounded-lg shadow-sm p-6"
             style={!hasSearched ? { minHeight: '5vh' } : {}}
         >
-            {/* Barra de Filtro e Busca */}
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">Filtra pendências por:</span>
+                <label htmlFor="filter-type" className="text-sm font-semibold">Filtra pendências por:</label>
                 <select
+                    id="filter-type"
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value as SearchFilter)}
-                    className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm"
+                    className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                     <option value="statusAguardando">Aguardando revisão</option>
                     <option value="statusAprovado">Situação aprovada</option>
@@ -162,20 +159,25 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                     <option value="tipoPendencia">Tipo de pendência</option>
                 </select>
 
-                {/* Input de Texto Condicional */}
                 <div className="flex-grow relative">
                     {isNumericFilter && (
-                        <input
-                            type="number"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder={placeholderMap[filterType]}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        />
+                        <>
+                            <label htmlFor="numeric-filter" className="sr-only">Quantidade</label>
+                            <input
+                                id="numeric-filter"
+                                type="number"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={placeholderMap[filterType]}
+                                className="input-std"
+                            />
+                        </>
                     )}
                     {isStaffFilter && (
                         <div>
+                            <label htmlFor="staff-filter" className="sr-only">Buscar Staff</label>
                             <input
+                                id="staff-filter"
                                 type="text"
                                 value={selectedStaff ? selectedStaff.nome : staffQuery}
                                 onChange={(e) => {
@@ -183,7 +185,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                                     setSelectedStaff(null);
                                 }}
                                 placeholder={placeholderMap[filterType]}
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                className="input-std"
                             />
                             {staffResults.length > 0 && (
                                 <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -202,12 +204,14 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                     )}
                     {isCommandFilter && (
                         <div>
+                            <label htmlFor="command-filter" className="sr-only">Tipo de Comando</label>
                             <input
+                                id="command-filter"
                                 type="text"
                                 value={commandQuery}
                                 onChange={(e) => setCommandQuery(e.target.value)}
                                 placeholder={placeholderMap[filterType]}
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                className="input-std"
                             />
                             {commandResults.length > 0 && (
                                 <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -228,20 +232,19 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
 
                 <button
                     onClick={() => handleSearch()}
-                    className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700"
+                    className="btn-primary"
+                    aria-label="Buscar"
                 >
                     <Search size={18} />
                 </button>
             </div>
 
-            {/* Área de Resultados */}
             {hasSearched && (
                 <div
                     className="mt-6"
                     style={{ maxHeight: '500px', overflowY: 'auto' }}
                 >
                     {searchLoading && <p className="text-center text-sm">Buscando...</p>}
-                    {/* O erro é tratado pelo toast */}
                     {!searchLoading && searchResults.length === 0 && (
                         <p className="text-center text-gray-500 text-sm">Nenhum resultado encontrado.</p>
                     )}

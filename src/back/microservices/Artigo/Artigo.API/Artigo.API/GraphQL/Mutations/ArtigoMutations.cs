@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-
 namespace Artigo.API.GraphQL.Mutations
 {
     public class ArtigoMutation
@@ -24,6 +23,14 @@ namespace Artigo.API.GraphQL.Mutations
             _mapper = mapper;
         }
 
+        // --- Helper para extrair ID do usuário de forma robusta ---
+        private string GetUserId(ClaimsPrincipal claims)
+        {
+            return claims.FindFirstValue("sub")
+                ?? claims.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("ID do usuário (sub/nameid) não encontrado no token.");
+        }
+
         // =========================================================================
         // ARTIGO CORE MUTATIONS
         // =========================================================================
@@ -33,7 +40,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
 
             var newArtigo = _mapper.Map<Artigo.Intf.Entities.Artigo>(input);
             var autores = _mapper.Map<List<Autor>>(input.Autores);
@@ -49,7 +56,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
 
             var success = await _artigoService.AtualizarMetadadosArtigoAsync(id, input, currentUsuarioId, commentary);
 
@@ -69,7 +76,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var midiasEntidades = _mapper.Map<List<MidiaEntry>>(midias);
             return await _artigoService.AtualizarConteudoArtigoAsync(artigoId, newContent, midiasEntidades, currentUsuarioId, commentary);
         }
@@ -80,7 +87,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.AtualizarEquipeEditorialAsync(artigoId, teamInput, currentUsuarioId, commentary);
         }
 
@@ -95,7 +102,7 @@ namespace Artigo.API.GraphQL.Mutations
             string? parentCommentId,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
@@ -113,7 +120,7 @@ namespace Artigo.API.GraphQL.Mutations
             string usuarioNome,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var newComment = new Artigo.Intf.Entities.Interaction
             {
                 UsuarioId = currentUsuarioId,
@@ -131,7 +138,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.AtualizarInteracaoAsync(interacaoId, newContent, currentUsuarioId, commentary);
         }
 
@@ -140,7 +147,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.DeletarInteracaoAsync(interacaoId, currentUsuarioId, commentary);
         }
 
@@ -154,7 +161,7 @@ namespace Artigo.API.GraphQL.Mutations
             string? parent,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.AddStaffComentarioAsync(historyId, currentUsuarioId, comment, parent);
         }
 
@@ -164,7 +171,7 @@ namespace Artigo.API.GraphQL.Mutations
             string newContent,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.UpdateStaffComentarioAsync(historyId, comentarioId, newContent, currentUsuarioId);
         }
 
@@ -173,7 +180,7 @@ namespace Artigo.API.GraphQL.Mutations
             string comentarioId,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.DeleteStaffComentarioAsync(historyId, comentarioId, currentUsuarioId);
         }
 
@@ -187,7 +194,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var novoStaff = _mapper.Map<Staff>(input);
             return await _artigoService.CriarNovoStaffAsync(novoStaff, currentUsuarioId, commentary);
         }
@@ -197,7 +204,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var updatedStaffEntity = await _artigoService.AtualizarStaffAsync(input, currentUsuarioId, commentary);
             return _mapper.Map<StaffViewDTO>(updatedStaffEntity);
         }
@@ -211,7 +218,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             var novoVolume = _mapper.Map<Volume>(input);
             return await _artigoService.CriarVolumeAsync(novoVolume, currentUsuarioId, commentary);
         }
@@ -222,7 +229,7 @@ namespace Artigo.API.GraphQL.Mutations
             string commentary,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.AtualizarMetadadosVolumeAsync(volumeId, input, currentUsuarioId, commentary);
         }
 
@@ -234,7 +241,7 @@ namespace Artigo.API.GraphQL.Mutations
             Pending input,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.CriarRequisicaoPendenteAsync(input, currentUsuarioId);
         }
 
@@ -243,7 +250,7 @@ namespace Artigo.API.GraphQL.Mutations
             bool isApproved,
             ClaimsPrincipal claims)
         {
-            var currentUsuarioId = claims.FindFirstValue("sub") ?? throw new InvalidOperationException("Claim 'sub' não encontrada após autenticação.");
+            var currentUsuarioId = GetUserId(claims);
             return await _artigoService.ResolverRequisicaoPendenteAsync(pendingId, isApproved, currentUsuarioId);
         }
     }

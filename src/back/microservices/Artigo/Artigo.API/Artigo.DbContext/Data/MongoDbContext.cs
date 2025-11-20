@@ -1,10 +1,10 @@
 ﻿using MongoDB.Driver;
-using Artigo.DbContext.PersistenceModels; // CRITICO: Não Remover!! Referência do Namespace
+using Artigo.DbContext.PersistenceModels;
 using System.ComponentModel.DataAnnotations;
 
 namespace Artigo.DbContext.Config
 {
-    // ... (Classe MongoDBSettings segue inalterada)
+    // ... (Classe MongoDBSettings segue inalterada, se houver)
 }
 
 namespace Artigo.DbContext.Data
@@ -25,15 +25,17 @@ namespace Artigo.DbContext.Data
             _database = client.GetDatabase(databaseName);
         }
 
-        // As propriedades da coleção tem que ser unqualified Persistence Model type.
-        // O tipo apara retorno já é corretamente denido usando Artigo.DbContext.PersistenceModels;
-        public IMongoCollection<ArtigoModel> Artigos => _database.GetCollection<ArtigoModel>(nameof(ArtigoModel));
-        public IMongoCollection<AutorModel> Autores => _database.GetCollection<AutorModel>(nameof(AutorModel));
-        public IMongoCollection<EditorialModel> Editoriais => _database.GetCollection<EditorialModel>(nameof(EditorialModel));
-        public IMongoCollection<InteractionModel> Interactions => _database.GetCollection<InteractionModel>(nameof(InteractionModel));
-        public IMongoCollection<ArtigoHistoryModel> ArtigoHistories => _database.GetCollection<ArtigoHistoryModel>(nameof(ArtigoHistoryModel));
-        public IMongoCollection<PendingModel> Pendings => _database.GetCollection<PendingModel>(nameof(PendingModel));
-        public IMongoCollection<StaffModel> Staffs => _database.GetCollection<StaffModel>(nameof(StaffModel));
-        public IMongoCollection<VolumeModel> Volumes => _database.GetCollection<VolumeModel>(nameof(VolumeModel));
+        // FIX: Mapeando explicitamente para os nomes das coleções no banco (sem 'Model')
+        public IMongoCollection<ArtigoModel> Artigos => _database.GetCollection<ArtigoModel>("Artigo");
+        public IMongoCollection<AutorModel> Autores => _database.GetCollection<AutorModel>("Autor");
+        public IMongoCollection<EditorialModel> Editoriais => _database.GetCollection<EditorialModel>("Editorial");
+        public IMongoCollection<InteractionModel> Interactions => _database.GetCollection<InteractionModel>("Interaction");
+        public IMongoCollection<ArtigoHistoryModel> ArtigoHistories => _database.GetCollection<ArtigoHistoryModel>("ArtigoHistory");
+        public IMongoCollection<PendingModel> Pendings => _database.GetCollection<PendingModel>("Pending");
+        public IMongoCollection<StaffModel> Staffs => _database.GetCollection<StaffModel>("Staff");
+
+        // Nota: Verifique se no banco é "Volume" (maiúsculo) ou "volume" (minúsculo) como você mencionou.
+        // Assumindo "Volume" para manter o padrão das outras. Se for minúsculo, altere para "volume".
+        public IMongoCollection<VolumeModel> Volumes => _database.GetCollection<VolumeModel>("Volume");
     }
 }

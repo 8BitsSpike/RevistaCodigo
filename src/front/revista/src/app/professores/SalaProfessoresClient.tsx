@@ -9,8 +9,7 @@ import useAuth from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import ArticleCard from '@/components/ArticleCard';
 import { PenSquare, BookMarked } from 'lucide-react';
-
-const API_BASE = 'https://localhost:54868/api/Usuario';
+import { USER_API_BASE } from '@/lib/fetcher';
 
 interface ArtigoCardData {
     id: string;
@@ -34,27 +33,23 @@ export default function SalaProfessoresClient() {
     const [biografia, setBiografia] = useState<string | null>(null);
     const [loadingBio, setLoadingBio] = useState(true);
 
-    // Hook do Apollo para buscar artigos da ArtigoAPI
     const {
         data: artigosData,
         loading: loadingArtigos,
         error: errorArtigos
     } = useQuery<MeusArtigosQueryData>(GET_MEUS_ARTIGOS, {
-        skip: !user, // Pula a query se o usuário não estiver logado
+        skip: !user,
     });
 
-    // Efeito para buscar a biografia do usuário na UsuarioAPI
     useEffect(() => {
-        // Se o hook de auth ainda está carregando, não faz nada
         if (authLoading) return;
 
-        // Se não há usuário, redireciona para o login
         if (!user) {
             router.push('/login');
             return;
         }
 
-        const token = localStorage.getItem('userToken'); // Token da UsuarioAPI
+        const token = localStorage.getItem('userToken');
         if (!token) {
             router.push('/login');
             return;
@@ -63,16 +58,16 @@ export default function SalaProfessoresClient() {
         const fetchProfileBio = async () => {
             try {
                 setLoadingBio(true);
-                const res = await fetch(`${API_BASE}/${user.id}?token=${token}`, {
+                // Use USER_API_BASE
+                const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error('Erro ao carregar dados do perfil');
                 const data = await res.json();
-                // Armazena a biografia (ou null se estiver vazia/nula)
                 setBiografia(data.biografia || null);
             } catch (err) {
                 console.error(err);
-                setBiografia(null); // Define como null em caso de erro
+                setBiografia(null);
             } finally {
                 setLoadingBio(false);
             }
@@ -81,12 +76,10 @@ export default function SalaProfessoresClient() {
         fetchProfileBio();
     }, [user, authLoading, router]);
 
-    // Filtra os artigos para "Em Revisão"
     const reviewArticles = artigosData?.obterMeusArtigosCardList.filter(
         art => art.status === 'EmRevisao'
     ) ?? [];
 
-    // Define se o botão de submissão deve estar ativo
     const canSubmit = biografia !== null && biografia !== '';
 
     const isLoading = authLoading || loadingBio || loadingArtigos;
@@ -108,7 +101,6 @@ export default function SalaProfessoresClient() {
             <div className="w-[90%] mx-auto mb-[5vh]">
                 <h1 className="text-3xl font-bold mb-10 text-center">Sala dos Professores</h1>
 
-                {/* --- Área Escrever novo artigo --- */}
                 <div className="mb-12 p-6 bg-gray-50 rounded-lg shadow-sm">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-2">
                         <PenSquare className="text-emerald-600" />
@@ -134,7 +126,6 @@ export default function SalaProfessoresClient() {
                             Iniciar Submissão
                         </Link>
 
-                        {/* Mensagem condicional se a biografia estiver faltando */}
                         {!canSubmit && (
                             <p className="text-sm text-gray-600 mt-4">
                                 Para criar um novo artigo é necessário completar seu cadastro com maiores informações sobre você.
@@ -147,7 +138,6 @@ export default function SalaProfessoresClient() {
                     </div>
                 </div>
 
-                {/* --- Área Meus artigos em revisão --- */}
                 <div className="mt-8">
                     <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-2">
                         <BookMarked className="text-emerald-600" />

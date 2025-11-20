@@ -19,7 +19,7 @@ using Artigo.API.GraphQL.Inputs;
 using Microsoft.AspNetCore.Authentication;
 using Artigo.API.Security;
 using System.Security.Claims;
-using HotChocolate.Authorization; // Contains AuthorizeDirectiveType
+// Removed unused HotChocolate.Authorization import
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,6 +99,8 @@ builder.Services
     .AddQueryType<ArtigoQueryType>()
     .AddMutationType<ArtigoMutationType>()
 
+    // REMOVIDO: .AddAuthorization() 
+    // A autorização agora é IMPERATIVA, controlada exclusivamente pelo ArtigoService.
 
     // Filtros
     .AddErrorFilter<AuthorizationErrorFilter>()
@@ -159,10 +161,10 @@ builder.Services
 
 
 // =========================================================================
-// 5. CONFIGURAÇÃO DE AUTENTICAÇÃO E AUTORIZAÇÃO
+// 5. CONFIGURAÇÃO DE AUTENTICAÇÃO
 // =========================================================================
 
-var secretKey = "SUA_CHAVE_SECRETA_SUPER_SEGURA_E_LONGA_QUE_ESTA_NA_USUARIO_API";
+var secretKey = "ThisIsAVeryLongAndSecureKeyForTestingPurposesThatIsAtLeast32BytesLong";
 var keyBytes = Encoding.UTF8.GetBytes(secretKey);
 
 builder.Services.AddAuthentication("Bearer")
@@ -172,44 +174,14 @@ builder.Services.AddAuthentication("Bearer")
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-            ValidateIssuer = true,
-            ValidIssuer = "https://localhost:5001",
+
+            // FIX: Desabilitar validação de emissor para facilitar testes locais
+            ValidateIssuer = false,
+
             ValidateLifetime = true,
             ValidateAudience = false,
         };
     });
-
-// Adiciona políticas de autorização baseadas nas roles de Staff
-builder.Services.AddAuthorization(options =>
-{
-    // Política 1: Acesso Staff Mínimo (Editor Bolsista, Editor Chefe, Admin)
-    options.AddPolicy("StaffPolicy", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireRole(
-            nameof(FuncaoTrabalho.EditorBolsista),
-            nameof(FuncaoTrabalho.EditorChefe),
-            nameof(FuncaoTrabalho.Administrador));
-    });
-
-    // Política 2: Acesso Staff Sênior (Editor Chefe, Admin)
-    options.AddPolicy("AdminChefePolicy", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireRole(
-            nameof(FuncaoTrabalho.EditorChefe),
-            nameof(FuncaoTrabalho.Administrador));
-    });
-
-    // Política 3: Acesso Staff Máximo (Admin)
-    options.AddPolicy("AdminPolicy", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireRole(
-            nameof(FuncaoTrabalho.Administrador));
-    });
-});
-
 
 var app = builder.Build();
 
@@ -220,7 +192,7 @@ var app = builder.Build();
 app.UseCors(_myAllowSpecificOrigins);
 
 app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthorization(); // Mantido para popular o HttpContext.User
 
 app.MapGraphQL();
 

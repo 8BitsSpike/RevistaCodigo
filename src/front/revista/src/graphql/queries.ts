@@ -293,7 +293,8 @@ export const DELETAR_INTERACAO = gql`
 `;
 
 export const CRIAR_ARTIGO = gql`
-  mutation CriarArtigo($input: CreateArtigoInput!, $commentary: String!) {
+  mutation CriarArtigo($input: CreateArtigoRequestInput!, $commentary: String!) {
+    
     criarArtigo(input: $input, commentary: $commentary) {
       id
       titulo
@@ -477,7 +478,7 @@ export const SEARCH_ARTIGOS_EDITORIAL_BY_AUTOR_IDS = gql`
 export const ATUALIZAR_METADADOS_ARTIGO = gql`
   mutation AtualizarMetadadosArtigo(
     $id: ID!
-    $input: UpdateArtigoInput!
+    $input: UpdateArtigoMetadataInput! 
     $commentary: String!
   ) {
     atualizarMetadadosArtigo(id: $id, input: $input, commentary: $commentary) {

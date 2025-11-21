@@ -77,7 +77,7 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
 
             try {
                 // Use USER_API_BASE
-                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${query}?token=${token}`, {
+                const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -164,7 +164,7 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
             if (!token) return;
             try {
                 // Use USER_API_BASE
-                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${query}?token=${token}`, {
+                const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

@@ -10,6 +10,7 @@ import Layout from '@/components/Layout';
 import ImageAltModal from '@/components/ImageAltModal';
 import { Check, X, Trash2, Plus, UploadCloud } from 'lucide-react';
 import 'quill/dist/quill.snow.css';
+import { TipoArtigo } from '@/types/enums'; 
 import type Quill from 'quill';
 import toast from 'react-hot-toast';
 import { USER_API_BASE } from '@/lib/fetcher';
@@ -128,7 +129,7 @@ export default function SubmitArtigoClient() {
 
         const midiasInput = midias.map(m => ({ midiaID: m.midiaID, url: m.url, alt: m.alt }));
 
-        await criarArtigo({ variables: { input: { titulo, resumo, conteudo: quillContent, tipo: 'Artigo', autores: autoresInput, referenciasAutor: externalRefs, midias: midiasInput }, commentary: "Submissão inicial" } });
+        await criarArtigo({ variables: { input: { titulo, resumo, conteudo: quillContent, tipo: TipoArtigo.Artigo, autores: autoresInput, referenciasAutor: externalRefs, midias: midiasInput }, commentary: "Submissão inicial" } });
 
         toast.dismiss('sub'); setIsSubmitting(false);
     };

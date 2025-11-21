@@ -1,5 +1,6 @@
 ﻿using Artigo.Intf.Entities;
 using Artigo.Intf.Enums;
+using MongoDB.Bson.Serialization.Attributes;
 using System.Collections.Generic;
 
 namespace Artigo.Server.DTOs
@@ -9,6 +10,7 @@ namespace Artigo.Server.DTOs
     /// Agrega todas as informações necessárias para a página de edição de um artigo
     /// por um membro da equipe editorial ou autor.
     /// </sumario>
+   
     public class ArtigoEditorialViewDTO
     {
         // Campos do Artigo

@@ -183,7 +183,7 @@ builder.Services.AddAuthentication("Bearer")
 
 builder.Services.AddAuthorization();
 
-
+builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 
 // =========================================================================

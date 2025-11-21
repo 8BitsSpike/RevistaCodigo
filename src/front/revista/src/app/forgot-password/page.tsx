@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const RECOVER_API_URL = 'https://localhost:54868/api/Usuario/RequestPasswordReset';
+const RECOVER_API_URL = 'https://localhost:44390/api/Usuario/RequestPasswordReset';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');

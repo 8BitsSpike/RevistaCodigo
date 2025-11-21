@@ -120,8 +120,15 @@ export const GET_ARTIGOS_BY_IDS = gql`
 `;
 
 export const GET_ARTIGOS_POR_TIPO = gql`
-  query GetArtigosPorTipo($tipo: TipoArtigo!, $page: Int!, $pageSize: Int!) {
-    obterArtigosCardListPorTipo(tipo: $tipo, pagina: $page, tamanho: $pageSize) {
+  
+  query GetArtigosPorTipo($tipo: TipoArtigo!, $pagina: Int!, $tamanho: Int!) {
+    
+   
+    obterArtigosCardListPorTipo(
+      tipo: $tipo, 
+      pagina: $pagina,  
+      tamanho: $tamanho  
+    ) {
       id
       titulo
       resumo
@@ -185,12 +192,15 @@ const COMMENT_FIELDS = gql`
 `;
 
 export const GET_ARTIGO_VIEW = gql`
-  query GetArtigoView($artigoId: ID!) {
+  # CORREÇÃO: Mude $artigoId: ID! para $artigoId: String!
+  query GetArtigoView($artigoId: String!) { 
+    
     obterArtigoView(artigoId: $artigoId) {
       id
       titulo
       tipo
       permitirComentario
+      
       conteudoAtual { 
         content
         midias {
@@ -199,17 +209,20 @@ export const GET_ARTIGO_VIEW = gql`
           textoAlternativo
         }
       }
+      
       autores { 
         usuarioId
         nome
         url
       }
+      
       volume { 
         id
         volumeTitulo
         volumeResumo
       }
-      interacoes(page: 0, pageSize: 999) { 
+      
+      interacoes { 
         comentariosEditoriais { 
           ...CommentFields
         }
@@ -218,6 +231,7 @@ export const GET_ARTIGO_VIEW = gql`
   }
   ${COMMENT_FIELDS} 
 `;
+
 
 export const GET_COMENTARIOS_PUBLICOS = gql`
   query GetComentariosPublicos(
@@ -598,16 +612,20 @@ const EDITORIAL_TEAM_FIELDS = gql`
 `;
 
 export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
-  query ObterArtigoEditorialView($artigoId: ID!) {
+  query ObterArtigoEditorialView($artigoId: String!) {
+    
     obterArtigoEditorialView(artigoId: $artigoId) {
       id
       titulo
       resumo
       tipo
       status
-      autorIds
+      
+     
+      
       permitirComentario
       editorialId
+      
       editorial {
         position
         currentHistoryId

@@ -31,7 +31,16 @@ import Image from 'next/image';
 import { User, Send } from 'lucide-react';
 import StaffControlBar from '@/components/StaffControlBar';
 import CreateCommentCard from '@/components/CreateCommentCard';
-import EditorialQuillEditor from '@/components/EditorialQuillEditor';
+import dynamic from 'next/dynamic';
+
+// Carrega o editor apenas no cliente (navegador), evitando o erro "document is not defined"
+const EditorialQuillEditor = dynamic(
+  () => import('@/components/EditorialQuillEditor'),
+  { 
+    ssr: false, // <--- ISSO É O SEGREDO
+    loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-md">Carregando editor...</div>
+  }
+);
 import type { Range } from 'quill';
 
 interface EditorialTeamData { initialAuthorId: string[]; editorId: string; reviewerIds: string[]; correctorIds: string[]; __typename: "EditorialTeam"; }
@@ -87,18 +96,24 @@ function ArtigoEditClient() {
     const staffList = staffData?.obterStaffList?.filter((s): s is StaffMember => !!s) ?? [];
 
     const { data, loading, refetch } = useQuery<EditorialViewData>(OBTER_ARTIGO_EDITORIAL_VIEW, {
-        variables: { artigoId }, skip: !artigoId || !user, fetchPolicy: 'network-only',
+        variables: { artigoId }, 
+        skip: !artigoId || !user, 
+        fetchPolicy: 'network-only',
         onCompleted: (data) => {
             const conteudo = data.obterArtigoEditorialView?.conteudoAtual;
-            // FIX: Safety checks for potentially missing data
             if (data.obterArtigoEditorialView && conteudo) {
                 setEditTitle(data.obterArtigoEditorialView.titulo || '');
                 setEditResumo(data.obterArtigoEditorialView.resumo || '');
                 setEditContent(conteudo.content || '');
+                // Proteção contra midias null
                 setEditMidias(conteudo.midias ? conteudo.midias.map(m => ({ midiaID: m.idMidia, url: m.url, alt: m.textoAlternativo })) : []);
             }
         },
-        onError: (err) => { toast.error(err.message); if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) router.push('/'); }
+        onError: (err) => { 
+            // Mostra o erro mas não redireciona imediatamente se for apenas erro parcial
+            toast.error(err.message); 
+            if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) router.push('/'); 
+        }
     });
 
     const artigo = data?.obterArtigoEditorialView;
@@ -110,14 +125,24 @@ function ArtigoEditClient() {
     const [atualizarMetadados, { loading: loadingMeta }] = useMutation(ATUALIZAR_METADADOS_ARTIGO);
 
     useEffect(() => {
-        if (loadingStaff || loading || !artigo || !user) return;
-        const team = editorial?.team;
+        // Adicionei verificação extra (!editorial)
+        if (loadingStaff || loading || !artigo || !user || !editorial) return;
+        
+        const team = editorial.team;
+        
+        // Se team for null (erro parcial), assumimos 'none' ou tratamos como erro
+        if (!team) {
+             console.warn("Equipe editorial não carregada.");
+             return;
+        }
+
         if (isStaff) { setUserRole('staff'); return; }
-        // FIX: Safety checks for team being undefined
-        if (team?.initialAuthorId?.includes(user.id)) { setUserRole('author'); return; }
-        if (team?.reviewerIds?.includes(user.id) || team?.correctorIds?.includes(user.id) || team?.editorId === user.id) { setUserRole('team'); return; }
-        toast.error("Sem permissão."); router.push('/');
-    }, [user, isStaff, artigo, loading, loadingStaff, router, editorial?.team]);
+        if (team.initialAuthorId?.includes(user.id)) { setUserRole('author'); return; }
+        if (team.reviewerIds?.includes(user.id) || team.correctorIds?.includes(user.id) || team.editorId === user.id) { setUserRole('team'); return; }
+        
+        toast.error("Sem permissão."); 
+        router.push('/');
+    }, [user, isStaff, artigo, loading, loadingStaff, router, editorial]);
 
     const mode = useMemo((): 'edit' | 'comment' => {
         if (!artigo || !editorial || !conteudo) return 'comment';
@@ -146,14 +171,23 @@ function ArtigoEditClient() {
     };
 
     if (loading || loadingStaff) return <Layout pageType="editorial"><div className="text-center mt-20">Carregando dados editoriais...</div></Layout>;
-    if (!artigo || !editorial || !conteudo) return <Layout pageType="editorial"><div className="text-center mt-20 text-red-500">Dados do artigo incompletos.</div></Layout>;
+    
+    // Se falhar aqui, é porque realmente não veio nada
+    if (!artigo || !editorial || !conteudo) return <Layout pageType="editorial"><div className="text-center mt-20 text-red-500">Dados do artigo incompletos ou erro no carregamento.</div></Layout>;
+
+    // --- CORREÇÃO CRUCIAL AQUI ---
+    // Prepara os comentários editoriais de forma segura (lidando com null)
+    const comentariosEditoriaisSafe = artigo.interacoes?.comentariosEditoriais || [];
+    const temComentarioUsuario = comentariosEditoriaisSafe.some(c => c.usuarioId === user?.id);
 
     return (
         <Layout pageType="editorial">
             <ProgressBar currentVersion={conteudo.version} />
             <div className="relative" style={{ marginLeft: '40px', padding: '1% 0.5%', width: 'calc(100% - 40px)' }}>
                 <TeamHeader team={editorial.team} staffList={staffList} />
+                
                 {userRole === 'staff' && <StaffControlBar artigoId={artigo.id} editorialId={artigo.editorialId} currentData={artigo as ArtigoData} staffList={staffList} onUpdate={refetch} />}
+                
                 <div className="flex gap-4 mt-6">
                     <div className="flex-1" style={{ width: (conteudo.version > 0 || mode === 'comment') ? '80%' : '100%' }}>
                         {mode === 'edit' ? (
@@ -165,9 +199,22 @@ function ArtigoEditClient() {
                         ) : (
                             <div><h3 className="text-xl font-semibold mb-4">Modo de Comentário</h3><EditorialQuillEditor mode="comment" initialContent={conteudo.content} staffComments={conteudo.staffComentarios} onTextSelect={handleTextSelect} onHighlightClick={handleHighlightClick} /></div>
                         )}
+                        
                         {userRole !== 'staff' && mode === 'edit' && <div className="flex justify-end gap-4 mt-6"><button onClick={() => refetch()} className="btn-secondary">Cancelar</button><button onClick={handleSaveAuthorChanges} disabled={loadingContent || loadingMeta} className="btn-primary">Salvar Alterações</button></div>}
-                        {editorial.position === PosicaoEditorial.ProntoParaPublicar && <div className="mt-10 pt-6 border-t"><h3 className="text-2xl font-semibold mb-4">Comentário Editorial</h3>{artigo.interacoes.comentariosEditoriais.some(c => c.usuarioId === user?.id) ? <p className="text-gray-600">Comentário enviado.</p> : <CreateCommentCard artigoId={artigo.id} onCommentPosted={refetch} isEditorial={true} />}</div>}
+                        
+                        {/* Renderização Condicional Segura */}
+                        {editorial.position === PosicaoEditorial.ProntoParaPublicar && (
+                            <div className="mt-10 pt-6 border-t">
+                                <h3 className="text-2xl font-semibold mb-4">Comentário Editorial</h3>
+                                {temComentarioUsuario ? (
+                                    <p className="text-gray-600">Comentário enviado.</p> 
+                                ) : (
+                                    <CreateCommentCard artigoId={artigo.id} onCommentPosted={refetch} isEditorial={true} />
+                                )}
+                            </div>
+                        )}
                     </div>
+                    
                     {(mode === 'comment' || conteudo.version > 0) && (
                         <div style={{ width: '20%' }} className="flex-shrink-0">
                             <h4 className="text-lg font-semibold mb-4">Comentários</h4>

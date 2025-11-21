@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-// Importação de CSS
-import 'react-quill/dist/quill.snow.css';
+// CSS Imports
+import 'react-quill-new/dist/quill.snow.css';
 import 'highlight.js/styles/monokai-sublime.css';
 
 import { StaffComentario } from '@/types/index';
 import ImageAltModal from './ImageAltModal';
 import toast from 'react-hot-toast';
-import type ReactQuillType from 'react-quill';
 import type { Range } from 'quill';
 
 interface EditorialQuillEditorProps {
@@ -21,7 +20,6 @@ interface EditorialQuillEditorProps {
     onHighlightClick?: (comment: StaffComentario) => void;
 }
 
-// Componente Interno (que será exportado dinamicamente)
 const EditorialQuillEditorInternal = ({
     mode,
     initialContent,
@@ -32,46 +30,61 @@ const EditorialQuillEditorInternal = ({
     onHighlightClick,
 }: EditorialQuillEditorProps) => {
     
-    const reactQuillRef = useRef<ReactQuillType>(null);
+    const reactQuillRef = useRef<any>(null);
     const [isAltModalOpen, setIsAltModalOpen] = useState(false);
     const [pendingImage, setPendingImage] = useState<{ id: string; url: string } | null>(null);
     
-    // Carrega as libs de forma síncrona (seguro pois estamos no cliente)
-    const ReactQuill = require('react-quill');
-    const Quill = ReactQuill.Quill;
-    const hljs = require('highlight.js');
+    // Estado para guardar o componente ReactQuill carregado dinamicamente
+    const [QuillComponent, setQuillComponent] = useState<any>(null);
 
-    // Configuração Única (fora do render loop, mas dentro do componente)
-    // CORREÇÃO AQUI: Usamos (window as any) para o TypeScript não reclamar
-    if (typeof window !== 'undefined' && !(window as any).QuillConfigured) {
-        
-        // @ts-ignore
-        window.hljs = hljs;
-        
-        if (!Quill.imports['modules/syntax']) {
-             // @ts-ignore
-            Quill.register('modules/syntax', true);
-        }
+    // --- EFEITO DE INICIALIZAÇÃO E ORDEM DE CARREGAMENTO ---
+    useEffect(() => {
+        const loadEditor = async () => {
+            if (typeof window === 'undefined') return;
 
-        const Inline = Quill.import('blots/inline');
-        if (!Quill.imports['formats/highlight']) {
-            class HighlightBlot extends Inline {
-                static blotName = 'highlight';
-                static tagName = 'span';
-                static create(value: string) {
-                    const node = super.create();
-                    node.setAttribute('data-comment-id', value);
-                    node.style.backgroundColor = '#FFF9C4';
-                    node.style.cursor = 'pointer';
-                    return node;
+            // 1. Carrega Highlight.js primeiro
+            const hljsModule = await import('highlight.js');
+            const hljs = hljsModule.default || hljsModule;
+            
+            // 2. Atribui ao window OBRIGATORIAMENTE antes de carregar o Quill
+            (window as any).hljs = hljs;
+
+            // 3. Carrega React Quill (que vai carregar Quill, que vai procurar window.hljs)
+            const RQModule = await import('react-quill-new');
+            const ReactQuill = RQModule.default || RQModule;
+            const Quill = ReactQuill.Quill || RQModule.Quill;
+
+            // 4. Configurações adicionais do Quill
+            if (!(window as any).QuillConfigured) {
+                if (!Quill.imports['modules/syntax']) {
+                     // @ts-ignore
+                    Quill.register('modules/syntax', true);
                 }
+
+                const Inline = Quill.import('blots/inline') as any;
+                if (!Quill.imports['formats/highlight']) {
+                    class HighlightBlot extends Inline {
+                        static blotName = 'highlight';
+                        static tagName = 'span';
+                        static create(value: string) {
+                            const node = super.create();
+                            node.setAttribute('data-comment-id', value);
+                            node.style.backgroundColor = '#FFF9C4';
+                            node.style.cursor = 'pointer';
+                            return node;
+                        }
+                    }
+                    Quill.register(HighlightBlot, true);
+                }
+                (window as any).QuillConfigured = true;
             }
-            Quill.register(HighlightBlot, true);
-        }
-        
-        // Marca como configurado no objeto window global
-        (window as any).QuillConfigured = true;
-    }
+
+            // 5. Salva o componente no estado para renderizar
+            setQuillComponent(() => ReactQuill);
+        };
+
+        loadEditor();
+    }, []);
 
     const imageHandler = useCallback(() => {
         const input = document.createElement('input');
@@ -109,6 +122,7 @@ const EditorialQuillEditorInternal = ({
     };
 
     const modules = useMemo(() => ({
+        // Agora é seguro usar syntax: true porque garantimos o window.hljs
         syntax: true, 
         toolbar: {
             container: [
@@ -123,9 +137,9 @@ const EditorialQuillEditorInternal = ({
         history: { userOnly: true }
     }), [imageHandler]);
 
-    // Efeitos de Highlight e Eventos
+    // Efeitos de Highlight e Eventos (Só rodam se o componente existir)
     useEffect(() => {
-        if (!reactQuillRef.current) return;
+        if (!QuillComponent || !reactQuillRef.current) return;
         const editor = reactQuillRef.current.getEditor();
 
         if (mode === 'comment' && staffComments.length > 0) {
@@ -170,16 +184,18 @@ const EditorialQuillEditorInternal = ({
             editor.on('selection-change', selHandler);
             return () => editor.off('selection-change', selHandler);
         }
-    }, [mode, staffComments, onHighlightClick, onTextSelect]);
+    }, [mode, staffComments, onHighlightClick, onTextSelect, QuillComponent]);
 
-    // Ajuste final para TypeScript aceitar a ref no componente importado via require
-    const QuillComp = ReactQuill as any;
+    // Se o componente ainda não carregou (está fazendo os imports), mostra loading
+    if (!QuillComponent) {
+        return <div className="w-full h-96 bg-gray-100 rounded-md animate-pulse flex items-center justify-center text-gray-400">Inicializando Editor...</div>;
+    }
 
     return (
         <>
             <ImageAltModal isOpen={isAltModalOpen} onConfirm={handleAltConfirm} />
             <div className="bg-white rounded-lg border border-gray-300 editorial-editor-container">
-                <QuillComp
+                <QuillComponent
                     ref={reactQuillRef}
                     theme="snow"
                     value={initialContent || ''}
@@ -193,7 +209,6 @@ const EditorialQuillEditorInternal = ({
     );
 };
 
-// EXPORTAÇÃO DINÂMICA
 import dynamic from 'next/dynamic';
 
 export default dynamic(() => Promise.resolve(EditorialQuillEditorInternal), {

@@ -44,8 +44,10 @@ namespace Artigo.DbContext.PersistenceModels
     /// Objeto embutido para rastrear os comentários internos da equipe editorial
     /// sobre uma versão específica do ArtigoHistory.
     /// </sumario>
+    [BsonIgnoreExtraElements] 
     public class StaffComentarioModel
     {
+        [BsonElement("Id")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
 
@@ -71,7 +73,10 @@ namespace Artigo.DbContext.PersistenceModels
         // Conteudo principal
         public string Titulo { get; set; } = string.Empty;
         public string Resumo { get; set; } = string.Empty;
+
+        [BsonRepresentation(BsonType.String)]
         public StatusArtigo Status { get; set; }
+        [BsonRepresentation(BsonType.String)]
         public TipoArtigo Tipo { get; set; }
 
         // Relacionamentos

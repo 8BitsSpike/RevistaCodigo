@@ -154,7 +154,8 @@ builder.Services
 
     .AddMongoDbProjections()
     .AddMongoDbFiltering()
-    .AddMongoDbSorting();
+    .AddMongoDbSorting()
+    .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true); 
 
 
 // =========================================================================

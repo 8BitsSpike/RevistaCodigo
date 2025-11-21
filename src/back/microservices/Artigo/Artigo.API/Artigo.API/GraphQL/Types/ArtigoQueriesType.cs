@@ -31,7 +31,7 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.VerificarStaffAsync(default!))
                 .Name("verificarStaff");
 
-            descriptor.Field(f => f.ObterArtigoEditorialViewAsync(default!, default!))
+            descriptor.Field(f => f.ObterArtigoEditorialViewAsync(default!))
                 .Name("obterArtigoEditorialView");
 
             descriptor.Field(f => f.ObterArtigosPublicadosParaVisitantesAsync(default!, default!))
@@ -40,7 +40,7 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Field(f => f.ObterArtigoPorIdAsync(default!, default!))
                 .Name("obterArtigoPorId");
 
-            descriptor.Field(f => f.ObterArtigosPorStatusAsync(default!, default!, default!, default!))
+            descriptor.Field(f => f.ObterArtigosPorStatusAsync(default!, default!, default!))
                 .Name("obterArtigosPorStatus");
 
             descriptor.Field(f => f.ObterMeusArtigosCardListAsync(default!))

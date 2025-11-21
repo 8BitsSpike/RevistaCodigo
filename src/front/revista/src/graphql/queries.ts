@@ -97,8 +97,6 @@ export const GET_AUTOR_VIEW = gql`
       usuarioId
       nome
       url
-      # ArtigoWorkIds removido se não existir no AutorViewType, verifique seu schema.
-      # Se existir, mantenha. Baseado no DTO, não existe ArtigoWorkIds no AutorViewDTO.
     }
   }
 `;
@@ -212,11 +210,9 @@ export const GET_ARTIGO_VIEW = gql`
         volumeResumo
       }
       interacoes(page: 0, pageSize: 999) { 
-        comentariosEditoriais { // Mantido: Comentários Editoriais
+        comentariosEditoriais { 
           ...CommentFields
         }
-        # comentariosPublicos (lista) removido: será buscado separadamente via paginação
-        totalComentariosPublicos // Mantido: Total de comentários públicos para guiar paginação
       }
     }
   }
@@ -298,7 +294,7 @@ export const CRIAR_ARTIGO = gql`
 export const OBTER_STAFF_LIST = gql`
   query ObterStaffList($page: Int!, $pageSize: Int!) {
     obterStaffList(pagina: $page, tamanho: $pageSize) {
-      usuarioId # ID de usuário externo (StaffViewDTO não tem 'id' local)
+      usuarioId  
       nome
       url
       job
@@ -381,7 +377,7 @@ export const RESOLVER_REQUISICAO_PENDENTE = gql`
 `;
 
 const EDITORIAL_CARD_FIELDS = gql`
-  fragment EditorialCardFields on ArtigoCardList {
+  fragment EditorialCardFields on ArtigoCardListDTO {
     id
     titulo
     resumo
@@ -549,8 +545,6 @@ export const OBTER_VOLUME_POR_ID = gql`
         url
         textoAlternativo
       }
-      # O campo 'artigoIds' é ignorado/não exposto pelo VolumeType no backend.
-      # Substituindo pelo campo resolvido 'artigos' para obter os IDs para roteamento (Instrução 2).
       artigos {
         id
         titulo
@@ -614,7 +608,6 @@ export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
       autorIds
       permitirComentario
       editorialId
-      # Dados aninhados resolvidos
       editorial {
         position
         currentHistoryId
@@ -636,7 +629,7 @@ export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
         }
       }
       
-      interacoes(page: 0, pageSize: 999) { # Apenas comentários editoriais
+      interacoes(page: 0, pageSize: 999) {
         comentariosEditoriais {
           ...CommentFields
         }

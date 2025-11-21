@@ -1,61 +1,85 @@
 export enum StatusArtigo {
-    Rascunho = "Rascunho",
-    AguardandoAprovacao = "AguardandoAprovacao",
-    EmRevisao = "EmRevisao",
-    ProntoParaPublicar = "ProntoParaPublicar",
-    Publicado = "Publicado",
-    Arquivado = "Arquivado",
+  Rascunho = "RASCUNHO",
+  AguardandoAprovacao = "AGUARDANDO_APROVACAO",
+  EmRevisao = "EM_REVISAO",
+  ProntoParaPublicar = "PRONTO_PARA_PUBLICAR",
+  Publicado = "PUBLICADO",
+  Arquivado = "ARQUIVADO",
 }
 
 export enum TipoArtigo {
-    Artigo = "Artigo",
-    Blog = "Blog",
-    Entrevista = "Entrevista",
-    Indicacao = "Indicacao",
-    Opniao = "Opniao",
-    Administrativo = "Administrativo",
+  Artigo = "ARTIGO",
+  Blog = "BLOG",
+  Entrevista = "ENTREVISTA",
+  Indicacao = "INDICACAO",
+  // ATENÇÃO: Mantive "OPNIAO" (sem o i) para bater com o seu C#
+  // Se você corrigir no C# para "Opiniao", altere aqui para "OPINIAO"
+  Opniao = "OPNIAO", 
+  Video = "VIDEO",
+  Administrativo = "ADMINISTRATIVO",
 }
 
 export enum StatusVolume {
-    EmRevisao = "EmRevisao",
-    Publicado = "Publicado",
-    Arquivado = "Arquivado",
+  EmRevisao = "EM_REVISAO",
+  Publicado = "PUBLICADO",
+  Arquivado = "ARQUIVADO",
 }
 
 export enum MesVolume {
-    Janeiro = "Janeiro",
-    Fevereiro = "Fevereiro",
-    Marco = "Marco",
-    Abril = "Abril",
-    Maio = "Maio",
-    Junho = "Junho",
-    Julho = "Julho",
-    Agosto = "Agosto",
-    Setembro = "Setembro",
-    Outubro = "Outubro",
-    Novembro = "Novembro",
-    Dezembro = "Dezembro",
+  // O GraphQL geralmente espera o NOME em maiúsculo, não o número
+  Janeiro = "JANEIRO",
+  Fevereiro = "FEVEREIRO",
+  Marco = "MARCO",
+  Abril = "ABRIL",
+  Maio = "MAIO",
+  Junho = "JUNHO",
+  Julho = "JULHO",
+  Agosto = "AGOSTO",
+  Setembro = "SETEMBRO",
+  Outubro = "OUTUBRO",
+  Novembro = "NOVEMBRO",
+  Dezembro = "DEZEMBRO",
 }
 
 export enum PosicaoEditorial {
-    Submetido = "Submetido",
-    AguardandoRevisao = "AguardandoRevisao",
-    RevisaoConcluida = "RevisaoConcluida",
-    AguardandoCorrecao = "AguardandoCorrecao",
-    CorrecaoConcluida = "CorrecaoConcluida",
-    AguardandoRedacao = "AguardandoRedacao",
-    RedacaoConcluida = "RedacaoConcluida",
-    Rejeitado = "Rejeitado",
-    EmEspera = "EmEspera",
-    ProntoParaPublicar = "ProntoParaPublicar",
-    Publicado = "Publicado",
+  Submetido = "SUBMETIDO",
+  AguardandoRevisao = "AGUARDANDO_REVISAO",
+  RevisaoConcluida = "REVISAO_CONCLUIDA",
+  AguardandoCorrecao = "AGUARDANDO_CORRECAO",
+  CorrecaoConcluida = "CORRECAO_CONCLUIDA",
+  AguardandoRedacao = "AGUARDANDO_REDACAO",
+  RedacaoConcluida = "REDACAO_CONCLUIDA",
+  Rejeitado = "REJEITADO",
+  EmEspera = "EM_ESPERA",
+  ProntoParaPublicar = "PRONTO_PARA_PUBLICAR",
+  Publicado = "PUBLICADO",
 }
 
 export enum VersaoArtigo {
-    Original = 0,
-    PrimeiraEdicao = 1,
-    SegundaEdicao = 2,
-    TerceiraEdicao = 3,
-    QuartaEdicao = 4,
-    Final = 5,
+  // Para Enums numéricos mapeados para valor, o GraphQL costuma tratar como string descritiva
+  // Mas se o seu schema espera INT, mantenha os números.
+  // SE DER ERRO AQUI, mude para: Original = "ORIGINAL", etc.
+  Original = 0,
+  PrimeiraEdicao = 1,
+  SegundaEdicao = 2,
+  TerceiraEdicao = 3,
+  QuartaEdicao = 4,
+  Final = 5,
+}
+
+// Adicionei os que faltavam baseados no seu C#
+export enum StatusPendente {
+  AguardandoRevisao = "AGUARDANDO_REVISAO",
+  Aprovado = "APROVADO",
+  Rejeitado = "REJEITADO",
+  Arquivado = "ARQUIVADO",
+}
+
+export enum TipoEntidadeAlvo {
+  Artigo = "ARTIGO",
+  Autor = "AUTOR",
+  Comentario = "COMENTARIO",
+  Staff = "STAFF",
+  Volume = "VOLUME",
+  Editorial = "EDITORIAL",
 }

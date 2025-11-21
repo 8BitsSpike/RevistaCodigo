@@ -31,7 +31,7 @@ export default function ArtigoSearch({ staffList, onSearch, loading }: ArtigoSea
             const token = localStorage.getItem('userToken');
             if (!token) return;
             try {
-                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${authorSearchQuery}`, {
+                const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${authorSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

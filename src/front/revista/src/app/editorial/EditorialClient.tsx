@@ -67,7 +67,7 @@ export default function EditorialClient() {
             const token = localStorage.getItem('userToken');
             if (!token) return;
             try {
-                const res = await fetch(`${USER_API_BASE}/UserSearch?name=${userSearchQuery}`, {
+                const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${userSearchQuery}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {

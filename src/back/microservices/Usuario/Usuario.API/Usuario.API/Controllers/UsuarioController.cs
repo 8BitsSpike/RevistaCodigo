@@ -48,9 +48,9 @@ namespace Usuario.API.Controllers
         }
         // --- GET BY ID ---
         [HttpGet("UserSearch")]
-        public async Task<ActionResult<List<Usuario.Intf.Models.Usuario>>> UserSearch(string nome)
+        public async Task<ActionResult<List<Usuario.Intf.Models.Usuario>>> UserSearch(string name)
         {
-            var usuario = await _usuarioService.GetListNameAsync(nome);
+            var usuario = await _usuarioService.GetListNameAsync(name);
             return Ok(usuario);
         }
 

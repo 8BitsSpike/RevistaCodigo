@@ -647,7 +647,7 @@ export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
         }
       }
       
-      interacoes(page: 0, pageSize: 999) {
+      interacoes {
         comentariosEditoriais {
           ...CommentFields
         }

@@ -24,7 +24,8 @@ namespace Artigo.API.GraphQL.Types
             descriptor.Description("Dados do ciclo editorial: Posição, ID do histórico atual e Equipe.");
             descriptor.Field(f => f.Position).Type<NonNullType<EnumType<PosicaoEditorial>>>();
             descriptor.Field(f => f.CurrentHistoryId).Type<NonNullType<IdType>>();
-            descriptor.Field(f => f.Team).Type<NonNullType<EditorialTeamType>>(); // Reutiliza o tipo de EditorialType.cs
+            descriptor.Field(f => f.Team).Type<NonNullType<EditorialTeamType>>();
+            // Reutiliza o tipo de EditorialType.cs
         }
     }
 
@@ -167,12 +168,13 @@ namespace Artigo.API.GraphQL.Types
                 });
 
             // 4. Resolver para Interações (Comentários)
-            descriptor.Field<ArtigoInteractionsResolver>(r => r.GetInteractionsAsync(default!, default!, default!, default!, default!))
-                .Name("interacoes")
-                .Argument("page", a => a.Type<IntType>().DefaultValue(0))
-                .Argument("pageSize", a => a.Type<IntType>().DefaultValue(10))
-                .Type<InteractionConnectionDTOType>() // Reutiliza o tipo de ArtigoViewType.cs
-                .Description("Comentários editoriais e uma lista paginada de comentários públicos.");
+            descriptor.Field(f => f.Interacoes) // Usa o nome da propriedade
+                 .Name("interacoes")
+                 .Type<InteractionConnectionDTOType>()
+                 // Aponta para o método ESPECÍFICO que aceita ArtigoEditorialViewDTO
+                 // e removemos os argumentos de paginação que não usamos aqui
+                 .ResolveWith<ArtigoInteractionsResolver>(r => r.GetEditorialInteractionsAsync(default!, default!, default!));
+
         }
     }
 }

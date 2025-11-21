@@ -233,5 +233,27 @@ namespace Artigo.API.GraphQL.Resolvers
                 TotalComentariosPublicos = publicos.Count()
             };
         }
+        // Adicione este método para lidar com o DTO Editorial
+        public async Task<InteractionConnectionDTO> GetEditorialInteractionsAsync(
+        [Parent] ArtigoEditorialViewDTO dto, // <--- O Pai correto
+        [Service] ArticleInteractionsDataLoader dataLoader,
+        CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(dto.Id)) return new InteractionConnectionDTO();
+
+            var interacoes = await dataLoader.LoadAsync(dto.Id, cancellationToken);
+
+            // Lógica de filtro simples
+            if (interacoes == null) return new InteractionConnectionDTO();
+
+            var editoriais = interacoes.Where(i => i.Type == TipoInteracao.ComentarioEditorial).ToList();
+
+            return new InteractionConnectionDTO
+            {
+                ComentariosEditoriais = editoriais,
+                TotalComentariosPublicos = 0
+            };
+        }
     }
+
 }

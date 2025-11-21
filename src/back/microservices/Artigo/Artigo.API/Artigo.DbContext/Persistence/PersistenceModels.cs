@@ -154,6 +154,8 @@ namespace Artigo.DbContext.PersistenceModels
     /// <sumario>
     /// Modelo de Persistencia para a colecao Interaction.
     /// </sumario>
+    /// 
+    [BsonIgnoreExtraElements]
     public class InteractionModel
     {
         [BsonId]
@@ -166,6 +168,8 @@ namespace Artigo.DbContext.PersistenceModels
 
         // Nome de exibição do usuário (obtido do UsuarioAPI no momento da criação).
         public string UsuarioNome { get; set; } = string.Empty;
+
+        [BsonRepresentation(BsonType.String)]
         public TipoInteracao Type { get; set; }
         public string Content { get; set; } = string.Empty;
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;

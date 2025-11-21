@@ -61,12 +61,13 @@ function ProfileContent() {
         const fetchProfile = async () => {
             setLoadingProfile(true);
             try {
-                const token = localStorage.getItem('userToken');
+                const token = localStorage.userToken;
                 const headers: any = {};
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch(`${USER_API_BASE}/${targetId}?token=${token || ''}`, { headers });
+                const res = await fetch(`${USER_API_BASE}/${targetId}?token=${token}`, { headers });
                 if (!res.ok) throw new Error('Perfil não encontrado');
                 const data = await res.json();
+                console.log(data);
                 setProfile(data);
             } catch (error) { console.error(error); } finally { setLoadingProfile(false); }
         };

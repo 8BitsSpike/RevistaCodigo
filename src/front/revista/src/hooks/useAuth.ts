@@ -40,7 +40,7 @@ export default function useAuth(): AuthHook {
             // 1. Persist Token
             localStorage.setItem('userToken', data.jwtToken);
             localStorage.setItem('userId', data.id);
-
+            console.log(data.jwtToken);
             // 2. Reset Apollo to use new token
             await client.resetStore().catch(e => {
                 console.warn("Apollo resetStore failed, trying clearStore", e);

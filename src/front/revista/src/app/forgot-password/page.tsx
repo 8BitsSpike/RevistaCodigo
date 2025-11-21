@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { USER_API_BASE } from '@/lib/fetcher';
 
-const RECOVER_API_URL = 'https://localhost:44390/api/Usuario/RequestPasswordReset';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            const response = await fetch(RECOVER_API_URL, {
+            const response = await fetch(`${USER_API_BASE}/RequestPasswordReset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
@@ -102,8 +102,8 @@ export default function ForgotPasswordPage() {
                             type="submit"
                             disabled={loading}
                             className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium transition duration-200 ease-in-out transform ${loading
-                                    ? 'bg-emerald-400 cursor-not-allowed'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 hover:scale-[1.01]'
+                                ? 'bg-emerald-400 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 hover:scale-[1.01]'
                                 } text-white`}
                         >
                             {loading ? (

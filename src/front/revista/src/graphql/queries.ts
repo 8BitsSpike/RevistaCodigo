@@ -235,7 +235,7 @@ export const GET_ARTIGO_VIEW = gql`
 
 export const GET_COMENTARIOS_PUBLICOS = gql`
   query GetComentariosPublicos(
-    $artigoId: ID!
+    $artigoId: String!
     $page: Int!
     $pageSize: Int!
   ) {
@@ -255,7 +255,7 @@ export const CRIAR_COMENTARIO_PUBLICO = gql`
     $artigoId: ID!
     $content: String!
     $usuarioNome: String!
-    $parentCommentId: ID
+    $parentCommentId: ID!
   ) {
     criarComentarioPublico(
       artigoId: $artigoId
@@ -381,7 +381,7 @@ export const OBTER_PENDENTES = gql`
 
 export const RESOLVER_REQUISICAO_PENDENTE = gql`
   mutation ResolverRequisicaoPendente(
-    $pendingId: ID!
+    $pendingId: String!
     $isApproved: Boolean!
   ) {
     resolverRequisicaoPendente(
@@ -460,7 +460,7 @@ export const SEARCH_ARTIGOS_EDITORIAL_BY_TITLE = gql`
 
 export const SEARCH_ARTIGOS_EDITORIAL_BY_AUTOR_IDS = gql`
   query SearchArtigosEditorialByAutorIds(
-    $idsAutor: [ID!]!
+    $idsAutor: [String!]!
     $pagina: Int!
     $tamanho: Int!
   ) {
@@ -477,7 +477,7 @@ export const SEARCH_ARTIGOS_EDITORIAL_BY_AUTOR_IDS = gql`
 
 export const ATUALIZAR_METADADOS_ARTIGO = gql`
   mutation AtualizarMetadadosArtigo(
-    $id: ID!
+    $id: String!
     $input: UpdateArtigoMetadataInput! 
     $commentary: String!
   ) {
@@ -545,7 +545,7 @@ export const OBTER_VOLUMES_POR_ANO = gql`
 `;
 
 export const OBTER_VOLUME_POR_ID = gql`
-  query ObterVolumePorId($idVolume: ID!) {
+  query ObterVolumePorId($idVolume: String!) {
     obterVolumePorId(idVolume: $idVolume) {
       id
       edicao
@@ -662,7 +662,7 @@ export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
 
 export const ATUALIZAR_CONTEUDO_ARTIGO = gql`
   mutation AtualizarConteudoArtigo(
-    $artigoId: ID!
+    $artigoId: String!
     $newContent: String!
     $midias: [MidiaEntryInputType!]!
     $commentary: String!
@@ -678,7 +678,7 @@ export const ATUALIZAR_CONTEUDO_ARTIGO = gql`
 
 export const ATUALIZAR_EQUIPE_EDITORIAL = gql`
   mutation AtualizarEquipeEditorial(
-    $artigoId: ID!
+    $artigoId: String!
     $teamInput: EditorialTeamInputType!
     $commentary: String!
   ) {
@@ -697,7 +697,7 @@ export const ATUALIZAR_EQUIPE_EDITORIAL = gql`
 
 export const CRIAR_COMENTARIO_EDITORIAL = gql`
   mutation CriarComentarioEditorial(
-    $artigoId: ID!
+    $artigoId: String!
     $content: String!
     $usuarioNome: String!
   ) {
@@ -714,9 +714,9 @@ export const CRIAR_COMENTARIO_EDITORIAL = gql`
 
 export const ADD_STAFF_COMENTARIO = gql`
   mutation AddStaffComentario(
-    $historyId: ID!
+    $historyId: String!
     $comment: String!
-    $parent: ID
+    $parent: String
   ) {
     addStaffComentario(
       historyId: $historyId
@@ -733,8 +733,8 @@ export const ADD_STAFF_COMENTARIO = gql`
 
 export const UPDATE_STAFF_COMENTARIO = gql`
   mutation UpdateStaffComentario(
-    $historyId: ID!
-    $comentarioId: ID!
+    $historyId: String!
+    $comentarioId: String!
     $newContent: String!
   ) {
     updateStaffComentario(
@@ -752,8 +752,8 @@ export const UPDATE_STAFF_COMENTARIO = gql`
 
 export const DELETE_STAFF_COMENTARIO = gql`
   mutation DeleteStaffComentario(
-    $historyId: ID!
-    $comentarioId: ID!
+    $historyId: String!
+    $comentarioId: String!
   ) {
     deleteStaffComentario(
       historyId: $historyId

@@ -89,12 +89,22 @@ namespace Artigo.Server.Services
 
             var team = editorial.Team;
 
-            var allowedUsuarioIds = team.InitialAuthorId
-                .Concat(team.ReviewerIds)
-                .Concat(team.CorrectorIds)
-                .ToList();
+            // Garante que as listas não sejam nulas antes de concatenar
+            var authors = team.InitialAuthorId ?? new List<string>();
+            var reviewers = team.ReviewerIds ?? new List<string>();
+            var correctors = team.CorrectorIds ?? new List<string>();
 
-            return allowedUsuarioIds.Contains(currentUsuarioId);
+            var allTeamIds = authors
+                .Concat(reviewers)
+                .Concat(correctors);
+
+            if (!string.IsNullOrEmpty(team.EditorId))
+            {
+                allTeamIds = allTeamIds.Append(team.EditorId);
+            }
+
+            // Verifica se o ID existe na lista, ignorando maiúsculas/minúsculas
+            return allTeamIds.Any(id => string.Equals(id, currentUsuarioId, StringComparison.OrdinalIgnoreCase));
         }
 
         private async Task<bool> CanEditArtigoAsync(Artigo.Intf.Entities.Artigo artigo, Artigo.Intf.Entities.Staff? staff, string currentUsuarioId)

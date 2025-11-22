@@ -62,7 +62,7 @@ namespace Usuario.Server.Services
             var teste = await _usuariosCollection.Find(_ => true).ToListAsync();
             var resultados = await _usuariosCollection
         // 1. Define o filtro (WHERE/Find)
-        .Find(x => x.Name.Contains(nome))
+        .Find(x => x.Name.ToUpper().Contains(nome.ToUpper()))
 
         // 2. Define a Projeção (SELECT)
         .Project<Usuario.Intf.Models.Usuario>(Builders<Usuario.Intf.Models.Usuario>.Projection
@@ -378,7 +378,7 @@ namespace Usuario.Server.Services
 
                 var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "nameid")?.Value;
                 var role = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
-                if (userIdClaim != expectedUserId && role != "0")
+                if (!string.IsNullOrEmpty(expectedUserId) && userIdClaim != expectedUserId && role != "0")
                 {
                     return ServiceResult.Failure("Token inválido para este usuário.", 401);
                 }

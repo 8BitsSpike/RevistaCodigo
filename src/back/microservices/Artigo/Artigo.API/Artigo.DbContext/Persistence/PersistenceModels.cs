@@ -205,6 +205,8 @@ namespace Artigo.DbContext.PersistenceModels
 
         public TipoEntidadeAlvo TargetType { get; set; }
         public string TargetEntityId { get; set; } = string.Empty;
+
+        [BsonRepresentation(BsonType.String)]
         public StatusPendente Status { get; set; } = StatusPendente.AguardandoRevisao;
         public DateTime DateRequested { get; set; } = DateTime.UtcNow;
         public string RequesterUsuarioId { get; set; } = string.Empty;

@@ -319,7 +319,7 @@ export const OBTER_STAFF_LIST = gql`
 `;
 
 export const CRIAR_NOVO_STAFF = gql`
-  mutation CriarNovoStaff($input: CreateStaffInput!, $commentary: String!) {
+  mutation CriarNovoStaff($input: CreateStaffRequestInput!, $commentary: String!) {
     criarNovoStaff(input: $input, commentary: $commentary) {
       id
       usuarioId

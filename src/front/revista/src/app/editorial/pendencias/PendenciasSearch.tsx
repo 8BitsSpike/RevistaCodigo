@@ -7,9 +7,9 @@ import { StaffMember } from '@/components/StaffCard';
 import PendingCard, { PendingItem } from '@/components/PendingCard';
 import { Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { StatusPendente, TipoEntidadeAlvo } from '@/types/enums';
 
 type SearchFilter = 'tipoPendencia' | 'solicitante' | 'responsavel' | 'statusAprovado' | 'statusRecusado' | 'statusArquivado' | 'statusAguardando';
-type StatusPendente = 'AguardandoRevisao' | 'Aprovado' | 'Rejeitado' | 'Arquivado';
 
 interface PendingQueryData {
     obterPendentes: PendingItem[];
@@ -49,7 +49,7 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
     const [runSearch, { data: searchData, loading: searchLoading, refetch }] = useLazyQuery<PendingQueryData>(OBTER_PENDENTES, {
         fetchPolicy: 'network-only',
         onCompleted: (data) => {
-            if (data.obterPendentes.length === 0) {
+            if (!data.obterPendentes || data.obterPendentes.length === 0) {
                 toast.success('Nenhum resultado encontrado para esta busca.');
             }
         },
@@ -85,43 +85,52 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
 
 
     const handleSearch = () => {
-        let variables: any = { pagina: 0 };
-        let status: StatusPendente | null = null;
+        // Inicializa com paginação padrão
+        const variables: any = { 
+            pagina: 0, 
+            tamanho: 10 
+        };
 
-        let numericValue = parseInt(searchTerm) || 10;
-        if (numericValue > 100) numericValue = 100;
-        variables.tamanho = 10;
+        let numericValue = 10;
+        if (searchTerm) {
+             const parsed = parseInt(searchTerm);
+             if (!isNaN(parsed)) numericValue = parsed > 100 ? 100 : parsed;
+        }
+        
+        if (filterType.startsWith('status')) {
+            variables.tamanho = numericValue;
+        }
 
         switch (filterType) {
             case 'statusAguardando':
-                status = 'AguardandoRevisao';
-                variables = { pagina: 0, tamanho: numericValue, status };
+                variables.status = StatusPendente.AguardandoRevisao;
                 break;
             case 'statusAprovado':
-                status = 'Aprovado';
-                variables = { pagina: 0, tamanho: numericValue, status };
+                variables.status = StatusPendente.Aprovado;
                 break;
             case 'statusRecusado':
-                status = 'Rejeitado';
-                variables = { pagina: 0, tamanho: numericValue, status };
+                variables.status = StatusPendente.Rejeitado;
                 break;
             case 'statusArquivado':
-                status = 'Rejeitado';
-                variables = { pagina: 0, tamanho: numericValue, status };
+                variables.status = StatusPendente.Arquivado;
                 break;
             case 'solicitante':
                 if (selectedStaff) variables.requesterUsuarioId = selectedStaff.usuarioId;
                 break;
             case 'responsavel':
-                if (selectedStaff) variables.idAprovador = selectedStaff.usuarioId;
+                if (selectedStaff) variables.idAprovador = selectedStaff.usuarioId; 
                 break;
             case 'tipoPendencia':
-                if (commandQuery) variables.commandType = commandQuery;
-                break;
+                
+                toast.error("Busca por tipo de comando requer atualização na Query GraphQL.");
+                return; 
         }
 
         toast.loading('Buscando pendências...', { id: 'search-toast' });
-        runSearch({ variables }).finally(() => {
+        
+        const cleanVariables = Object.fromEntries(Object.entries(variables).filter(([_, v]) => v != null));
+
+        runSearch({ variables: cleanVariables }).finally(() => {
             toast.dismiss('search-toast');
         });
         setHasSearched(true);
@@ -148,15 +157,20 @@ export default function PendingSearch({ staffList, onUpdate, isAdmin }: PendingS
                 <select
                     id="filter-type"
                     value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as SearchFilter)}
+                    onChange={(e) => {
+                        setFilterType(e.target.value as SearchFilter);
+                        setSearchTerm(''); // Limpa inputs ao trocar filtro
+                        setStaffQuery('');
+                        setSelectedStaff(null);
+                        setCommandQuery('');
+                    }}
                     className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                     <option value="statusAguardando">Aguardando revisão</option>
                     <option value="statusAprovado">Situação aprovada</option>
                     <option value="statusRecusado">Situação recusada</option>
                     <option value="solicitante">Solicitante</option>
-                    <option value="responsavel">Responsável pela aprovação</option>
-                    <option value="tipoPendencia">Tipo de pendência</option>
+
                 </select>
 
                 <div className="flex-grow relative">

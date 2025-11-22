@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, useMemo } from 'react';
 import { useMutation } from '@apollo/client';
 import {
     ATUALIZAR_METADADOS_ARTIGO,
@@ -8,7 +8,7 @@ import {
 } from '@/graphql/queries';
 import { USER_API_BASE } from '@/lib/fetcher';
 import CommentaryModal from './CommentaryModal';
-import { StatusArtigo, PosicaoEditorial, TipoArtigo } from '@/types/enums';
+import { StatusArtigo, PosicaoEditorial, TipoArtigo, FuncaoTrabalho } from '@/types/enums';
 import { StaffMember } from '@/components/StaffCard';
 import { Search, X } from 'lucide-react';
 import Image from 'next/image';
@@ -51,18 +51,18 @@ interface UsuarioBusca {
 type ListTeamRole = 'initialAuthorId' | 'reviewerIds' | 'correctorIds';
 type SingleTeamRole = 'editorId';
 
-// --- Componente Interno 1 (Caixa de Busca Múltipla) ---
 interface TeamSearchBoxProps {
     title: string;
     role: ListTeamRole;
     currentIds: string[];
-    allStaff: StaffMember[];
-    authorIds: string[];
-    onAdd: (role: ListTeamRole, userId: string) => void;
+    renderList: StaffMember[]; 
+    excludeIds: string[];
+    restrictToStaff?: boolean; 
+    onAdd: (role: ListTeamRole, user: UsuarioBusca) => void;
     onRemove: (role: ListTeamRole, userId: string) => void;
 }
 
-function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, onRemove }: TeamSearchBoxProps) {
+function TeamSearchBox({ title, role, currentIds, renderList, excludeIds, restrictToStaff, onAdd, onRemove }: TeamSearchBoxProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UsuarioBusca[]>([]);
 
@@ -76,25 +76,34 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
             if (!token) return;
 
             try {
-                // Use USER_API_BASE
+                // Busca na API de Users (pesquisa por nome)
                 const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
                     const data: UsuarioBusca[] = await res.json();
-                    const filtered = data.filter(u =>
-                        !currentIds.includes(u.id) &&
-                        (role === 'initialAuthorId' ? true : !authorIds.includes(u.id))
-                    );
+                    
+                    const filtered = data.filter(u => {
+                        if (currentIds.includes(u.id)) return false;
+                        if (excludeIds.includes(u.id)) return false;
+
+                        if (restrictToStaff) {
+                            const isStaff = renderList.some(s => s.usuarioId === u.id);
+                            if (!isStaff) return false;
+                        }
+
+                        return true;
+                    });
+                    
                     setResults(filtered);
                 }
             } catch (err) { console.error("Erro buscando usuários", err); }
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [query, currentIds, authorIds, role]);
+    }, [query, currentIds, excludeIds, restrictToStaff, renderList]);
 
-    const members = currentIds.map(id => allStaff.find(s => s.usuarioId === id)).filter(Boolean) as StaffMember[];
+    const members = currentIds.map(id => renderList.find(s => s.usuarioId === id)).filter(Boolean) as StaffMember[];
 
     return (
         <div className="flex-1 min-w-[200px]">
@@ -104,7 +113,7 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar membro..."
+                    placeholder={restrictToStaff ? "Buscar Staff..." : "Buscar Usuário..."}
                     className="w-full p-2 pr-10 border border-gray-300 rounded-md text-sm"
                 />
                 <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -113,10 +122,10 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
                         {results.map(u => (
                             <li
                                 key={u.id}
-                                onClick={() => { onAdd(role, u.id); setQuery(''); setResults([]); }}
+                                onClick={() => { onAdd(role, u); setQuery(''); setResults([]); }}
                                 className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                             >
-                                <Image src={u.foto || '/default-avatar.png'} alt={u.name} width={24} height={24} className="rounded-full" />
+                                <Image src={u.foto || '/faviccon.png'} alt={u.name} width={24} height={24} className="rounded-full" />
                                 <span className="text-sm">{u.name} {u.sobrenome}</span>
                             </li>
                         ))}
@@ -125,16 +134,18 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
             </div>
             <div className="mt-2 h-[120px] overflow-y-auto border bg-gray-50 rounded-md p-2 space-y-2">
                 {members.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center p-4">Inclua um {title.slice(0, -1)}</p>
+                    <p className="text-xs text-gray-400 text-center p-4">Vazio</p>
                 )}
                 {members.map(member => (
                     <div key={member.usuarioId} className="flex items-center justify-between p-1 bg-white rounded border">
                         <div className="flex items-center gap-2">
-                            <Image src={member.url || '/default-avatar.png'} alt={member.nome} width={30} height={30} className="rounded-full" />
-                            <span className="text-sm font-medium">{member.nome}</span>
+                            <div className="w-[24px] h-[24px] relative rounded-full overflow-hidden">
+                                <Image src={member.url || '/faviccon.png'} alt={member.nome} fill className="object-cover" />
+                            </div>
+                            <span className="text-xs font-medium truncate max-w-[100px]">{member.nome}</span>
                         </div>
                         <button onClick={() => onRemove(role, member.usuarioId)} className="text-red-400 hover:text-red-600">
-                            <X size={16} />
+                            <X size={14} />
                         </button>
                     </div>
                 ))}
@@ -143,17 +154,18 @@ function TeamSearchBox({ title, role, currentIds, allStaff, authorIds, onAdd, on
     );
 }
 
-// --- Componente Interno 2 (Caixa de Busca Única - para EditorId) ---
+// Caixa de Busca Única) 
 interface SingleUserSearchBoxProps {
     title: string;
     role: SingleTeamRole;
     currentId: string;
-    allStaff: StaffMember[];
-    authorIds: string[];
-    onSet: (role: SingleTeamRole, userId: string) => void;
+    renderList: StaffMember[];
+    excludeIds: string[];
+    restrictToStaff?: boolean;
+    onSet: (role: SingleTeamRole, user: UsuarioBusca | null) => void;
 }
 
-function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSet }: SingleUserSearchBoxProps) {
+function SingleUserSearchBox({ title, role, currentId, renderList, excludeIds, restrictToStaff, onSet }: SingleUserSearchBoxProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UsuarioBusca[]>([]);
 
@@ -163,21 +175,27 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
             const token = localStorage.getItem('userToken');
             if (!token) return;
             try {
-                // Use USER_API_BASE
                 const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
                     const data: UsuarioBusca[] = await res.json();
-                    const filtered = data.filter(u => u.id !== currentId && !authorIds.includes(u.id));
+                    const filtered = data.filter(u => {
+                        if (u.id === currentId) return false;
+                        if (excludeIds.includes(u.id)) return false;
+                        if (restrictToStaff) {
+                            return renderList.some(s => s.usuarioId === u.id);
+                        }
+                        return true;
+                    });
                     setResults(filtered);
                 }
             } catch (err) { console.error("Erro buscando usuários", err); }
         }, 500);
         return () => clearTimeout(delayDebounceFn);
-    }, [query, currentId, authorIds]);
+    }, [query, currentId, excludeIds, restrictToStaff, renderList]);
 
-    const member = allStaff.find(s => s.usuarioId === currentId);
+    const member = renderList.find(s => s.usuarioId === currentId);
 
     return (
         <div className="flex-1 min-w-[200px]">
@@ -187,7 +205,7 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar editor..."
+                    placeholder={restrictToStaff ? "Buscar Staff..." : "Buscar Usuário..."}
                     className="w-full p-2 pr-10 border border-gray-300 rounded-md text-sm"
                 />
                 <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -196,10 +214,10 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
                         {results.map(u => (
                             <li
                                 key={u.id}
-                                onClick={() => { onSet(role, u.id); setQuery(''); setResults([]); }}
+                                onClick={() => { onSet(role, u); setQuery(''); setResults([]); }}
                                 className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                             >
-                                <Image src={u.foto || '/default-avatar.png'} alt={u.name} width={24} height={24} className="rounded-full" />
+                                <Image src={u.foto || '/faviccon.png'} alt={u.name} width={24} height={24} className="rounded-full" />
                                 <span className="text-sm">{u.name} {u.sobrenome}</span>
                             </li>
                         ))}
@@ -208,15 +226,17 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
             </div>
             <div className="mt-2 h-[120px] overflow-y-auto border bg-gray-50 rounded-md p-2 space-y-2">
                 {!member ? (
-                    <p className="text-xs text-gray-400 text-center p-4">Nenhum editor definido</p>
+                    <p className="text-xs text-gray-400 text-center p-4">Vazio</p>
                 ) : (
                     <div className="flex items-center justify-between p-1 bg-white rounded border">
                         <div className="flex items-center gap-2">
-                            <Image src={member.url || '/default-avatar.png'} alt={member.nome} width={30} height={30} className="rounded-full" />
-                            <span className="text-sm font-medium">{member.nome}</span>
+                            <div className="w-[24px] h-[24px] relative rounded-full overflow-hidden">
+                                <Image src={member.url || '/faviccon.png'} alt={member.nome} fill className="object-cover" />
+                            </div>
+                            <span className="text-xs font-medium truncate max-w-[100px]">{member.nome}</span>
                         </div>
-                        <button onClick={() => onSet(role, '')} className="text-red-400 hover:text-red-600">
-                            <X size={16} />
+                        <button onClick={() => onSet(role, null)} className="text-red-400 hover:text-red-600">
+                            <X size={14} />
                         </button>
                     </div>
                 )}
@@ -225,7 +245,7 @@ function SingleUserSearchBox({ title, role, currentId, allStaff, authorIds, onSe
     );
 }
 
-// --- Componente Principal (StaffControlBar) ---
+//Componente Principal
 
 export default function StaffControlBar({ artigoId, editorialId, currentData, staffList, onUpdate }: StaffControlBarProps) {
     const [formData, setFormData] = useState({
@@ -236,6 +256,7 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
     });
 
     const [teamData, setTeamData] = useState(currentData.editorial.team);
+    const [extraMembers, setExtraMembers] = useState<StaffMember[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [atualizarMetadados, { loading: loadingMeta }] = useMutation(ATUALIZAR_METADADOS_ARTIGO);
@@ -243,11 +264,80 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
 
     const loading = loadingMeta || loadingTeam;
 
-    const handleTeamAdd = (role: ListTeamRole, userId: string) => {
+    //Recuperar dados de usuários não-staff
+    useEffect(() => {
+        const fetchMissingMembers = async () => {
+            const allTeamIds = [
+                ...(currentData.editorial.team.initialAuthorId || []),
+                ...(currentData.editorial.team.reviewerIds || []),
+                ...(currentData.editorial.team.correctorIds || []),
+                currentData.editorial.team.editorId
+            ].filter(Boolean);
+
+            // IDs que estão na equipe mas não estão na lista de Staff carregada
+            const missingIds = allTeamIds.filter(id => 
+                !staffList.some(s => s.usuarioId === id) && 
+                !extraMembers.some(e => e.usuarioId === id)
+            );
+
+            if (missingIds.length === 0) return;
+
+            const token = localStorage.getItem('userToken');
+            if (!token) return;
+
+            const fetchedMembers: StaffMember[] = [];
+
+            await Promise.all(missingIds.map(async (id) => {
+                try {
+                    const res = await fetch(`${USER_API_BASE}/${id}?token=${token}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (res.ok) {
+                        const u = await res.json();
+                        fetchedMembers.push({
+                            usuarioId: u.id,
+                            nome: `${u.name} ${u.sobrenome || ''}`.trim(),
+                            url: u.foto || '',
+                            job: FuncaoTrabalho.Aposentado as any, 
+                            isActive: true
+                        } as StaffMember);
+                    }
+                } catch (err) {
+                    console.error(`Erro ao carregar utilizador ${id}`, err);
+                }
+            }));
+
+            if (fetchedMembers.length > 0) {
+                setExtraMembers(prev => [...prev, ...fetchedMembers]);
+            }
+        };
+
+        fetchMissingMembers();
+    }, [currentData.editorial.team, staffList]); 
+
+    const allKnownMembers = useMemo(() => {
+        const map = new Map<string, StaffMember>();
+        staffList.forEach(s => map.set(s.usuarioId, s));
+        extraMembers.forEach(s => {
+            if (!map.has(s.usuarioId)) map.set(s.usuarioId, s);
+        });
+        return Array.from(map.values());
+    }, [staffList, extraMembers]);
+
+    const handleTeamAdd = (role: ListTeamRole, user: UsuarioBusca) => {
         setTeamData(prev => ({
             ...prev,
-            [role]: [...prev[role], userId]
+            [role]: [...prev[role], user.id]
         }));
+
+        setExtraMembers(prev => [...prev, {
+            usuarioId: user.id,
+            nome: `${user.name} ${user.sobrenome || ''}`.trim(),
+            url: user.foto || '',
+            job: FuncaoTrabalho.Aposentado as any,
+            isActive: true,
+        } as StaffMember]);
     };
 
     const handleTeamRemove = (role: ListTeamRole, userId: string) => {
@@ -257,11 +347,22 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
         }));
     };
 
-    const handleTeamSet = (role: SingleTeamRole, userId: string) => {
+    const handleTeamSet = (role: SingleTeamRole, user: UsuarioBusca | null) => {
+        const userId = user ? user.id : '';
         setTeamData(prev => ({
             ...prev,
             [role]: userId
         }));
+
+        if (user) {
+            setExtraMembers(prev => [...prev, {
+                usuarioId: user.id,
+                nome: `${user.name} ${user.sobrenome || ''}`.trim(),
+                url: user.foto || '',
+                job: FuncaoTrabalho.Aposentado as any,
+                isActive: true,
+            } as StaffMember]);
+        }
     };
 
     const handleFormChange = (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -282,6 +383,7 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             permitirComentario: currentData.permitirComentario
         });
         setTeamData(currentData.editorial.team);
+        setExtraMembers([]);
     };
 
     const handleSaveClick = () => {
@@ -313,9 +415,20 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             }
 
             if (JSON.stringify(teamData) !== JSON.stringify(currentData.editorial.team)) {
+                const cleanTeamInput = {
+                    initialAuthorId: teamData.initialAuthorId || [],
+                    editorId: teamData.editorId || "",
+                    reviewerIds: teamData.reviewerIds || [],
+                    correctorIds: teamData.correctorIds || []
+                };
+
                 mutationsToRun.push(
                     atualizarEquipe({
-                        variables: { artigoId: artigoId, teamInput: teamData, commentary }
+                        variables: { 
+                            artigoId: artigoId, 
+                            teamInput: cleanTeamInput,
+                            commentary 
+                        }
                     })
                 );
             }
@@ -349,102 +462,105 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                 onSubmit={handleConfirmSave}
             />
 
-            <div
-                className="mb-8 p-4 border-2 border-gray-400 shadow-md"
-                style={{
-                    border: '2px solid gray',
-                    boxShadow: '0 6px 10px rgba(0,0,0,0.4)',
-                }}
-            >
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="mb-8 p-4 border border-gray-200 shadow-sm bg-white rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6">
                     <div>
-                        <label className="block text-sm font-semibold">Status do Artigo</label>
-                        <select name="status" value={formData.status} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md mt-1 bg-white">
-                            {Object.values(StatusArtigo).map(s => <option key={s} value={s}>{s.replace(/([A-Z])/g, ' $1').trim()}</option>)}
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                        <select name="status" value={formData.status} onChange={handleFormChange} className="input-std text-sm">
+                            {Object.values(StatusArtigo).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-semibold">Posição Editorial</label>
-                        <select name="posicao" value={formData.posicao} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md mt-1 bg-white">
-                            {Object.values(PosicaoEditorial).map(p => <option key={p} value={p}>{p.replace(/([A-Z])/g, ' $1').trim()}</option>)}
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Posição</label>
+                        <select name="posicao" value={formData.posicao} onChange={handleFormChange} className="input-std text-sm">
+                            {Object.values(PosicaoEditorial).map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-semibold">Tipo de Artigo</label>
-                        <select name="tipo" value={formData.tipo} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md mt-1 bg-white">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo</label>
+                        <select name="tipo" value={formData.tipo} onChange={handleFormChange} className="input-std text-sm">
                             {Object.values(TipoArtigo).map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
-                    <div className="flex items-center justify-center pb-2">
+                    <div className="flex items-center pb-2">
                         <input
                             type="checkbox"
                             id="permitirComentario"
                             name="permitirComentario"
                             checked={formData.permitirComentario}
                             onChange={handleFormChange}
-                            className="h-4 w-4 text-emerald-600 border-gray-300 rounded"
+                            className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                         />
-                        <label htmlFor="permitirComentario" className="ml-2 text-sm font-semibold">Permitir Comentários</label>
+                        <label htmlFor="permitirComentario" className="ml-2 text-sm font-semibold text-gray-700">Comentários</label>
                     </div>
                 </div>
 
-                <div className="w-[70%] h-px bg-gray-300 my-6 mx-auto"></div>
-
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">Equipe Editorial</h3>
+                <div className="border-t border-gray-100 pt-6">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">Equipe Editorial</h3>
                     <div className="flex flex-wrap gap-4">
+                        {/* AUTORES */}
                         <TeamSearchBox
                             title="Autores:"
                             role="initialAuthorId"
                             currentIds={teamData.initialAuthorId}
-                            allStaff={staffList}
-                            authorIds={[]}
+                            renderList={allKnownMembers} 
+                            excludeIds={[]}
+                            restrictToStaff={false} // Permite todos
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
+                        
+                        {/* REVISORES*/}
                         <TeamSearchBox
                             title="Revisores:"
                             role="reviewerIds"
                             currentIds={teamData.reviewerIds}
-                            allStaff={staffList}
-                            authorIds={teamData.initialAuthorId}
+                            renderList={allKnownMembers}
+                            excludeIds={teamData.initialAuthorId} 
+                            restrictToStaff={false} // Permite todos
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
+
+                        {/* CORRETORES*/}
                         <TeamSearchBox
                             title="Corretores:"
                             role="correctorIds"
                             currentIds={teamData.correctorIds}
-                            allStaff={staffList}
-                            authorIds={teamData.initialAuthorId}
+                            renderList={allKnownMembers}
+                            excludeIds={teamData.initialAuthorId}
+                            restrictToStaff={false} // Permite todos
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
+
+                        {/* EDITOR CHEFE:Apenas Staff */}
                         <SingleUserSearchBox
                             title="Editor Chefe:"
                             role="editorId"
                             currentId={teamData.editorId}
-                            allStaff={staffList}
-                            authorIds={teamData.initialAuthorId}
+                            renderList={allKnownMembers}
+                            excludeIds={teamData.initialAuthorId}
+                            restrictToStaff={true} 
                             onSet={handleTeamSet}
                         />
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-200">
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
                     <button
                         onClick={handleCancel}
                         disabled={loading}
-                        className="px-6 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium hover:bg-gray-50 transition"
+                        className="px-4 py-2 rounded-md border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition"
                     >
-                        Cancelar
+                        Reverter
                     </button>
                     <button
                         onClick={handleSaveClick}
                         disabled={loading}
-                        className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-bold shadow hover:bg-emerald-700 transition"
+                        className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 transition disabled:opacity-50"
                     >
-                        Salvar Alterações
+                        Salvar Tudo
                     </button>
                 </div>
             </div>

@@ -48,6 +48,7 @@ namespace Artigo.Server.DTOs
         [Range(2000, 3000, ErrorMessage = "O ano deve ser válido.")]
         public int Year { get; set; }
 
+        public MidiaEntryInputDTO? ImagemCapa { get; set; }
         // A lista de ArtigoIds será atualizada em mutações subsequentes.
     }
 }

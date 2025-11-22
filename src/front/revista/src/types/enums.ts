@@ -12,8 +12,6 @@ export enum TipoArtigo {
   Blog = "BLOG",
   Entrevista = "ENTREVISTA",
   Indicacao = "INDICACAO",
-  // ATENÇÃO: Mantive "OPNIAO" (sem o i) para bater com o seu C#
-  // Se você corrigir no C# para "Opiniao", altere aqui para "OPINIAO"
   Opniao = "OPNIAO", 
   Video = "VIDEO",
   Administrativo = "ADMINISTRATIVO",
@@ -31,7 +29,6 @@ export enum StatusVolume {
 }
 
 export enum MesVolume {
-  // O GraphQL geralmente espera o NOME em maiúsculo, não o número
   Janeiro = "JANEIRO",
   Fevereiro = "FEVEREIRO",
   Marco = "MARCO",
@@ -61,9 +58,6 @@ export enum PosicaoEditorial {
 }
 
 export enum VersaoArtigo {
-  // Para Enums numéricos mapeados para valor, o GraphQL costuma tratar como string descritiva
-  // Mas se o seu schema espera INT, mantenha os números.
-  // SE DER ERRO AQUI, mude para: Original = "ORIGINAL", etc.
   Original = 0,
   PrimeiraEdicao = 1,
   SegundaEdicao = 2,
@@ -72,7 +66,6 @@ export enum VersaoArtigo {
   Final = 5,
 }
 
-// Adicionei os que faltavam baseados no seu C#
 export enum StatusPendente {
   AguardandoRevisao = "AGUARDANDO_REVISAO",
   Aprovado = "APROVADO",

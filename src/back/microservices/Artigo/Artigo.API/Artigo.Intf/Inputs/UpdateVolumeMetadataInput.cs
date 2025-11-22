@@ -30,11 +30,8 @@ namespace Artigo.Intf.Inputs
 
         public StatusVolume? Status { get; set; }
 
-        // Mídia de capa (pode ser definida como nula)
-        // Usamos a entidade MidiaEntry aqui, pois ela também é do 'Intf'
         public MidiaEntry? ImagemCapa { get; set; }
 
-        // Lista de Artigos (substituição completa)
         public List<string>? ArtigoIds { get; set; }
     }
 }

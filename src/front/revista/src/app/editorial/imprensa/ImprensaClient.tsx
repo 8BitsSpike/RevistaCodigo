@@ -10,7 +10,7 @@ import VolumeSearch, { VolumeSearchVariables } from './VolumeSearch';
 import VolumeEditorialCard, { VolumeCardData } from '@/components/VolumeEditorialCard';
 import { StaffMember } from '@/components/StaffCard';
 import { ArrowLeft, ArrowRight, ArrowLeftCircle, PlusCircle } from 'lucide-react';
-import { StatusVolume } from '@/types/enums';
+import { StatusVolume } from '@/types/enums'; 
 import toast from 'react-hot-toast';
 
 interface VolumeQueryData {
@@ -50,13 +50,45 @@ export default function ImprensaClient() {
     const handleSearch = (variables: VolumeSearchVariables, newPage: number) => {
         setPage(newPage);
         setCurrentSearchVars(variables);
-        const queryVars = { pagina: newPage, tamanho: variables.pageSize };
+        
+        const tamanhoNumerico = variables.pageSize ? parseInt(String(variables.pageSize), 10) : 10;
+
+        const queryVars = { 
+            pagina: newPage, 
+            tamanho: isNaN(tamanhoNumerico) ? 10 : tamanhoNumerico
+        };
 
         if (variables.searchType === 'ano') {
-            runSearchAno({ variables: { ...queryVars, ano: variables.searchTerm } });
+
+            const termoString = String(variables.searchTerm || '');
+            const anoNumerico = parseInt(termoString);
+
+            if (!isNaN(anoNumerico) && anoNumerico > 1900 && anoNumerico < 2100) {
+                runSearchAno({ 
+                    variables: { 
+                        ...queryVars, 
+                        ano: anoNumerico 
+                    } 
+                });
+            } else {
+                toast.error("Por favor, insira um ano válido (ex: 2024).");
+            }
+
         } else if (variables.searchType === 'status') {
-            runSearchStatus({ variables: { ...queryVars, status: variables.searchStatus } });
+
+            if (variables.searchStatus) {
+                runSearchStatus({ 
+                    variables: { 
+                        ...queryVars, 
+                        status: variables.searchStatus 
+                    } 
+                });
+            } else {
+                toast.error("Selecione um status.");
+            }
+
         } else {
+
             runSearchRecentes({ variables: queryVars });
         }
     };
@@ -76,7 +108,7 @@ export default function ImprensaClient() {
     const canGoPrevious = page > 0;
     const canGoNext = volumes.length === (currentSearchVars?.pageSize || 10);
 
-    if (loadingStaff) return <Layout pageType="editorial"><p className="text-center mt-20">Carregando...</p></Layout>;
+    if (loadingStaff) return <Layout pageType="editorial"><div className="text-center mt-20">Carregando...</div></Layout>;
 
     return (
         <Layout pageType="editorial">

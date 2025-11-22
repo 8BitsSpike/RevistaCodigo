@@ -120,10 +120,7 @@ export const GET_ARTIGOS_BY_IDS = gql`
 `;
 
 export const GET_ARTIGOS_POR_TIPO = gql`
-  
   query GetArtigosPorTipo($tipo: TipoArtigo!, $pagina: Int!, $tamanho: Int!) {
-    
-   
     obterArtigosCardListPorTipo(
       tipo: $tipo, 
       pagina: $pagina,  
@@ -192,15 +189,12 @@ const COMMENT_FIELDS = gql`
 `;
 
 export const GET_ARTIGO_VIEW = gql`
-  # CORREÇÃO: Mude $artigoId: ID! para $artigoId: String!
   query GetArtigoView($artigoId: String!) { 
-    
     obterArtigoView(artigoId: $artigoId) {
       id
       titulo
       tipo
       permitirComentario
-      
       conteudoAtual { 
         content
         midias {
@@ -209,19 +203,16 @@ export const GET_ARTIGO_VIEW = gql`
           textoAlternativo
         }
       }
-      
       autores { 
         usuarioId
         nome
         url
       }
-      
       volume { 
         id
         volumeTitulo
         volumeResumo
       }
-      
       interacoes { 
         comentariosEditoriais { 
           ...CommentFields
@@ -294,7 +285,6 @@ export const DELETAR_INTERACAO = gql`
 
 export const CRIAR_ARTIGO = gql`
   mutation CriarArtigo($input: CreateArtigoRequestInput!, $commentary: String!) {
-    
     criarArtigo(input: $input, commentary: $commentary) {
       id
       titulo
@@ -491,7 +481,7 @@ export const ATUALIZAR_METADADOS_ARTIGO = gql`
 `;
 
 const VOLUME_CARD_FIELDS = gql`
-  fragment VolumeCardFields on VolumeCard {
+  fragment VolumeCardFields on VolumeCardDTO {
     id
     volumeTitulo
     volumeResumo
@@ -525,7 +515,7 @@ export const OBTER_VOLUMES_POR_STATUS = gql`
     ) {
       ...VolumeCardFields
     }
-  }
+  }  
   ${VOLUME_CARD_FIELDS}
 `;
 
@@ -570,7 +560,7 @@ export const OBTER_VOLUME_POR_ID = gql`
 `;
 
 export const CRIAR_VOLUME = gql`
-  mutation CriarVolume($input: CreateVolumeInputType!, $commentary: String!) {
+  mutation CriarVolume($input: CreateVolumeRequestInput!, $commentary: String!) {
     criarVolume(input: $input, commentary: $commentary) {
       id
       volumeTitulo
@@ -582,7 +572,7 @@ export const CRIAR_VOLUME = gql`
 export const ATUALIZAR_METADADOS_VOLUME = gql`
   mutation AtualizarMetadadosVolume(
     $volumeId: ID!
-    $input: UpdateVolumeMetadataInputType!
+    $input: UpdateVolumeMetadataInput! 
     $commentary: String!
   ) {
     atualizarMetadadosVolume(
@@ -614,16 +604,12 @@ const EDITORIAL_TEAM_FIELDS = gql`
 
 export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
   query ObterArtigoEditorialView($artigoId: String!) {
-    
     obterArtigoEditorialView(artigoId: $artigoId) {
       id
       titulo
       resumo
       tipo
       status
-      
-     
-      
       permitirComentario
       editorialId
       
@@ -661,10 +647,11 @@ export const OBTER_ARTIGO_EDITORIAL_VIEW = gql`
 `;
 
 export const ATUALIZAR_CONTEUDO_ARTIGO = gql`
+  # CORREÇÃO: O nome do tipo gerado pelo HotChocolate é MidiaEntryInputDTOInput!
   mutation AtualizarConteudoArtigo(
     $artigoId: ID!
     $newContent: String!
-    $midias: [MidiaEntryInputType!]!
+    $midias: [MidiaEntryInputDTOInput!]! 
     $commentary: String!
   ) {
     atualizarConteudoArtigo(

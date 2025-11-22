@@ -236,18 +236,18 @@ export default function ProfileEditPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Áreas de Atuação</label>
-                            <div className="bg-gray-50 p-4 rounded-lg border mb-4 space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" placeholder="Empresa/Instituição" value={newAtuacao.instituicao} onChange={e => setNewAtuacao({ ...newAtuacao, instituicao: e.target.value })} className="input-std text-sm" />
-                                    <input type="text" placeholder="Cargo/Função" value={newAtuacao.areaAtuacao || ''} onChange={e => setNewAtuacao({ ...newAtuacao, areaAtuacao: e.target.value })} className="input-std text-sm" />
+                            <div className="flex gap-2 mb-2">
+                                <div className="w-full space-y-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="text" placeholder="Empresa/Instituição" value={newAtuacao.instituicao} onChange={e => setNewAtuacao({ ...newAtuacao, instituicao: e.target.value })} className="input-std text-sm" />
+                                        <input type="text" placeholder="Cargo/Função" value={newAtuacao.areaAtuacao || ''} onChange={e => setNewAtuacao({ ...newAtuacao, areaAtuacao: e.target.value })} className="input-std text-sm" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="date" placeholder="Início" value={toInputDate(newAtuacao.dataInicio)} onChange={e => setNewAtuacao({ ...newAtuacao, dataInicio: e.target.value })} className="input-std text-sm" />
+                                        <input type="date" placeholder="Fim" value={toInputDate(newAtuacao.dataFim)} onChange={e => setNewAtuacao({ ...newAtuacao, dataFim: e.target.value })} className="input-std text-sm" />
+                                    </div>
+                                    <button type="button" onClick={addAtuacao} className="btn-primary text-sm w-full"><Plus size={16} /> Adicionar Atuação</button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input type="date" placeholder="Início" value={toInputDate(newAtuacao.dataInicio)} onChange={e => setNewAtuacao({ ...newAtuacao, dataInicio: e.target.value })} className="input-std text-sm" />
-                                    <input type="date" placeholder="Fim" value={toInputDate(newAtuacao.dataFim)} onChange={e => setNewAtuacao({ ...newAtuacao, dataFim: e.target.value })} className="input-std text-sm" />
-                                </div>
-                                <input type="text" placeholder="Contribuições e Descrição das Atividades" value={newAtuacao.contribuicao || ''} onChange={e => setNewAtuacao({ ...newAtuacao, contribuicao: e.target.value })} className="input-std text-sm" />
-                                <textarea placeholder="Informações Adicionais" value={newAtuacao.informacoesAdd || ''} onChange={e => setNewAtuacao({ ...newAtuacao, informacoesAdd: e.target.value })} className="input-std text-sm h-16 resize-none" />
-                                <button type="button" onClick={addAtuacao} className="btn-primary text-sm w-full"><Plus size={16} /> Adicionar Atuação</button>
                             </div>
 
                             <ul className="space-y-2">

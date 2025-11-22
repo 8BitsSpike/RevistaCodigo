@@ -31,7 +31,7 @@ const formatYearRange = (dataInicio?: string, dataFim?: string) => {
         } catch {
         }
     }
-    
+
     if (startYear === 'Data não informada') return 'Datas não informadas';
     return `${startYear} - ${endText}`;
 };
@@ -64,8 +64,8 @@ interface UserProfile {
     foto?: string;
     biografia?: string;
     endereco?: string;
-    infoInstitucionais?: InfoInstitucional[]; 
-    atuacoes?: AtuacaoProfissional[]; 
+    infoInstitucionais?: InfoInstitucional[];
+    atuacoes?: AtuacaoProfissional[];
 }
 
 // Interface para dados de Artigo 
@@ -99,16 +99,23 @@ function ProfileContent() {
                 const token = localStorage.userToken;
                 const headers: any = {};
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch(`${USER_API_BASE}/${targetId}?token=${token}`, { headers });
-                if (!res.ok) throw new Error('Perfil não encontrado');
-                const data = await res.json();
-                
+
+                const payload = [targetId];
+                // 3. Fetch User Profile (REST)
+                const res = await fetch(`${USER_API_BASE}/GetByIds?token=${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                }); if (!res.ok) throw new Error('Perfil não encontrado');
+                const dataList = await res.json();
+                const data = dataList?.[0];
+
                 const processedData: UserProfile = {
                     ...data,
                     infoInstitucionais: data.infoInstitucionais || [],
                     atuacoes: data.atuacoes || []
                 };
-                
+
                 setProfile(processedData);
             } catch (error) { console.error(error); } finally { setLoadingProfile(false); }
         };
@@ -160,7 +167,7 @@ function ProfileContent() {
                                         {profile.infoInstitucionais.map((info, idx) => (
                                             <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">
                                                 <div className="font-semibold text-gray-800 text-lg">{info.instituicao || 'Instituição não informada'}</div>
-                                                
+
                                                 {info.curso && <div className="text-base text-emerald-700 font-medium flex items-center gap-2"><GraduationCap size={16} />{info.curso}</div>}
 
                                                 {(info.dataInicio || info.dataFim) && (
@@ -181,12 +188,12 @@ function ProfileContent() {
                             {/* --- ATUAÇÕES PROFISSIONAIS (EXPERIÊNCIA) --- */}
                             {profile.atuacoes && profile.atuacoes.length > 0 && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-600" /> Atuações Profissionais</h3> 
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-600" /> Atuações Profissionais</h3>
                                     <div className="space-y-3">
                                         {profile.atuacoes.map((at, idx) => (
                                             <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">
                                                 <div className="font-semibold text-gray-800 text-lg">{at.instituicao || 'Empresa não informada'}</div>
-                                                
+
                                                 {at.areaAtuacao && <div className="text-base text-emerald-700 font-medium flex items-center gap-2"><GraduationCap size={16} />{at.areaAtuacao}</div>}
 
                                                 {(at.dataInicio || at.dataFim) && (

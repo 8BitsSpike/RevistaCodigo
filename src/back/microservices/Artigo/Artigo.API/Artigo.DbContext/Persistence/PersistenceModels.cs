@@ -24,7 +24,7 @@ namespace Artigo.DbContext.PersistenceModels
     {
         public List<string> InitialAuthorId { get; set; } = [];
 
-        public string EditorId { get; set; } = string.Empty;
+        public List<string> EditorIds { get; set; } = [];
         public List<string> ReviewerIds { get; set; } = [];
         public List<string> CorrectorIds { get; set; } = [];
     }

@@ -18,14 +18,13 @@ import StaffControlBar from '@/components/StaffControlBar';
 import CreateCommentCard from '@/components/CreateCommentCard';
 import dynamic from 'next/dynamic';
 import type { Range } from 'quill';
-
 // Editor dinâmico (SSR False)
 const EditorialQuillEditor = dynamic(
-  () => import('@/components/EditorialQuillEditor'),
-  { 
-    ssr: false,
-    loading: () => <div className="h-96 bg-gray-100 animate-pulse rounded-md flex items-center justify-center text-gray-400">Carregando editor...</div>
-  }
+    () => import('@/components/EditorialQuillEditor'),
+    {
+        ssr: false,
+        loading: () => <div className="h-96 bg-gray-100 animate-pulse rounded-md flex items-center justify-center text-gray-400">Carregando editor...</div>
+    }
 );
 
 const sanitizeId = (id: string) => {
@@ -38,35 +37,86 @@ const sanitizeId = (id: string) => {
 };
 
 // Interfaces
-interface EditorialTeamData { initialAuthorId: string[]; editorId: string; reviewerIds: string[]; correctorIds: string[]; __typename: "EditorialTeam"; }
-export interface ArtigoData { id: string; titulo: string; resumo: string; tipo: any; status: any; permitirComentario: boolean; editorialId: string; editorial: { position: PosicaoEditorial; team: EditorialTeamData; __typename: "EditorialView"; }; }
-interface EditorialViewData { obterArtigoEditorialView: ArtigoData & { autorIds: string[]; editorial: { currentHistoryId: string; }; conteudoAtual: { version: VersaoArtigo; content: string; midias: { idMidia: string; url: string; textoAlternativo: string; }[]; staffComentarios: StaffComentario[]; __typename: "ArtigoHistoryEditorialView"; }; interacoes: { comentariosEditoriais: any[]; __typename: "InteractionConnectionDTO"; }; __typename: "ArtigoEditorialView"; }; }
+interface EditorialTeamData {
+    initialAuthorId: string[];
+    editorId: string;
+    reviewerIds: string[];
+    correctorIds: string[];
+    __typename: "EditorialTeam";
+}
+
+export interface ArtigoData {
+    id: string;
+    titulo: string;
+    resumo: string;
+    tipo: any;
+    status: any;
+    permitirComentario: boolean;
+    editorialId: string;
+    editorial: {
+        position: PosicaoEditorial;
+        team: EditorialTeamData;
+        __typename: "EditorialView";
+    };
+}
+
+interface EditorialViewData {
+    obterArtigoEditorialView: ArtigoData & {
+        autorIds: string[];
+        editorial: { currentHistoryId: string; };
+        conteudoAtual: {
+            version: VersaoArtigo;
+            content: string;
+            midias: {
+                idMidia: string;
+                url: string;
+                textoAlternativo: string;
+            }[];
+            staffComentarios: StaffComentario[];
+            __typename: "ArtigoHistoryEditorialView";
+        };
+        interacoes: {
+            comentariosEditoriais: any[];
+            __typename: "InteractionConnectionDTO";
+        };
+        __typename: "ArtigoEditorialView";
+    };
+}
 interface StaffQueryData { obterStaffList: StaffMember[]; }
 
-const TeamHeader = ({ team, staffList }: { team: EditorialTeamData | undefined, staffList: StaffMember[] }) => {
-    if (!team) return <div className="p-4 text-gray-500 text-sm italic">Equipe não definida</div>;
+// const TeamHeader = (
+//     { team, staffList }: { team: EditorialTeamData | undefined, staffList: StaffMember[] }) => {
+//     if (!team) 
+//         return 
+//         <div className="p-4 text-gray-500 text-sm italic">Equipe não definida</div>;
 
-    const allTeamIds = [...(team.initialAuthorId || []), ...(team.reviewerIds || []), ...(team.correctorIds || []), team.editorId].filter(Boolean);
-    // Remove duplicatas
-    const uniqueIds = Array.from(new Set(allTeamIds));
-    const teamMembers = uniqueIds.map(id => staffList.find(s => s?.usuarioId === id)).filter((s): s is StaffMember => !!s);
+//     const allTeamIds = [
+//         ...(team.initialAuthorId || []), 
+//         ...(team.reviewerIds || []), 
+//         ...(team.correctorIds || []), 
+//         team.editorId].filter(Boolean);
 
-    return (
-        <div className="flex flex-wrap gap-x-4 gap-y-4 mb-6 px-2 py-4 border-b border-gray-200">
-            {teamMembers.map(member => (
-                <div key={member.usuarioId} className="group relative flex flex-col items-center w-[40px]">
-                    <div className="relative h-[30px] w-[30px] rounded-full overflow-hidden border border-gray-200 transition-all duration-300 opacity-70 group-hover:opacity-100 group-hover:scale-110 cursor-help">
-                        <Image src={member.url || '/faviccon.png'} alt={member.nome} fill className="object-cover" />
-                    </div>
-                    <div className="absolute bottom-full mb-2 hidden group-hover:block p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap pointer-events-none">
-                        <p className="font-bold">{member.nome}</p>
-                        <p className="text-gray-300">{member.job}</p>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
+//         // Remove duplicatas
+//     const uniqueIds = Array.from(new Set(allTeamIds));
+
+//     const teamMembers = uniqueIds.map(id => staffList.find(s => s?.usuarioId === id)).filter((s): s is StaffMember => !!s);
+
+//     return (
+//         <div className="flex flex-wrap gap-x-4 gap-y-4 mb-6 px-2 py-4 border-b border-gray-200">
+//             {uniqueIds.map(member => (
+//                 <div key={member.usuarioId} className="group relative flex flex-col items-center w-[40px]">
+//                     <div className="relative h-[30px] w-[30px] rounded-full overflow-hidden border border-gray-200 transition-all duration-300 opacity-70 group-hover:opacity-100 group-hover:scale-110 cursor-help">
+//                         <Image src={member.url || '/faviccon.png'} alt={member.nome} fill className="object-cover" />
+//                     </div>
+//                     <div className="absolute bottom-full mb-2 hidden group-hover:block p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap pointer-events-none">
+//                         <p className="font-bold">{member.nome}</p>
+//                         <p className="text-gray-300">{member.job}</p>
+//                     </div>
+//                 </div>
+//             ))}
+//         </div>
+//     );
+// };
 
 function ArtigoEditClient() {
     const router = useRouter();
@@ -74,11 +124,11 @@ function ArtigoEditClient() {
     // Suporte a "id" ou "Id" na URL
     const rawArtigoId = searchParams.get('id') || searchParams.get('Id');
     const artigoId = rawArtigoId ? sanitizeId(rawArtigoId) : undefined;
-    
+
     const { user, logout } = useAuth();
     const [isStaff, setIsStaff] = useState(false);
     const [userRole, setUserRole] = useState<'staff' | 'author' | 'team' | 'none'>('none');
-    
+
     // Estados de Edição
     const [activeStaffComment, setActiveStaffComment] = useState<StaffComentario | null>(null);
     const [selectedQuillRange, setSelectedQuillRange] = useState<Range | null>(null);
@@ -92,21 +142,21 @@ function ArtigoEditClient() {
     const { data: staffData, loading: loadingStaff } = useQuery<StaffQueryData>(OBTER_STAFF_LIST, {
         variables: { page: 0, pageSize: 200 },
         fetchPolicy: 'cache-and-network',
-        onError: (err: ApolloError) => { 
-            if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) { 
-                localStorage.removeItem('isStaff'); logout(); router.push('/'); 
-            } 
+        onError: (err: ApolloError) => {
+            if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) {
+                localStorage.removeItem('isStaff'); logout(); router.push('/');
+            }
         },
-        onCompleted: (data) => { 
-            if (data.obterStaffList.find(s => s?.usuarioId === user?.id)?.isActive) setIsStaff(true); 
+        onCompleted: (data) => {
+            if (data.obterStaffList.find(s => s?.usuarioId === user?.id)?.isActive) setIsStaff(true);
         }
     });
     const staffList = staffData?.obterStaffList?.filter((s): s is StaffMember => !!s) ?? [];
 
     // 2. Busca Artigo Editorial
     const { data, loading, refetch } = useQuery<EditorialViewData>(OBTER_ARTIGO_EDITORIAL_VIEW, {
-        variables: { artigoId }, 
-        skip: !artigoId || !user, 
+        variables: { artigoId },
+        skip: !artigoId || !user,
         fetchPolicy: 'network-only',
         onCompleted: (data) => {
             const conteudo = data.obterArtigoEditorialView?.conteudoAtual;
@@ -117,9 +167,9 @@ function ArtigoEditClient() {
                 setEditMidias(conteudo.midias ? conteudo.midias.map(m => ({ midiaID: m.idMidia, url: m.url, alt: m.textoAlternativo })) : []);
             }
         },
-        onError: (err) => { 
-            toast.error("Erro ao carregar artigo: " + err.message); 
-            if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) router.push('/'); 
+        onError: (err) => {
+            toast.error("Erro ao carregar artigo: " + err.message);
+            if (err.graphQLErrors.some(e => e.extensions?.code === 'AUTH_FORBIDDEN')) router.push('/');
         }
     });
 
@@ -128,9 +178,9 @@ function ArtigoEditClient() {
     const conteudo = artigo?.conteudoAtual;
 
     // Mutations
-    const [addStaffComment, { loading: loadingAddComment }] = useMutation(ADD_STAFF_COMENTARIO, { 
-        onCompleted: () => { toast.success('Comentário salvo!'); setNewStaffComment(''); setSelectedQuillRange(null); refetch(); }, 
-        onError: (err) => toast.error(err.message) 
+    const [addStaffComment, { loading: loadingAddComment }] = useMutation(ADD_STAFF_COMENTARIO, {
+        onCompleted: () => { toast.success('Comentário salvo!'); setNewStaffComment(''); setSelectedQuillRange(null); refetch(); },
+        onError: (err) => toast.error(err.message)
     });
     const [atualizarConteudo, { loading: loadingContent }] = useMutation(ATUALIZAR_CONTEUDO_ARTIGO);
     const [atualizarMetadados, { loading: loadingMeta }] = useMutation(ATUALIZAR_METADADOS_ARTIGO);
@@ -138,13 +188,13 @@ function ArtigoEditClient() {
     // Controle de Permissão
     useEffect(() => {
         if (loadingStaff || loading || !artigo || !user || !editorial) return;
-        
+
         const team = editorial.team;
         // Se team for null (erro parcial), renderiza, mas limita acesso
-        if (!team) return; 
+        if (!team) return;
 
         if (isStaff) { setUserRole('staff'); return; }
-        
+
         // Verifica se é autor ou membro da equipe
         const isAuthor = team.initialAuthorId?.includes(user.id);
         const isReviewer = team.reviewerIds?.includes(user.id);
@@ -153,22 +203,22 @@ function ArtigoEditClient() {
 
         if (isAuthor) { setUserRole('author'); return; }
         if (isReviewer || isCorrector || isEditor) { setUserRole('team'); return; }
-        
-        toast.error("Você não tem permissão para editar este artigo."); 
+
+        toast.error("Você não tem permissão para editar este artigo.");
         router.push('/');
     }, [user, isStaff, artigo, loading, loadingStaff, router, editorial]);
 
     // Decide Modo (Edit vs Comment)
     const mode = useMemo((): 'edit' | 'comment' => {
         if (!artigo || !editorial || !conteudo) return 'comment';
-        
+
         // Staff pode editar na fase final se for > 3ª edição
         if (editorial.position === PosicaoEditorial.ProntoParaPublicar && conteudo.version >= VersaoArtigo.TerceiraEdicao && isStaff) return 'edit';
-        
+
         // Autor edita, a menos que esteja pronto ou tenha comentários pendentes
-        if (userRole === 'author') { 
-            if (editorial.position === PosicaoEditorial.ProntoParaPublicar || conteudo.staffComentarios.length > 0) return 'comment'; 
-            return 'edit'; 
+        if (userRole === 'author') {
+            if (editorial.position === PosicaoEditorial.ProntoParaPublicar || conteudo.staffComentarios.length > 0) return 'comment';
+            return 'edit';
         }
         return 'comment';
     }, [userRole, artigo, editorial, conteudo, isStaff]);
@@ -178,7 +228,7 @@ function ArtigoEditClient() {
     const handleHighlightClick = (comment: StaffComentario) => { setActiveStaffComment(comment); setSelectedQuillRange(null); };
     const handleContentChange = (html: string) => setEditContent(html);
     const handleMediaChange = (midia: { id: string; url: string; alt: string }) => setEditMidias(prev => [...prev, { midiaID: midia.id, url: midia.url, alt: midia.alt }]);
-    
+
     const handleCreateStaffComment = () => {
         if (!newStaffComment.trim() || !selectedQuillRange || !editorial) return;
         const commentData = { selection: selectedQuillRange, comment: newStaffComment, date: new Date().toISOString(), commentId: `temp-${Date.now()}` };
@@ -192,15 +242,15 @@ function ArtigoEditClient() {
         Promise.all([
             atualizarConteudo({ variables: { artigoId: artigo.id, newContent: editContent, midias: editMidias, commentary: "Update pelo autor" } }),
             atualizarMetadados({ variables: { id: artigo.id, input: { titulo: editTitle, resumo: editResumo }, commentary: "Update metadados" } })
-        ]).then(() => { 
-            toast.success('Artigo salvo com sucesso!', { id: toastId }); 
-            refetch(); 
+        ]).then(() => {
+            toast.success('Artigo salvo com sucesso!', { id: toastId });
+            refetch();
         }).catch((err) => toast.error(err.message, { id: toastId }));
     };
 
     // Renderizações de Loading/Erro
     if (loading || loadingStaff) return <Layout pageType="editorial"><div className="flex h-[50vh] items-center justify-center"><p>Carregando ambiente editorial...</p></div></Layout>;
-    
+
     if (!artigo || !editorial || !conteudo) return <Layout pageType="editorial"><div className="flex h-[50vh] items-center justify-center text-red-500"><p>Não foi possível carregar os dados do artigo.</p></div></Layout>;
 
     // --- PREPARAÇÃO SEGURA DOS DADOS (Evita crash se interacoes for null) ---
@@ -210,16 +260,17 @@ function ArtigoEditClient() {
     return (
         <Layout pageType="editorial">
             <ProgressBar currentVersion={conteudo.version} />
-            
+
             <div className="max-w-7xl mx-auto px-4 py-6">
-                <TeamHeader team={editorial.team} staffList={staffList} />
-                
+
                 {userRole === 'staff' && <StaffControlBar artigoId={artigo.id} editorialId={artigo.editorialId} currentData={artigo as ArtigoData} staffList={staffList} onUpdate={refetch} />}
-                
+
+                {/*<TeamHeader team={editorial.team} staffList={staffList} />*/}
+
                 <div className="flex flex-col lg:flex-row gap-6 mt-6">
                     {/* Área Principal (Editor) */}
                     <div className={`flex-1 transition-all duration-300 ${((mode === 'comment' || conteudo.version > 0) ? 'lg:w-3/4' : 'w-full')}`}>
-                        
+
                         {mode === 'edit' ? (
                             <div className="space-y-6">
                                 <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
@@ -267,7 +318,7 @@ function ArtigoEditClient() {
                         <div className="lg:w-1/4 flex-shrink-0">
                             <div className="sticky top-24">
                                 <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Anotações ({conteudo.staffComentarios.length})</h4>
-                                
+
                                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
                                     {/* Caixa de Novo Comentário */}
                                     {selectedQuillRange && (
@@ -285,20 +336,20 @@ function ArtigoEditClient() {
 
                                     {/* Visualização de Comentário Ativo */}
                                     {activeStaffComment && (
-                                        <StaffCommentCard 
-                                            comment={activeStaffComment} 
-                                            historyId={editorial.currentHistoryId} 
-                                            onClose={() => setActiveStaffComment(null)} 
-                                            onCommentChange={refetch} 
-                                            staffList={staffList} 
+                                        <StaffCommentCard
+                                            comment={activeStaffComment}
+                                            historyId={editorial.currentHistoryId}
+                                            onClose={() => setActiveStaffComment(null)}
+                                            onCommentChange={refetch}
+                                            staffList={staffList}
                                         />
                                     )}
 
                                     {/* Lista de Comentários (Resumo) */}
                                     {!activeStaffComment && !selectedQuillRange && conteudo.staffComentarios.filter(c => !c.parent).map(comment => {
                                         let text = comment.comment;
-                                        try { text = JSON.parse(comment.comment).comment; } catch {}
-                                        
+                                        try { text = JSON.parse(comment.comment).comment; } catch { }
+
                                         return (
                                             <div key={comment.id} onClick={() => handleHighlightClick(comment)} className="group p-3 bg-white border border-gray-200 rounded hover:border-emerald-400 cursor-pointer transition-all hover:shadow-md">
                                                 <div className="flex items-center gap-2 mb-1">
@@ -314,7 +365,7 @@ function ArtigoEditClient() {
                                             </div>
                                         );
                                     })}
-                                    
+
                                     {!activeStaffComment && !selectedQuillRange && conteudo.staffComentarios.length === 0 && (
                                         <p className="text-xs text-gray-400 text-center italic py-4">Nenhuma anotação nesta versão.</p>
                                     )}

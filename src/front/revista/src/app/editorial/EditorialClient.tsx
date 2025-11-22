@@ -12,6 +12,7 @@ import { User, UserPlus, X } from 'lucide-react';
 import Image from 'next/image';
 import CommentaryModal from '@/components/CommentaryModal';
 import toast from 'react-hot-toast';
+import { StatusArtigo, PosicaoEditorial, TipoArtigo, FuncaoTrabalho } from '@/types/enums';
 
 interface StaffListData { obterStaffList: (StaffMember | null | undefined)[]; }
 interface UsuarioBusca { id: string; name: string; sobrenome?: string; foto?: string; }
@@ -27,7 +28,7 @@ export default function EditorialClient() {
     const [selectedUser, setSelectedUser] = useState<UsuarioBusca | null>(null);
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [userSearchResults, setUserSearchResults] = useState<UsuarioBusca[]>([]);
-    const [selectedJob, setSelectedJob] = useState<'EditorBolsista' | 'EditorChefe' | 'Administrador'>('EditorBolsista');
+    const [selectedJob, setSelectedJob] = useState<FuncaoTrabalho>(FuncaoTrabalho.EditorBolsista);
 
     const { data, loading, error, refetch } = useQuery<StaffListData>(OBTER_STAFF_LIST, {
         variables: { page: 0, pageSize: PAGE_SIZE },
@@ -177,10 +178,15 @@ export default function EditorialClient() {
                                 </div>
                                 <div className="mb-6">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Função</label>
-                                    <select value={selectedJob} onChange={(e) => setSelectedJob(e.target.value as any)} className="input-std">
-                                        <option value="EditorBolsista">Editor Bolsista</option>
-                                        <option value="EditorChefe">Editor Chefe</option>
-                                        <option value="Administrador">Administrador</option>
+                                    <select 
+                                        value={selectedJob} 
+                                        onChange={(e) => setSelectedJob(e.target.value as FuncaoTrabalho)} 
+                                        className="input-std"
+                                    >
+                                        {/* Use o Enum para garantir que o valor (value) seja MAIÚSCULO */}
+                                        <option value={FuncaoTrabalho.EditorBolsista}>Editor Bolsista</option>
+                                        <option value={FuncaoTrabalho.EditorChefe}>Editor Chefe</option>
+                                        <option value={FuncaoTrabalho.Administrador}>Administrador</option>
                                     </select>
                                 </div>
                                 <button onClick={handleHireSubmit} disabled={!selectedUser || loadingCreate} className="btn-primary w-full">{loadingCreate ? 'Enviando...' : 'Enviar'}</button>

@@ -18,7 +18,12 @@ export enum TipoArtigo {
   Video = "VIDEO",
   Administrativo = "ADMINISTRATIVO",
 }
-
+export enum FuncaoTrabalho {
+  Administrador = "ADMINISTRADOR",
+  EditorBolsista = "EDITOR_BOLSISTA",
+  EditorChefe = "EDITOR_CHEFE",
+  Aposentado = "APOSENTADO"
+}
 export enum StatusVolume {
   EmRevisao = "EM_REVISAO",
   Publicado = "PUBLICADO",

@@ -7,14 +7,47 @@ import { GET_MEUS_ARTIGOS, GET_ARTIGOS_BY_IDS } from '@/graphql/queries';
 import useAuth from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import ArticleCard from '@/components/ArticleCard';
-import { User, MapPin, BookOpen, Edit, Mail, Building2, GraduationCap, Loader2, Calendar } from 'lucide-react';
+import { User, MapPin, BookOpen, Edit, Mail, Building2, GraduationCap, Loader2, Calendar, Briefcase } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { USER_API_BASE } from '@/lib/fetcher';
-import { formatDate } from '@/lib/dateUtils';
 
-interface InstituicaoInfo {
-    instituicao: string;
+const formatYearRange = (dataInicio?: string, dataFim?: string) => {
+    let endText;
+    if (!dataFim || dataFim.toLowerCase() === 'atualmente') {
+        endText = 'ATUALMENTE';
+    } else {
+        try {
+            endText = new Date(dataFim).getFullYear().toString();
+        } catch {
+            endText = 'Fim Inválido';
+        }
+    }
+
+    let startYear = 'Data não informada';
+    if (dataInicio) {
+        try {
+            startYear = new Date(dataInicio).getFullYear().toString();
+        } catch {
+        }
+    }
+    
+    if (startYear === 'Data não informada') return 'Datas não informadas';
+    return `${startYear} - ${endText}`;
+};
+
+interface InfoInstitucional {
+    instituicao?: string;
+    curso?: string;
+    dataInicio?: string;
+    dataFim?: string;
+    descricaoCurso?: string;
+    informacoesAdd?: string;
+}
+
+// Atuação Profissional (Experiência)
+interface AtuacaoProfissional {
+    instituicao?: string;
     areaAtuacao?: string;
     dataInicio?: string;
     dataFim?: string;
@@ -22,6 +55,7 @@ interface InstituicaoInfo {
     informacoesAdd?: string;
 }
 
+// Interface principal do Perfil
 interface UserProfile {
     id: string;
     name: string;
@@ -30,10 +64,11 @@ interface UserProfile {
     foto?: string;
     biografia?: string;
     endereco?: string;
-    infoInstitucionais?: InstituicaoInfo[];
-    atuacoes?: InstituicaoInfo[]; // FIX: Changed from string[] to Object Array
+    infoInstitucionais?: InfoInstitucional[]; 
+    atuacoes?: AtuacaoProfissional[]; 
 }
 
+// Interface para dados de Artigo 
 interface ArtigoCardData {
     id: string;
     titulo: string;
@@ -67,20 +102,27 @@ function ProfileContent() {
                 const res = await fetch(`${USER_API_BASE}/${targetId}?token=${token}`, { headers });
                 if (!res.ok) throw new Error('Perfil não encontrado');
                 const data = await res.json();
-                console.log(data);
-                setProfile(data);
+                
+                const processedData: UserProfile = {
+                    ...data,
+                    infoInstitucionais: data.infoInstitucionais || [],
+                    atuacoes: data.atuacoes || []
+                };
+                
+                setProfile(processedData);
             } catch (error) { console.error(error); } finally { setLoadingProfile(false); }
         };
         fetchProfile();
     }, [targetId, authLoading, queryId, router]);
 
+    const articleIds: string[] = []; // Exemplo de como IDs seriam preenchidos
     const { data: myArticlesData } = useQuery(GET_MEUS_ARTIGOS, { skip: !isOwnProfile || authLoading });
-    const articleIds: string[] = [];
     const { data: publicArticlesData } = useQuery(GET_ARTIGOS_BY_IDS, { variables: { ids: articleIds }, skip: isOwnProfile || articleIds.length === 0 });
 
-    if (authLoading || loadingProfile) return <Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div></Layout>;
+    if (authLoading || loadingProfile) return <Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin text-emerald-600" /></div></Layout>;
     if (!profile) return <Layout><div className="text-center mt-20"><h2 className="text-xl font-bold text-gray-800">Perfil não encontrado</h2><Link href="/" className="text-emerald-600 hover:underline mt-4 block">Voltar para a Home</Link></div></Layout>;
 
+    // Uso da interface ArtigoCardData corrigido
     const articlesToDisplay: ArtigoCardData[] = isOwnProfile ? (myArticlesData?.obterMeusArtigosCardList || []) : (publicArticlesData?.obterArtigoCardListPorLista || []);
 
     return (
@@ -102,6 +144,7 @@ function ProfileContent() {
 
                         <div className="mt-8 flex flex-col gap-6">
 
+                            {/* --- BIOGRAFIA --- */}
                             {profile.biografia && (
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2"><BookOpen size={18} className="text-emerald-600" /> Biografia</h3>
@@ -109,57 +152,54 @@ function ProfileContent() {
                                 </div>
                             )}
 
+                            {/* --- FORMAÇÃO ACADÊMICA (INFO INSTITUCIONAIS) --- */}
                             {profile.infoInstitucionais && profile.infoInstitucionais.length > 0 && (
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><Building2 size={18} className="text-emerald-600" /> Formação Acadêmica</h3>
                                     <div className="space-y-3">
                                         {profile.infoInstitucionais.map((info, idx) => (
-                                            <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                <div className="font-medium text-gray-800">{info.instituicao}</div>
-                                                {info.areaAtuacao && <div className="text-sm text-emerald-700 font-medium">{info.areaAtuacao}</div>}
+                                            <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">
+                                                <div className="font-semibold text-gray-800 text-lg">{info.instituicao || 'Instituição não informada'}</div>
+                                                
+                                                {info.curso && <div className="text-base text-emerald-700 font-medium flex items-center gap-2"><GraduationCap size={16} />{info.curso}</div>}
 
                                                 {(info.dataInicio || info.dataFim) && (
                                                     <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                                                         <Calendar size={12} />
-                                                        <span>{formatDate(info.dataInicio || '')} - {info.dataFim ? formatDate(info.dataFim) : 'Atual'}</span>
+                                                        <span>{formatYearRange(info.dataInicio, info.dataFim)}</span>
                                                     </div>
                                                 )}
 
-                                                {info.contribuicao && <div className="text-xs text-gray-600 mt-2"><strong>Contribuição:</strong> {info.contribuicao}</div>}
-                                                {info.informacoesAdd && <div className="text-xs text-gray-500 mt-1 italic">{info.informacoesAdd}</div>}
+                                                {info.descricaoCurso && <div className="text-sm text-gray-700 mt-2 border-t pt-2 border-gray-200">{info.descricaoCurso}</div>}
+                                                {info.informacoesAdd && <div className="text-xs text-gray-500 mt-1 italic">ℹ️ {info.informacoesAdd}</div>}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
-                            {/* FIX: Rendering Atuações as structured cards */}
+                            {/* --- ATUAÇÕES PROFISSIONAIS (EXPERIÊNCIA) --- */}
                             {profile.atuacoes && profile.atuacoes.length > 0 && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><GraduationCap size={18} className="text-emerald-600" /> Atuações Profissionais</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-600" /> Atuações Profissionais</h3> 
                                     <div className="space-y-3">
-                                        {profile.atuacoes.map((at, idx) => {
-                                            // Handle case where it might still be a string legacy data
-                                            if (typeof at === 'string') {
-                                                return <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs">{at}</span>;
-                                            }
-                                            return (
-                                                <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                    <div className="font-medium text-gray-800">{at.instituicao}</div>
-                                                    {at.areaAtuacao && <div className="text-sm text-emerald-700 font-medium">{at.areaAtuacao}</div>}
+                                        {profile.atuacoes.map((at, idx) => (
+                                            <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">
+                                                <div className="font-semibold text-gray-800 text-lg">{at.instituicao || 'Empresa não informada'}</div>
+                                                
+                                                {at.areaAtuacao && <div className="text-base text-emerald-700 font-medium flex items-center gap-2"><GraduationCap size={16} />{at.areaAtuacao}</div>}
 
-                                                    {(at.dataInicio || at.dataFim) && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                                                            <Calendar size={12} />
-                                                            <span>{formatDate(at.dataInicio || '')} - {at.dataFim ? formatDate(at.dataFim) : 'Atual'}</span>
-                                                        </div>
-                                                    )}
+                                                {(at.dataInicio || at.dataFim) && (
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                                                        <Calendar size={12} />
+                                                        <span>{formatYearRange(at.dataInicio, at.dataFim)}</span>
+                                                    </div>
+                                                )}
 
-                                                    {at.contribuicao && <div className="text-xs text-gray-600 mt-2"><strong>Contribuição:</strong> {at.contribuicao}</div>}
-                                                    {at.informacoesAdd && <div className="text-xs text-gray-500 mt-1 italic">{at.informacoesAdd}</div>}
-                                                </div>
-                                            );
-                                        })}
+                                                {at.contribuicao && <div className="text-sm text-gray-700 mt-2 border-t pt-2 border-gray-200">{at.contribuicao}</div>}
+                                                {at.informacoesAdd && <div className="text-xs text-gray-500 mt-1 italic">ℹ️ {at.informacoesAdd}</div>}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -167,6 +207,7 @@ function ProfileContent() {
                     </div>
                 </div>
 
+                {/* Seção de Artigos*/}
                 {articlesToDisplay.length > 0 && (
                     <div className="mt-12">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">{isOwnProfile ? 'Meus Artigos' : `Artigos de ${profile.name}`}</h2>
@@ -190,5 +231,5 @@ function ProfileContent() {
 }
 
 export default function ProfilePage() {
-    return <Suspense fallback={<Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div></Layout>}><ProfileContent /></Suspense>;
+    return <Suspense fallback={<Layout><div className="flex justify-center mt-20"><Loader2 className="animate-spin text-emerald-600" /></div></Layout>}><ProfileContent /></Suspense>;
 }

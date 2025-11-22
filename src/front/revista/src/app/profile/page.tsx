@@ -207,7 +207,7 @@ function ProfileContent() {
                     </div>
                 </div>
 
-                {/* Seção de Artigos*/}
+                {/* Seção de Artigos */}
                 {articlesToDisplay.length > 0 && (
                     <div className="mt-12">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">{isOwnProfile ? 'Meus Artigos' : `Artigos de ${profile.name}`}</h2>

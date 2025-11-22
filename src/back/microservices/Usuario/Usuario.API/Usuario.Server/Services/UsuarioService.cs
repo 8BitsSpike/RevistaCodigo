@@ -378,7 +378,7 @@ namespace Usuario.Server.Services
 
                 var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "nameid")?.Value;
                 var role = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
-                if (userIdClaim != expectedUserId && role != "0")
+                if (!string.IsNullOrEmpty(expectedUserId) && userIdClaim != expectedUserId && role != "0")
                 {
                     return ServiceResult.Failure("Token inválido para este usuário.", 401);
                 }

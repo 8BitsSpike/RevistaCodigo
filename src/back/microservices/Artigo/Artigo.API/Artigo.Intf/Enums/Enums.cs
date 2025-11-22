@@ -47,10 +47,8 @@
     public enum FuncaoContribuicao
     {
         AutorPrincipal,
-        CoAutor,
         Revisor,
         Corretor,
-        Redator,
         EditorChefe
     }
 

@@ -47,7 +47,7 @@ namespace Artigo.Intf.Entities
         public List<string> InitialAuthorId { get; set; } = [];
 
         // ID do editor chefe responsavel (Referencia a Staff.Id)
-        public string EditorId { get; set; } = string.Empty;
+        public List<string> EditorIds { get; set; } = [];
 
         // IDs dos revisores designados (Referencia a UsuarioId)
         public List<string> ReviewerIds { get; set; } = [];

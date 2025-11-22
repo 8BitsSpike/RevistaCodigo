@@ -3,11 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useAuth from '@/hooks/useAuth';
-import { USER_API_BASE } from '@/lib/fetcher'; 
+import { USER_API_BASE } from '@/lib/fetcher';
 import { ArrowLeft, Save, Plus, Upload, Edit, Trash2, Calendar, Building2, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { formatDate } from '@/lib/dateUtils';
+
+interface Usuario {
+    _id?: string;
+    id?: string;
+    tipo?: string;
+    name?: string;
+    sobrenome?: string;
+    email?: string;
+    foto?: string;
+    password?: string;
+    biografia?: string;
+    infoInstitucionais?: InfoInstitucional[];
+    atuacoes?: AtuacaoProfissional[];
+}
 
 interface InfoInstitucional {
     instituicao?: string;
@@ -19,11 +33,11 @@ interface InfoInstitucional {
 }
 
 interface AtuacaoProfissional {
-    instituicao?: string; 
-    areaAtuacao?: string; 
+    instituicao?: string;
+    areaAtuacao?: string;
     dataInicio?: string;
     dataFim?: string;
-    contribuicao?: string; 
+    contribuicao?: string;
     informacoesAdd?: string;
 }
 
@@ -32,6 +46,7 @@ interface AtuacaoProfissional {
 export default function ProfileEditPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
+    const [usuario, setUsuario] = useState<Usuario>({});
 
     const [formData, setFormData] = useState({
         name: '',
@@ -46,7 +61,7 @@ export default function ProfileEditPage() {
 
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
-    
+
     const toInputDate = (isoString?: string) => {
         if (!isoString) return '';
         return isoString.split('T')[0];
@@ -63,21 +78,20 @@ export default function ProfileEditPage() {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem('userToken');
-                const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) throw new Error('Erro ao carregar perfil');
-                const data = await res.json();
+                const payload = [user.id];
+                const res = await fetch(`${USER_API_BASE}/GetByIds?token=${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                }); if (!res.ok) throw new Error('Perfil não encontrado');
+                const dataList = await res.json();
+                const data = dataList?.[0];
 
-                setFormData({
-                    name: data.name || '',
-                    sobrenome: data.sobrenome || '',
-                    email: data.email || '',
-                    biografia: data.biografia || '',
-                    foto: data.foto || '',
+                setUsuario({
+                    ...data,
+                    infoInstitucionais: data.infoInstitucionais || [],
+                    atuacoes: data.atuacoes || [],
                 });
-                setInfoList(data.infoInstitucionais || []);
-                setAtuacaoList(data.atuacoes || []);
             } catch (err) {
                 toast.error('Falha ao carregar dados.');
             } finally {
@@ -137,12 +151,12 @@ export default function ProfileEditPage() {
             setAtuacaoList(atuacaoList.filter((_, i) => i !== index));
         }
     };
-    
+
     // 5. SUBMISSÃO DO FORMULÁRIO 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        
+
         // Validação básica
         if (!formData.name.trim() || !formData.sobrenome.trim()) {
             return toast.error('Nome e Sobrenome são obrigatórios.');
@@ -154,23 +168,32 @@ export default function ProfileEditPage() {
         const payload = {
             id: user.id,
             ...formData,
-            infoInstitucionais: infoList, 
-            atuacoes: atuacaoList 
+            infoInstitucionais: infoList,
+            atuacoes: atuacaoList
         };
 
+        const envioId = usuario.id || usuario._id;
+
         try {
-            const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
+            const token = localStorage.getItem('userToken');
+            const res = await fetch(`${USER_API_BASE}/${envioId}?token=${token}`, {
+                method: 'PuT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+
             });
-            
+            const dataList = await res.json();
+            const data = dataList?.[0];
+
             if (!res.ok) {
                 let errorMsg = 'Falha ao atualizar o perfil. Tente novamente.';
                 try {
                     const errorData = await res.json();
                     errorMsg = errorData.message || errorMsg;
-                } catch {}
+                } catch { }
 
                 throw new Error(errorMsg);
             }
@@ -178,7 +201,7 @@ export default function ProfileEditPage() {
             toast.success('Perfil atualizado com sucesso! ✅');
             localStorage.setItem('userName', formData.name);
             localStorage.setItem('userFoto', formData.foto);
-            
+
             router.push('/profile');
         } catch (err: any) {
             console.error(err);
@@ -199,7 +222,7 @@ export default function ProfileEditPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-10">
-                    
+
                     {/* --- DADOS PESSOAIS E FOTO --- */}
                     <div className="space-y-6">
                         <div className="flex flex-col items-center">
@@ -217,15 +240,15 @@ export default function ProfileEditPage() {
                             <div><label className="block text-sm font-medium text-gray-700 mb-1">Sobrenome *</label><input type="text" name="sobrenome" value={formData.sobrenome} onChange={handleInputChange} className="input-std" required /></div>
                             <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" name="email" value={formData.email} className="input-std bg-gray-100 cursor-not-allowed" disabled /></div>
                             <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Biografia</label><textarea name="biografia" value={formData.biografia} onChange={handleInputChange} rows={4} className="input-std resize-none" maxLength={2300} placeholder="Escreva uma breve biografia sobre você..." />
-                            <p className="text-xs text-gray-500 text-right mt-1">{formData.biografia.length || 0}/2300 caracteres</p>
+                                <p className="text-xs text-gray-500 text-right mt-1">{formData.biografia.length || 0}/2300 caracteres</p>
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* --- INFORMAÇÕES INSTITUCIONAIS (Formação Acadêmica) --- */}
                     <div className="space-y-6 border-t pt-8">
-                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><Building2 size={20} className="text-emerald-600"/> Formação Acadêmica</h2>
-                        
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><Building2 size={20} className="text-emerald-600" /> Formação Acadêmica</h2>
+
                         <div className="space-y-4">
                             {infoList.map((info, idx) => (
                                 <div
@@ -300,8 +323,8 @@ export default function ProfileEditPage() {
 
                     {/* --- ATUAÇÃO PROFISSIONAL (Experiência) --- */}
                     <div className="space-y-6 border-t pt-8">
-                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><Briefcase size={20} className="text-emerald-600"/> Atuação Profissional</h2>
-                        
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><Briefcase size={20} className="text-emerald-600" /> Atuação Profissional</h2>
+
                         <div className="space-y-4">
                             {atuacaoList.map((atuacao, idx) => (
                                 <div

@@ -55,14 +55,14 @@ namespace Usuario.Server.Services
 
         }
         // --- BUCAR USER Name ---
-        public async Task<List<Usuario.Intf.Models.Usuario>> GetListNameAsync(string name)
+        public async Task<List<Usuario.Intf.Models.Usuario>> GetListNameAsync(string nome)
 
         {
 
             var teste = await _usuariosCollection.Find(_ => true).ToListAsync();
             var resultados = await _usuariosCollection
         // 1. Define o filtro (WHERE/Find)
-        .Find(x => x.Name.Contains(name))
+        .Find(x => x.Name.Contains(nome))
 
         // 2. Define a Projeção (SELECT)
         .Project<Usuario.Intf.Models.Usuario>(Builders<Usuario.Intf.Models.Usuario>.Projection

@@ -27,8 +27,6 @@ interface AtuacaoProfissional {
     informacoesAdd?: string;
 }
 
-
-
 export default function ProfileEditPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();

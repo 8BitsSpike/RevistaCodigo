@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-// CSS Imports
 import 'react-quill-new/dist/quill.snow.css';
 import 'highlight.js/styles/monokai-sublime.css';
 
@@ -37,33 +36,32 @@ const EditorialQuillEditorInternal = ({
     // Estado para guardar o componente ReactQuill carregado dinamicamente
     const [QuillComponent, setQuillComponent] = useState<any>(null);
 
-    // --- EFEITO DE INICIALIZAÇÃO E ORDEM DE CARREGAMENTO ---
+    // --- EFEITO DE INICIALIZAÇÃO ---
     useEffect(() => {
         const loadEditor = async () => {
             if (typeof window === 'undefined') return;
 
-            // 1. Carrega Highlight.js primeiro
+            // 1. Carrega Highlight.js
             const hljsModule = await import('highlight.js');
             const hljs = hljsModule.default || hljsModule;
-            
-            // 2. Atribui ao window OBRIGATORIAMENTE antes de carregar o Quill
             (window as any).hljs = hljs;
 
-            // 3. Carrega React Quill (que vai carregar Quill, que vai procurar window.hljs)
+            // 2. Carrega React Quill
             const RQModule = await import('react-quill-new');
             const ReactQuill = RQModule.default || RQModule;
             const Quill = ReactQuill.Quill || RQModule.Quill;
 
-            // 4. Configurações adicionais do Quill
+            // 3. Configurações do Quill
             if (!(window as any).QuillConfigured) {
                 if (!Quill.imports['modules/syntax']) {
                      // @ts-ignore
                     Quill.register('modules/syntax', true);
                 }
 
-                const Inline = Quill.import('blots/inline') as any;
+                const Inline = Quill.import('blots/inline');
                 if (!Quill.imports['formats/highlight']) {
-                    class HighlightBlot extends Inline {
+                    // @ts-ignore
+                    class HighlightBlot extends (Inline as any) {
                         static blotName = 'highlight';
                         static tagName = 'span';
                         static create(value: string) {
@@ -74,12 +72,12 @@ const EditorialQuillEditorInternal = ({
                             return node;
                         }
                     }
+                    // @ts-ignore
                     Quill.register(HighlightBlot, true);
                 }
                 (window as any).QuillConfigured = true;
             }
 
-            // 5. Salva o componente no estado para renderizar
             setQuillComponent(() => ReactQuill);
         };
 
@@ -122,7 +120,6 @@ const EditorialQuillEditorInternal = ({
     };
 
     const modules = useMemo(() => ({
-        // Agora é seguro usar syntax: true porque garantimos o window.hljs
         syntax: true, 
         toolbar: {
             container: [
@@ -137,11 +134,25 @@ const EditorialQuillEditorInternal = ({
         history: { userOnly: true }
     }), [imageHandler]);
 
-    // Efeitos de Highlight e Eventos (Só rodam se o componente existir)
+    // --- CORREÇÃO: Handler Nativo de Seleção ---
+    // Usamos este método na prop onChangeSelection em vez de addEventListener manual
+    const handleSelectionChange = (range: any, source: any, editor: any) => {
+        if (mode === 'comment' && onTextSelect) {
+            // source === 'user' garante que foi o mouse/teclado do usuário
+            // range.length > 0 garante que algo foi selecionado (não é apenas um clique)
+            if (source === 'user' && range && range.length > 0) {
+                console.log("Texto selecionado:", range); // Debug
+                onTextSelect(range);
+            }
+        }
+    };
+
+    // Efeitos APENAS para Highlights visuais e Cliques em comentários já existentes
     useEffect(() => {
         if (!QuillComponent || !reactQuillRef.current) return;
         const editor = reactQuillRef.current.getEditor();
 
+        // Aplica Highlights (amarelo)
         if (mode === 'comment' && staffComments.length > 0) {
             setTimeout(() => {
                 staffComments.forEach(c => {
@@ -158,6 +169,7 @@ const EditorialQuillEditorInternal = ({
             }, 500);
         }
 
+        // Clique em um Highlight existente
         if (mode === 'comment' && onHighlightClick) {
             const clickHandler = (e: any) => {
                 let node = e.target;
@@ -177,16 +189,11 @@ const EditorialQuillEditorInternal = ({
             return () => editor.root.removeEventListener('click', clickHandler);
         }
 
-        if (mode === 'comment' && onTextSelect) {
-            const selHandler = (range: Range, old: Range, source: string) => {
-                if (source === 'user' && range && range.length > 0) onTextSelect(range);
-            };
-            editor.on('selection-change', selHandler);
-            return () => editor.off('selection-change', selHandler);
-        }
-    }, [mode, staffComments, onHighlightClick, onTextSelect, QuillComponent]);
+        // REMOVIDO: O ouvinte manual de 'selection-change' daqui.
+        // Agora usamos a prop onChangeSelection abaixo.
 
-    // Se o componente ainda não carregou (está fazendo os imports), mostra loading
+    }, [mode, staffComments, onHighlightClick, QuillComponent]);
+
     if (!QuillComponent) {
         return <div className="w-full h-96 bg-gray-100 rounded-md animate-pulse flex items-center justify-center text-gray-400">Inicializando Editor...</div>;
     }
@@ -200,7 +207,11 @@ const EditorialQuillEditorInternal = ({
                     theme="snow"
                     value={initialContent || ''}
                     onChange={onContentChange}
-                    readOnly={mode === 'comment'}
+                    
+                    // --- CORREÇÃO: Prop nativa é mais confiável ---
+                    onChangeSelection={handleSelectionChange}
+                    
+                    readOnly={mode === 'comment'} // Garante que seja readOnly, mas permita seleção
                     modules={mode === 'edit' ? modules : { ...modules, toolbar: false }}
                     style={{ minHeight: '60vh' }}
                 />

@@ -665,8 +665,8 @@ export const ATUALIZAR_CONTEUDO_ARTIGO = gql`
 
 export const ATUALIZAR_EQUIPE_EDITORIAL = gql`
   mutation AtualizarEquipeEditorial(
-    $artigoId: String!
-    $teamInput: EditorialTeamInputType!
+    $artigoId: ID!
+    $teamInput: EditorialTeamInput! 
     $commentary: String!
   ) {
     atualizarEquipeEditorial(
@@ -701,9 +701,9 @@ export const CRIAR_COMENTARIO_EDITORIAL = gql`
 
 export const ADD_STAFF_COMENTARIO = gql`
   mutation AddStaffComentario(
-    $historyId: String!
+    $historyId: ID! 
     $comment: String!
-    $parent: String
+    $parent: ID
   ) {
     addStaffComentario(
       historyId: $historyId
@@ -720,8 +720,8 @@ export const ADD_STAFF_COMENTARIO = gql`
 
 export const UPDATE_STAFF_COMENTARIO = gql`
   mutation UpdateStaffComentario(
-    $historyId: String!
-    $comentarioId: String!
+    $historyId: ID!       # De String! para ID!
+    $comentarioId: ID!    # De String! para ID!
     $newContent: String!
   ) {
     updateStaffComentario(
@@ -739,8 +739,8 @@ export const UPDATE_STAFF_COMENTARIO = gql`
 
 export const DELETE_STAFF_COMENTARIO = gql`
   mutation DeleteStaffComentario(
-    $historyId: String!
-    $comentarioId: String!
+    $historyId: ID!       # De String! para ID!
+    $comentarioId: ID!    # De String! para ID!
   ) {
     deleteStaffComentario(
       historyId: $historyId

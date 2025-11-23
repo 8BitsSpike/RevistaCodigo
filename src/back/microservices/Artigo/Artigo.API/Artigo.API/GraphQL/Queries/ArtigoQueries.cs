@@ -7,7 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.AspNetCore.Http; // Necessário para IHttpContextAccessor
+using Microsoft.AspNetCore.Http; 
 
 namespace Artigo.API.GraphQL.Queries
 {
@@ -24,7 +24,6 @@ namespace Artigo.API.GraphQL.Queries
             _httpContextAccessor = httpContextAccessor;
         }
 
-        // --- Helper para extrair ID do usuário de forma robusta ---
         private string GetUserId()
         {
             var user = _httpContextAccessor.HttpContext?.User;
@@ -35,9 +34,7 @@ namespace Artigo.API.GraphQL.Queries
                 ?? string.Empty;
         }
 
-        // --------------------------------------------------------------------------------
         // Queries Públicas
-        // --------------------------------------------------------------------------------
         public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosCardListAsync(int pagina, int tamanho)
         {
             var entities = await _artigoService.ObterArtigosCardListAsync(pagina, tamanho);
@@ -112,10 +109,7 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterComentariosPublicosAsync(artigoId, pagina, tamanho);
         }
 
-        // --------------------------------------------------------------------------------
-        // Queries Internas (Autenticadas) - CORRIGIDAS (Sem ClaimsPrincipal nos argumentos)
-        // --------------------------------------------------------------------------------
-
+        // Queries Internas (Autenticadas)
         public async Task<ArtigoEditorialViewDTO?> ObterArtigoEditorialViewAsync(string artigoId)
         {
             var currentUsuarioId = GetUserId();
@@ -126,7 +120,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<ArtigoEditorialViewDTO>(artigo);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<bool> VerificarStaffAsync()
         {
             var currentUsuarioId = GetUserId();
@@ -140,7 +133,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<ArtigoDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<ArtigoDTO?> ObterArtigoPorIdAsync(string idArtigo)
         {
             var currentUsuarioId = GetUserId();
@@ -159,7 +151,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterMeusArtigosCardListAsync()
         {
             var currentUsuarioId = GetUserId();
@@ -169,7 +160,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<Pending>> ObterPendentesAsync(
             int pagina, int tamanho,
             StatusPendente? status, string? targetEntityId, TipoEntidadeAlvo? targetType, string? requesterUsuarioId)
@@ -184,7 +174,6 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterPendentesAsync(pagina, tamanho, currentUsuarioId);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<Autor>> ObterAutoresAsync(int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -193,7 +182,6 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterAutoresAsync(pagina, tamanho, currentUsuarioId);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<Autor?> ObterAutorPorIdAsync(string idAutor)
         {
             var currentUsuarioId = GetUserId();
@@ -202,7 +190,6 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterAutorPorIdAsync(idAutor, currentUsuarioId);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesAsync(int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -212,16 +199,15 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
-        public async Task<IReadOnlyList<Volume>> ObterVolumesPorAnoAsync(int ano, int pagina, int tamanho)
+        public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesPorAnoAsync(int ano, int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
-            if (string.IsNullOrEmpty(currentUsuarioId)) throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
-
-            return await _artigoService.ObterVolumesPorAnoAsync(ano, pagina, tamanho, currentUsuarioId);
+            if (string.IsNullOrEmpty(currentUsuarioId))
+                throw new UnauthorizedAccessException("Usuário deve estar autenticado.");
+            var entities = await _artigoService.ObterVolumesPorAnoAsync(ano, pagina, tamanho, currentUsuarioId);
+            return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<VolumeCardDTO>> ObterVolumesPorStatusAsync(StatusVolume status, int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -230,8 +216,6 @@ namespace Artigo.API.GraphQL.Queries
             var entities = await _artigoService.ObterVolumesPorStatusAsync(status, pagina, tamanho, currentUsuarioId);
             return _mapper.Map<IReadOnlyList<VolumeCardDTO>>(entities);
         }
-
-        // CORRIGIDO: Removido argumento claims
         public async Task<Volume?> ObterVolumePorIdAsync(string idVolume)
         {
             var currentUsuarioId = GetUserId();
@@ -240,7 +224,6 @@ namespace Artigo.API.GraphQL.Queries
             return await _artigoService.ObterVolumePorIdAsync(idVolume, currentUsuarioId);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<StaffViewDTO?> ObterStaffPorIdAsync(string staffId)
         {
             var currentUsuarioId = GetUserId();
@@ -250,7 +233,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<StaffViewDTO>(entity);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<StaffViewDTO>> ObterStaffListAsync(int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -260,7 +242,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<StaffViewDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims (ESSE ERA O SEU ERRO ATUAL)
         public async Task<IReadOnlyList<ArtigoCardListDTO>> ObterArtigosEditorialPorTipoAsync(TipoArtigo tipo, int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -270,7 +251,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
 
-        // CORRIGIDO: Removido argumento claims
         public async Task<IReadOnlyList<ArtigoCardListDTO>> SearchArtigosEditorialByTitleAsync(string searchTerm, int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();
@@ -280,7 +260,6 @@ namespace Artigo.API.GraphQL.Queries
             return _mapper.Map<IReadOnlyList<ArtigoCardListDTO>>(entities);
         }
 
-        // SearchArtigosEditorialByAutorIdsAsync já estava correto, mantido assim.
         public async Task<IReadOnlyList<ArtigoCardListDTO>> SearchArtigosEditorialByAutorIdsAsync(string[] idsAutor, int pagina, int tamanho)
         {
             var currentUsuarioId = GetUserId();

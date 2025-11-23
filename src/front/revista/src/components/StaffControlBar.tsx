@@ -6,7 +6,7 @@ import {
     ATUALIZAR_METADADOS_ARTIGO,
     ATUALIZAR_EQUIPE_EDITORIAL,
 } from '@/graphql/queries';
-import { USER_API_BASE } from '@/lib/fetcher';
+import { USER_API_BASE, OPTION } from '@/lib/fetcher';
 import CommentaryModal from './CommentaryModal';
 import { StatusArtigo, PosicaoEditorial, TipoArtigo, FuncaoTrabalho } from '@/types/enums';
 import { StaffMember } from '@/components/StaffCard';
@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 // --- Tipos ---
 interface EditorialTeamData {
     initialAuthorId: string[];
-    editorId: string;
+    editorIds: string[];
     reviewerIds: string[];
     correctorIds: string[];
 }
@@ -48,9 +48,9 @@ interface UsuarioBusca {
     foto?: string;
 }
 
-type ListTeamRole = 'initialAuthorId' | 'reviewerIds' | 'correctorIds';
-type SingleTeamRole = 'editorId';
+type ListTeamRole = 'initialAuthorId' | 'reviewerIds' | 'correctorIds' | 'editorIds';
 
+// --- Componente Interno (Caixa de Busca Múltipla) ---
 interface TeamSearchBoxProps {
     title: string;
     role: ListTeamRole;
@@ -76,7 +76,6 @@ function TeamSearchBox({ title, role, currentIds, renderList, excludeIds, restri
             if (!token) return;
 
             try {
-                // Busca na API de Users (pesquisa por nome)
                 const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -154,98 +153,7 @@ function TeamSearchBox({ title, role, currentIds, renderList, excludeIds, restri
     );
 }
 
-// Caixa de Busca Única) 
-interface SingleUserSearchBoxProps {
-    title: string;
-    role: SingleTeamRole;
-    currentId: string;
-    renderList: StaffMember[];
-    excludeIds: string[];
-    restrictToStaff?: boolean;
-    onSet: (role: SingleTeamRole, user: UsuarioBusca | null) => void;
-}
-
-function SingleUserSearchBox({ title, role, currentId, renderList, excludeIds, restrictToStaff, onSet }: SingleUserSearchBoxProps) {
-    const [query, setQuery] = useState('');
-    const [results, setResults] = useState<UsuarioBusca[]>([]);
-
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(async () => {
-            if (query.length < 3) { setResults([]); return; }
-            const token = localStorage.getItem('userToken');
-            if (!token) return;
-            try {
-                const res = await fetch(`${USER_API_BASE}/UserSearch?nome=${query}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    const data: UsuarioBusca[] = await res.json();
-                    const filtered = data.filter(u => {
-                        if (u.id === currentId) return false;
-                        if (excludeIds.includes(u.id)) return false;
-                        if (restrictToStaff) {
-                            return renderList.some(s => s.usuarioId === u.id);
-                        }
-                        return true;
-                    });
-                    setResults(filtered);
-                }
-            } catch (err) { console.error("Erro buscando usuários", err); }
-        }, 500);
-        return () => clearTimeout(delayDebounceFn);
-    }, [query, currentId, excludeIds, restrictToStaff, renderList]);
-
-    const member = renderList.find(s => s.usuarioId === currentId);
-
-    return (
-        <div className="flex-1 min-w-[200px]">
-            <p className="text-sm font-semibold text-gray-600 mb-2 text-right pr-2">{title}</p>
-            <div className="relative">
-                <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={restrictToStaff ? "Buscar Staff..." : "Buscar Usuário..."}
-                    className="w-full p-2 pr-10 border border-gray-300 rounded-md text-sm"
-                />
-                <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                {results.length > 0 && (
-                    <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                        {results.map(u => (
-                            <li
-                                key={u.id}
-                                onClick={() => { onSet(role, u); setQuery(''); setResults([]); }}
-                                className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                            >
-                                <Image src={u.foto || '/faviccon.png'} alt={u.name} width={24} height={24} className="rounded-full" />
-                                <span className="text-sm">{u.name} {u.sobrenome}</span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-            <div className="mt-2 h-[120px] overflow-y-auto border bg-gray-50 rounded-md p-2 space-y-2">
-                {!member ? (
-                    <p className="text-xs text-gray-400 text-center p-4">Vazio</p>
-                ) : (
-                    <div className="flex items-center justify-between p-1 bg-white rounded border">
-                        <div className="flex items-center gap-2">
-                            <div className="w-[24px] h-[24px] relative rounded-full overflow-hidden">
-                                <Image src={member.url || '/faviccon.png'} alt={member.nome} fill className="object-cover" />
-                            </div>
-                            <span className="text-xs font-medium truncate max-w-[100px]">{member.nome}</span>
-                        </div>
-                        <button onClick={() => onSet(role, null)} className="text-red-400 hover:text-red-600">
-                            <X size={14} />
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-//Componente Principal
+// --- Componente Principal ---
 
 export default function StaffControlBar({ artigoId, editorialId, currentData, staffList, onUpdate }: StaffControlBarProps) {
     const [formData, setFormData] = useState({
@@ -264,17 +172,17 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
 
     const loading = loadingMeta || loadingTeam;
 
-    //Recuperar dados de usuários não-staff
+
+    // === EFEITO DE HIDRATAÇÃO ===
     useEffect(() => {
         const fetchMissingMembers = async () => {
             const allTeamIds = [
                 ...(currentData.editorial.team.initialAuthorId || []),
                 ...(currentData.editorial.team.reviewerIds || []),
                 ...(currentData.editorial.team.correctorIds || []),
-                currentData.editorial.team.editorId
+                ...(currentData.editorial.team.editorIds || [])
             ].filter(Boolean);
 
-            // IDs que estão na equipe mas não estão na lista de Staff carregada
             const missingIds = allTeamIds.filter(id => 
                 !staffList.some(s => s.usuarioId === id) && 
                 !extraMembers.some(e => e.usuarioId === id)
@@ -289,19 +197,50 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
 
             await Promise.all(missingIds.map(async (id) => {
                 try {
-                    const res = await fetch(`${USER_API_BASE}/${id}?token=${token}`, {
+                    const res = await fetch(`${USER_API_BASE}/GetUserLimited?id=${id}&token=${token}&option=${OPTION}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 
                     if (res.ok) {
-                        const u = await res.json();
-                        fetchedMembers.push({
-                            usuarioId: u.id,
-                            nome: `${u.name} ${u.sobrenome || ''}`.trim(),
-                            url: u.foto || '',
-                            job: FuncaoTrabalho.Aposentado as any, 
-                            isActive: true
-                        } as StaffMember);
+                        const textData = await res.text();
+                        if (textData && textData.length > 0) {
+                            const u = JSON.parse(textData);
+                            
+                            // --- DEBUG CRUCIAL ---
+                            // Abra o F12 e veja o que aparece aqui
+                            console.log(`Dados RAW do usuário ${id}:`, u);
+                            console.log(`Chaves disponíveis:`, Object.keys(u));
+
+                            // TENTATIVA ABRANGENTE DE MAPEAMENTO
+                            // 1. ID
+                            const realId = u.id || u.Id || u.usuarioId || u.UsuarioId || u.UserId || id;
+                            
+                            // 2. NOME (Tenta Nome Completo ou Primeiro Nome)
+                            const firstName = u.name || u.Name || u.nome || u.Nome || u.FirstName || u.given_name || '';
+                            
+                            // 3. SOBRENOME
+                            const lastName = u.sobrenome || u.Sobrenome || u.Surname || u.LastName || u.family_name || '';
+                            
+                            // 4. FOTO
+                            const photo = u.foto || u.Foto || u.url || u.Url || u.ImageUrl || u.ProfilePicture || '';
+
+                            // Se tivermos apenas FirstName e LastName separados
+                            let finalName = firstName;
+                            if (lastName) finalName = `${firstName} ${lastName}`;
+                            
+                            // Se não achou nada acima, tenta procurar por "FullName"
+                            if (!finalName.trim()) {
+                                finalName = u.FullName || u.fullName || u.UserName || u.Email || 'Usuário Sem Nome';
+                            }
+
+                            fetchedMembers.push({
+                                usuarioId: realId,
+                                nome: finalName.trim(),
+                                url: photo,
+                                job: FuncaoTrabalho.Aposentado as any, 
+                                isActive: true
+                            } as StaffMember);
+                        }
                     }
                 } catch (err) {
                     console.error(`Erro ao carregar utilizador ${id}`, err);
@@ -309,16 +248,24 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             }));
 
             if (fetchedMembers.length > 0) {
-                setExtraMembers(prev => [...prev, ...fetchedMembers]);
+                setExtraMembers(prev => {
+                    // Filtra duplicatas antes de adicionar
+                    const uniqueNewMembers = fetchedMembers.filter(
+                        fm => !prev.some(p => p.usuarioId === fm.usuarioId)
+                    );
+                    return [...prev, ...uniqueNewMembers];
+                });
             }
         };
 
         fetchMissingMembers();
-    }, [currentData.editorial.team, staffList]); 
+    }, [currentData.editorial.team, staffList]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const allKnownMembers = useMemo(() => {
         const map = new Map<string, StaffMember>();
+        // Staff tem prioridade
         staffList.forEach(s => map.set(s.usuarioId, s));
+        // Extras preenchem os buracos
         extraMembers.forEach(s => {
             if (!map.has(s.usuarioId)) map.set(s.usuarioId, s);
         });
@@ -331,13 +278,19 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             [role]: [...prev[role], user.id]
         }));
 
-        setExtraMembers(prev => [...prev, {
-            usuarioId: user.id,
-            nome: `${user.name} ${user.sobrenome || ''}`.trim(),
-            url: user.foto || '',
-            job: FuncaoTrabalho.Aposentado as any,
-            isActive: true,
-        } as StaffMember]);
+        // Adiciona imediatamente ao extraMembers para aparecer na lista sem delay
+        setExtraMembers(prev => {
+            // Evita duplicatas
+            if (prev.some(p => p.usuarioId === user.id)) return prev;
+            
+            return [...prev, {
+                usuarioId: user.id,
+                nome: `${user.name} ${user.sobrenome || ''}`.trim(),
+                url: user.foto || '',
+                job: FuncaoTrabalho.Aposentado as any,
+                isActive: true,
+            } as StaffMember];
+        });
     };
 
     const handleTeamRemove = (role: ListTeamRole, userId: string) => {
@@ -345,24 +298,6 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             ...prev,
             [role]: prev[role].filter((id: string) => id !== userId)
         }));
-    };
-
-    const handleTeamSet = (role: SingleTeamRole, user: UsuarioBusca | null) => {
-        const userId = user ? user.id : '';
-        setTeamData(prev => ({
-            ...prev,
-            [role]: userId
-        }));
-
-        if (user) {
-            setExtraMembers(prev => [...prev, {
-                usuarioId: user.id,
-                nome: `${user.name} ${user.sobrenome || ''}`.trim(),
-                url: user.foto || '',
-                job: FuncaoTrabalho.Aposentado as any,
-                isActive: true,
-            } as StaffMember]);
-        }
     };
 
     const handleFormChange = (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -383,7 +318,7 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             permitirComentario: currentData.permitirComentario
         });
         setTeamData(currentData.editorial.team);
-        setExtraMembers([]);
+        // Não limpamos extraMembers aqui para não sumir com os dados já carregados
     };
 
     const handleSaveClick = () => {
@@ -417,7 +352,7 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             if (JSON.stringify(teamData) !== JSON.stringify(currentData.editorial.team)) {
                 const cleanTeamInput = {
                     initialAuthorId: teamData.initialAuthorId || [],
-                    editorId: teamData.editorId || "",
+                    editorIds: teamData.editorIds || [],
                     reviewerIds: teamData.reviewerIds || [],
                     correctorIds: teamData.correctorIds || []
                 };
@@ -463,6 +398,7 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
             />
 
             <div className="mb-8 p-4 border border-gray-200 shadow-sm bg-white rounded-lg">
+                {/* ... Campos de Status, Posição, Tipo ... */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6">
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
@@ -505,44 +441,45 @@ export default function StaffControlBar({ artigoId, editorialId, currentData, st
                             currentIds={teamData.initialAuthorId}
                             renderList={allKnownMembers} 
                             excludeIds={[]}
-                            restrictToStaff={false} // Permite todos
+                            restrictToStaff={false}
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
                         
-                        {/* REVISORES*/}
+                        {/* REVISORES */}
                         <TeamSearchBox
                             title="Revisores:"
                             role="reviewerIds"
                             currentIds={teamData.reviewerIds}
                             renderList={allKnownMembers}
                             excludeIds={teamData.initialAuthorId} 
-                            restrictToStaff={false} // Permite todos
+                            restrictToStaff={false}
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
 
-                        {/* CORRETORES*/}
+                        {/* CORRETORES */}
                         <TeamSearchBox
                             title="Corretores:"
                             role="correctorIds"
                             currentIds={teamData.correctorIds}
                             renderList={allKnownMembers}
                             excludeIds={teamData.initialAuthorId}
-                            restrictToStaff={false} // Permite todos
+                            restrictToStaff={false} 
                             onAdd={handleTeamAdd}
                             onRemove={handleTeamRemove}
                         />
 
-                        {/* EDITOR CHEFE:Apenas Staff */}
-                        <SingleUserSearchBox
-                            title="Editor Chefe:"
-                            role="editorId"
-                            currentId={teamData.editorId}
+                        {/* EDITORES CHEFES */}
+                        <TeamSearchBox
+                            title="Editores Chefes:"
+                            role="editorIds"
+                            currentIds={teamData.editorIds}
                             renderList={allKnownMembers}
                             excludeIds={teamData.initialAuthorId}
                             restrictToStaff={true} 
-                            onSet={handleTeamSet}
+                            onAdd={handleTeamAdd}
+                            onRemove={handleTeamRemove}
                         />
                     </div>
                 </div>

@@ -54,6 +54,29 @@ namespace Usuario.Server.Services
                 return await _usuariosCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
 
         }
+        // --- BUCAR USER ID ---
+        public async Task<Usuario.Intf.Models.Usuario> GetUserLimited(ObjectId id, string token, string option)
+
+        {
+
+            // Validação do Token
+            var validationResult = ValidateToken(token, id.ToString(), option);
+
+            if (!validationResult.IsSuccess)
+                return null;
+            else
+                return await _usuariosCollection.Find(x => x.Id == id) // 2. Define a Projeção (SELECT)
+        .Project<Usuario.Intf.Models.Usuario>(Builders<Usuario.Intf.Models.Usuario>.Projection
+            .Include(u => u.Name)
+            .Include(u => u.Foto)
+            .Include(u => u.Id)
+        )
+        // 3. Executa a consulta
+        .FirstOrDefaultAsync();
+
+        
+
+        }
         // --- BUCAR USER Name ---
         public async Task<List<Usuario.Intf.Models.Usuario>> GetListNameAsync(string nome)
 
@@ -76,6 +99,7 @@ namespace Usuario.Server.Services
 
             return resultados;
         }
+
 
         public async Task<Usuario.Intf.Models.Usuario?> FindUser(string email)
         {
@@ -356,7 +380,7 @@ namespace Usuario.Server.Services
                 return ServiceResult.Failure("Token de recuperação inválido.", 401);
             }
         }
-        private ServiceResult ValidateToken(string token, string expectedUserId)
+        private ServiceResult ValidateToken(string token, string expectedUserId, string option = "0")
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var jwtKey = _configuration["Key"];
@@ -378,7 +402,7 @@ namespace Usuario.Server.Services
 
                 var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "nameid")?.Value;
                 var role = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
-                if (!string.IsNullOrEmpty(expectedUserId) && userIdClaim != expectedUserId && role != "0")
+                if (!string.IsNullOrEmpty(expectedUserId) && userIdClaim != expectedUserId && role != "0" && option != "42")
                 {
                     return ServiceResult.Failure("Token inválido para este usuário.", 401);
                 }

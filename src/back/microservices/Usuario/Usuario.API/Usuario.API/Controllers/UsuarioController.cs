@@ -47,6 +47,22 @@ namespace Usuario.API.Controllers
             return Ok(usuario);
         }
         // --- GET BY ID ---
+        [HttpGet("GetUserLimited")]
+        public async Task<ActionResult<Usuario.Intf.Models.Usuario>> GetUserLimited(string id, string token, string option)
+        {
+            if (!string.IsNullOrEmpty(option) && option == "42")
+            {
+                var trimmedId = id.Trim();
+
+                if (!ObjectId.TryParse(trimmedId, out var objectId))
+                    return BadRequest("O ID fornecido não é um formato válido do MongoDB.");
+
+                var usuario = await _usuarioService.GetUserLimited(objectId, token, option);
+                return Ok(usuario);
+            }
+            return BadRequest("Sem Autorização para realizar essa busca");
+        }
+        // --- GET BY ID ---
         [HttpGet("UserSearch")]
         public async Task<ActionResult<List<Usuario.Intf.Models.Usuario>>> UserSearch(string nome)
         {

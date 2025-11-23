@@ -606,7 +606,7 @@ const STAFF_COMMENT_FIELDS = gql`
 const EDITORIAL_TEAM_FIELDS = gql`
   fragment EditorialTeamFields on EditorialTeam {
     initialAuthorId
-    editorId
+    editorIds
     reviewerIds
     correctorIds
   }

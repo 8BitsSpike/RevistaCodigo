@@ -9,20 +9,6 @@ import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { formatDate } from '@/lib/dateUtils';
 
-interface Usuario {
-    _id?: string;
-    id?: string;
-    tipo?: string;
-    name?: string;
-    sobrenome?: string;
-    email?: string;
-    foto?: string;
-    password?: string;
-    biografia?: string;
-    infoInstitucionais?: InfoInstitucional[];
-    atuacoes?: AtuacaoProfissional[];
-}
-
 interface InfoInstitucional {
     instituicao?: string;
     curso?: string;
@@ -46,7 +32,6 @@ interface AtuacaoProfissional {
 export default function ProfileEditPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const [usuario, setUsuario] = useState<Usuario>({});
 
     const [formData, setFormData] = useState({
         name: '',
@@ -78,20 +63,21 @@ export default function ProfileEditPage() {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem('userToken');
-                const payload = [user.id];
-                const res = await fetch(`${USER_API_BASE}/GetByIds?token=${token}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(payload)
-                }); if (!res.ok) throw new Error('Perfil não encontrado');
-                const dataList = await res.json();
-                const data = dataList?.[0];
-
-                setUsuario({
-                    ...data,
-                    infoInstitucionais: data.infoInstitucionais || [],
-                    atuacoes: data.atuacoes || [],
+                const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
+                if (!res.ok) throw new Error('Erro ao carregar perfil');
+                const data = await res.json();
+
+                setFormData({
+                    name: data.name || '',
+                    sobrenome: data.sobrenome || '',
+                    email: data.email || '',
+                    biografia: data.biografia || '',
+                    foto: data.foto || '',
+                });
+                setInfoList(data.infoInstitucionais || []);
+                setAtuacaoList(data.atuacoes || []);
             } catch (err) {
                 toast.error('Falha ao carregar dados.');
             } finally {
@@ -172,21 +158,12 @@ export default function ProfileEditPage() {
             atuacoes: atuacaoList
         };
 
-        const envioId = usuario.id || usuario._id;
-
         try {
-            const token = localStorage.getItem('userToken');
-            const res = await fetch(`${USER_API_BASE}/${envioId}?token=${token}`, {
-                method: 'PuT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-
+            const res = await fetch(`${USER_API_BASE}/${user.id}?token=${token}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
             });
-            const dataList = await res.json();
-            const data = dataList?.[0];
 
             if (!res.ok) {
                 let errorMsg = 'Falha ao atualizar o perfil. Tente novamente.';

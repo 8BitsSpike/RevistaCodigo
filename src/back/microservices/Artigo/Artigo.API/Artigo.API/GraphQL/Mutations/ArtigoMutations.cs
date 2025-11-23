@@ -109,7 +109,7 @@ namespace Artigo.API.GraphQL.Mutations
                 UsuarioNome = usuarioNome,
                 Content = content,
                 Type = TipoInteracao.ComentarioPublico,
-                ParentCommentId? = parentCommentId | null
+                ParentCommentId = parentCommentId
             };
             return await _artigoService.CriarComentarioPublicoAsync(artigoId, newComment, parentCommentId);
         }

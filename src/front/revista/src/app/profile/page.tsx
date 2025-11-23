@@ -99,16 +99,9 @@ function ProfileContent() {
                 const token = localStorage.userToken;
                 const headers: any = {};
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-
-                const payload = [targetId];
-                // 3. Fetch User Profile (REST)
-                const res = await fetch(`${USER_API_BASE}/GetByIds?token=${token}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(payload)
-                }); if (!res.ok) throw new Error('Perfil não encontrado');
-                const dataList = await res.json();
-                const data = dataList?.[0];
+                const res = await fetch(`${USER_API_BASE}/${targetId}?token=${token}`, { headers });
+                if (!res.ok) throw new Error('Perfil não encontrado');
+                const data = await res.json();
 
                 const processedData: UserProfile = {
                     ...data,
@@ -214,7 +207,7 @@ function ProfileContent() {
                     </div>
                 </div>
 
-                {/* Seção de Artigos */}
+                {/* Seção de Artigos*/}
                 {articlesToDisplay.length > 0 && (
                     <div className="mt-12">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">{isOwnProfile ? 'Meus Artigos' : `Artigos de ${profile.name}`}</h2>

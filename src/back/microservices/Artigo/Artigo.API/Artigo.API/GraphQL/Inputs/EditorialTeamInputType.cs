@@ -21,9 +21,9 @@ namespace Artigo.API.GraphQL.Inputs
                 .Type<NonNullType<ListType<NonNullType<IdType>>>>()
                 .Description("Lista completa de IDs de USUÁRIO dos autores.");
 
-            descriptor.Field(f => f.EditorId)
-                .Type<NonNullType<IdType>>()
-                .Description("O ID de STAFF do Editor Chefe responsável.");
+            descriptor.Field(f => f.EditorIds)
+                .Type<NonNullType<ListType<NonNullType<IdType>>>>()
+                .Description("Lista de IDs de STAFF dos Editores Chefes responsáveis.");
 
             descriptor.Field(f => f.ReviewerIds)
                 .Type<NonNullType<ListType<NonNullType<IdType>>>>()

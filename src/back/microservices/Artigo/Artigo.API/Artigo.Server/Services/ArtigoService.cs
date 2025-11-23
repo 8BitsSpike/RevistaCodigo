@@ -93,15 +93,11 @@ namespace Artigo.Server.Services
             var authors = team.InitialAuthorId ?? new List<string>();
             var reviewers = team.ReviewerIds ?? new List<string>();
             var correctors = team.CorrectorIds ?? new List<string>();
-
+            var editors = team.EditorIds ?? new List<string>();
             var allTeamIds = authors
                 .Concat(reviewers)
-                .Concat(correctors);
-
-            if (!string.IsNullOrEmpty(team.EditorId))
-            {
-                allTeamIds = allTeamIds.Append(team.EditorId);
-            }
+                .Concat(correctors)
+                .Concat(editors);
 
             // Verifica se o ID existe na lista, ignorando maiúsculas/minúsculas
             return allTeamIds.Any(id => string.Equals(id, currentUsuarioId, StringComparison.OrdinalIgnoreCase));

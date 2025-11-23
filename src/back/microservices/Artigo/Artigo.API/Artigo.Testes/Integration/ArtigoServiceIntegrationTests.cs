@@ -404,7 +404,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
         var newTeam = new EditorialTeam
         {
             InitialAuthorId = editorial.Team.InitialAuthorId,
-            EditorId = "staff_editor_id",
+            EditorIds = new List<string> { "staff_editor_id" },
             ReviewerIds = new List<string> { CoAutorUsuarioId }
         };
 
@@ -413,7 +413,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
 
         // Assert
         Assert.NotNull(updatedEditorial);
-        Assert.Equal("staff_editor_id", updatedEditorial.Team.EditorId);
+        Assert.Contains("staff_editor_id", updatedEditorial.Team.EditorIds);
         Assert.Contains(CoAutorUsuarioId, updatedEditorial.Team.ReviewerIds);
 
         var persistedEditorial = await _editorialRepository.GetByIdAsync(editorial.Id);
@@ -502,7 +502,7 @@ public class ArtigoServiceIntegrationTests : IAsyncLifetime, IDisposable
 
         // Assert 1: Expect 1 result matching Act 1
         Assert.NotNull(resultReg);
-        Assert.Single(resultReg); 
+        Assert.Single(resultReg);
         Assert.Equal(artigoAutorReg.Id, resultReg[0].Id);
 
         // Assert 2: Expect 1 result matching Act 2

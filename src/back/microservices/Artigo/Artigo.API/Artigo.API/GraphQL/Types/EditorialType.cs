@@ -16,7 +16,7 @@ namespace Artigo.API.GraphQL.Types
         {
             descriptor.Description("A equipe editorial designada, incluindo revisores, corretores e o editor chefe.");
             descriptor.Field(f => f.InitialAuthorId).Description("IDs dos autores principais envolvidos.");
-            descriptor.Field(f => f.EditorId).Description("ID do Editor Chefe responsável.");
+            descriptor.Field(f => f.EditorIds).Description("IDs dos Editores Chefes responsáveis.");
             descriptor.Field(f => f.ReviewerIds).Description("IDs dos revisores designados.");
             descriptor.Field(f => f.CorrectorIds).Description("IDs dos corretores designados.");
         }

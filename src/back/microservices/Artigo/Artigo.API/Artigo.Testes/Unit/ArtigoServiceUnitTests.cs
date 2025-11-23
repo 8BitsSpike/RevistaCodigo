@@ -248,7 +248,7 @@ namespace Artigo.Testes.Unit
         public async Task ResolverRequisicaoPendenteAsync_ShouldUpdateEditorialTeam_WhenCommandIsValid()
         {
             // Arrange
-            var team = new EditorialTeam { EditorId = "new_editor_id" };
+            var team = new EditorialTeam { EditorIds = new List<string> { "new_editor_id" } };
             var editorial = new Editorial { Id = "editorial_123" };
             var pendingReq = new Pending
             {
@@ -268,7 +268,7 @@ namespace Artigo.Testes.Unit
 
             // Assert
             Assert.True(result);
-            _mockEditorialRepo.Verify(r => r.UpdateTeamAsync("editorial_123", It.Is<EditorialTeam>(t => t.EditorId == "new_editor_id"), _sessionHandle), Times.Once);
+            _mockEditorialRepo.Verify(r => r.UpdateTeamAsync("editorial_123", It.Is<EditorialTeam>(t => t.EditorIds.Contains("new_editor_id")), _sessionHandle), Times.Once);
             _mockPendingRepo.Verify(r => r.UpdateAsync(It.Is<Pending>(p => p.Status == StatusPendente.Aprovado), _sessionHandle), Times.Once);
         }
 

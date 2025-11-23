@@ -1,29 +1,22 @@
-# Imagem base
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# 1. Copie APENAS os arquivos de projeto (.csproj) de TODAS as camadas
-# Isso é crucial para o cache do Docker funcionar bem
 COPY ["Artigo.API/Artigo.API.csproj", "Artigo.API/"]
 COPY ["Artigo.Intf/Artigo.Intf.csproj", "Artigo.Intf/"]
 COPY ["Artigo.DbContext/Artigo.DbContext.csproj", "Artigo.DbContext/"]
 COPY ["Artigo.Server/Artigo.Server.csproj", "Artigo.Server/"]
-# (Adicione outras camadas se tiver, ex: Shared, CrossCutting)
 
-# 2. Restaura as dependências (baixa os pacotes do Nuget)
 RUN dotnet restore "Artigo.API/Artigo.API.csproj"
 RUN dotnet restore "Artigo.Intf/Artigo.Intf.csproj"
 RUN dotnet restore "Artigo.DbContext/Artigo.DbContext.csproj"
 RUN dotnet restore "Artigo.Server/Artigo.Server.csproj"
 
-# 3. Copia todo o resto do código fonte
 COPY . .
 
-# 4. Compila e Publica o projeto API
 WORKDIR "/src/Artigo.API/"
 RUN dotnet publish "Artigo.API.csproj" -c Release -o /app/publish
 
-# 5. Imagem Final (A que vai rodar de verdade)
+
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app/publish .

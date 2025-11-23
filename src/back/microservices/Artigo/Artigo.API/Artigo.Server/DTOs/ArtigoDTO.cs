@@ -27,7 +27,7 @@ namespace Artigo.Server.DTOs
         public List<string> ReferenciasAutor { get; set; } = []; // Autores nao cadastrados (Nome)
 
         // Referencias de ligacao 1:1 ou 1:N
-        public string IdEditorial { get; set; } = string.Empty;
+        public string EditorialId { get; set; } = string.Empty;
         public string? IdVolume { get; set; } // Opcional, so existe se publicado
 
         // Lista de objetos Midia (já alterado)

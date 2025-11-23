@@ -63,7 +63,7 @@ namespace Artigo.API.GraphQL.Types
                     var editorialLoader = ctx.DataLoader<EditorialDataLoader>();
 
                     // 1. Busca o Editorial
-                    var editorial = await editorialLoader.LoadAsync(dto.IdEditorial);
+                    var editorial = await editorialLoader.LoadAsync(dto.EditorialId);
                     if (editorial == null) return new List<MidiaEntryDTO>();
 
                     // 2. Busca o History

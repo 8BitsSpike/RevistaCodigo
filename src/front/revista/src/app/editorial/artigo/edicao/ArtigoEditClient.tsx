@@ -9,7 +9,7 @@ import Layout from '@/components/Layout';
 import ProgressBar from '@/components/ProgressBar';
 import StaffCommentCard from '@/components/StaffCommentCard';
 import { StaffMember } from '@/components/StaffCard';
-import { PosicaoEditorial, VersaoArtigo } from '@/types/enums';
+import { PosicaoEditorial, VersaoArtigo, FuncaoContribuicao } from '@/types/enums';
 import { StaffComentario } from '@/types/index';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
@@ -39,7 +39,7 @@ const sanitizeId = (id: string) => {
 // Interfaces
 interface EditorialTeamData {
     initialAuthorId: string[];
-    editorId: string;
+    editorIds: string[];
     reviewerIds: string[];
     correctorIds: string[];
     __typename: "EditorialTeam";
@@ -199,7 +199,7 @@ function ArtigoEditClient() {
         const isAuthor = team.initialAuthorId?.includes(user.id);
         const isReviewer = team.reviewerIds?.includes(user.id);
         const isCorrector = team.correctorIds?.includes(user.id);
-        const isEditor = team.editorId === user.id;
+        const isEditor = team.editorIds?.includes(user.id);
 
         if (isAuthor) { setUserRole('author'); return; }
         if (isReviewer || isCorrector || isEditor) { setUserRole('team'); return; }

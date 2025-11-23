@@ -19,12 +19,12 @@ namespace Artigo.API.GraphQL.Resolvers
             EditorialDataLoader dataLoader,
             IResolverContext context)
         {
-            if (string.IsNullOrEmpty(artigo.IdEditorial))
+            if (string.IsNullOrEmpty(artigo.EditorialId))
             {
                 return Task.FromResult<Editorial?>(null);
             }
             // Assegura o resultado não nulo da operação de carregamento do DataLoader.
-            return dataLoader.LoadAsync(artigo.IdEditorial, context.RequestAborted)!;
+            return dataLoader.LoadAsync(artigo.EditorialId, context.RequestAborted)!;
         }
     }
 
@@ -81,12 +81,12 @@ namespace Artigo.API.GraphQL.Resolvers
             CurrentHistoryContentDataLoader dataLoader,
             IResolverContext context)
         {
-            if (string.IsNullOrEmpty(artigo.IdEditorial))
+            if (string.IsNullOrEmpty(artigo.EditorialId))
             {
                 return Task.FromResult(string.Empty);
             }
             // Assegura o resultado não nulo da operação de carregamento do DataLoader.
-            return dataLoader.LoadAsync(artigo.IdEditorial, context.RequestAborted)!;
+            return dataLoader.LoadAsync(artigo.EditorialId, context.RequestAborted)!;
         }
     }
 

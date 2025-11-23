@@ -39,7 +39,7 @@ namespace Artigo.Server.Mappers
                 // Mapeamento explícito para nomes traduzidos no DTO
                 .ForMember(dest => dest.IdsAutor, opt => opt.MapFrom(src => src.AutorIds))
                 .ForMember(dest => dest.ReferenciasAutor, opt => opt.MapFrom(src => src.AutorReference))
-                .ForMember(dest => dest.IdEditorial, opt => opt.MapFrom(src => src.EditorialId))
+                .ForMember(dest => dest.EditorialId, opt => opt.MapFrom(src => src.EditorialId))
                 .ForMember(dest => dest.IdVolume, opt => opt.MapFrom(src => src.VolumeId))
                 .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))
 
@@ -56,7 +56,7 @@ namespace Artigo.Server.Mappers
                 // Mapeamento explícito para nomes traduzidos (DTO -> Domain)
                 .ForMember(dest => dest.AutorIds, opt => opt.MapFrom(src => src.IdsAutor))
                 .ForMember(dest => dest.AutorReference, opt => opt.MapFrom(src => src.ReferenciasAutor))
-                .ForMember(dest => dest.EditorialId, opt => opt.MapFrom(src => src.IdEditorial))
+                .ForMember(dest => dest.EditorialId, opt => opt.MapFrom(src => src.EditorialId))
                 .ForMember(dest => dest.VolumeId, opt => opt.MapFrom(src => src.IdVolume))
                 .ForMember(dest => dest.PermitirComentario, opt => opt.MapFrom(src => src.PermitirComentario))
                 .ForMember(dest => dest.MidiaDestaque, opt => opt.Ignore()) // MidiaDestaque é gerenciado pelo serviço

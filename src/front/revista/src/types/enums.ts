@@ -12,7 +12,7 @@ export enum TipoArtigo {
   Blog = "BLOG",
   Entrevista = "ENTREVISTA",
   Indicacao = "INDICACAO",
-  Opniao = "OPNIAO", 
+  Opniao = "OPNIAO",
   Video = "VIDEO",
   Administrativo = "ADMINISTRATIVO",
 }
@@ -80,4 +80,11 @@ export enum TipoEntidadeAlvo {
   Staff = "STAFF",
   Volume = "VOLUME",
   Editorial = "EDITORIAL",
+}
+
+export enum FuncaoContribuicao {
+  AutorPrincipal = "AUTOR_PRINCIPAL",
+  Revisor = "REVISOR",
+  Corretor = "CORRETOR",
+  EditorChefe = "EDITOR_CHEFE"
 }

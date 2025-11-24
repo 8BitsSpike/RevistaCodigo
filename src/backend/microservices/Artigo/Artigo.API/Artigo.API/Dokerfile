@@ -1,18 +1,22 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
+# 1. COPY project files (paths are now relative to the new root: src/backend/microservices/Artigo)
 COPY ["Artigo.API/Artigo.API.csproj", "Artigo.API/"]
 COPY ["Artigo.Intf/Artigo.Intf.csproj", "Artigo.Intf/"]
 COPY ["Artigo.DbContext/Artigo.DbContext.csproj", "Artigo.DbContext/"]
 COPY ["Artigo.Server/Artigo.Server.csproj", "Artigo.Server/"]
 
+# 2. RUN dotnet restore
 RUN dotnet restore "Artigo.API/Artigo.API.csproj"
 RUN dotnet restore "Artigo.Intf/Artigo.Intf.csproj"
 RUN dotnet restore "Artigo.DbContext/Artigo.DbContext.csproj"
 RUN dotnet restore "Artigo.Server/Artigo.Server.csproj"
 
+# 3. COPY all remaining source code (relative to the new root)
 COPY . .
 
+# 4. WORKDIR and Publish
 WORKDIR "/src/Artigo.API/"
 RUN dotnet publish "Artigo.API.csproj" -c Release -o /app/publish
 
